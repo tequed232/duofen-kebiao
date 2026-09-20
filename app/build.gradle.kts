@@ -1,7 +1,6 @@
 ﻿plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 /* ---------------------------------------------------------------------------
@@ -77,9 +76,6 @@ android {
         }
     }
 
-    buildFeatures {
-        compose = true
-    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -92,17 +88,10 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
-    implementation(composeBom)
-    androidTestImplementation(composeBom)
-
+    // 说明：这个 APK **没有自己的界面**，界面全部来自 web/（构建时同步 dist/ 到 assets/www）。
+    // 因此这里不再依赖 Compose / Material：避免再出现一套会与网页漂移的平行实现。
     implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.activity:activity-compose:1.10.0")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.activity:activity-ktx:1.10.0")
 
     // WebView 宿主：用 WebViewAssetLoader 把 assets/www 以 https 源提供，
     // 这样 IndexedDB、fetch、getUserMedia 与网站行为一致（file:// 会被 CORS 限制）

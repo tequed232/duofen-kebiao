@@ -208,3 +208,28 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 > GitHub Pages 不能直接跑 Anubis（它需要自己的服务器作为反向代理）。做法是：域名解析到 VPS，
 > Caddy 终止 TLS 后交给 Anubis，Anubis 回源到 `https://tequed232.github.io/duofen-kebiao`。
 > 详细的部署步骤、Prometheus 抓取配置与告警建议见 `deploy/anubis/README.md`。
+
+---
+
+## 唯一设计基准：Web
+
+**所有功能（课表、识别/记录、历史、设置、筛选、教材、关于…）都以 `web/` 为唯一设计基准。**
+
+APK 不含任何自有界面：`app/` 里只有两个 Kotlin 文件——
+
+| 文件 | 作用 |
+| --- | --- |
+| `MainActivity.kt` | WebView 宿主：加载 APK 内嵌的同一个 Web 构建；只做原生权限、SAF 文件选择、外部跳转、返回键 |
+| `LiveUpdates.kt` | Android 16 / ColorOS 流体云进度通知（网页通过 `window.DuofenNative.liveUpdate()` 调用） |
+
+构建链路保证不会漂移：
+
+```bash
+npm run build          # 产出 dist/（网页）
+npm run apk            # preBuild 自动把 dist/ 同步进 app/src/main/assets/www 后编译
+npm run apk:parity     # 逐文件比对 APK 内嵌资源与 dist/（文件名 + sha256），不一致即失败
+node scripts/visual-parity.mjs   # 同一虚拟设备分别截 APK 内嵌资源与线上网页，逐屏对照
+```
+
+版本号也只有一个来源：`web/src/lib/meta.ts` 的 `APP_VERSION`（APK 的 versionName/versionCode 由它推导）。
+以前那套自绘的 Compose 课表页 / RTF 解析器 / 教材数据已经删除，避免出现第二套会漂移的实现。
