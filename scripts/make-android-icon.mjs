@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 生成 Android 启动图标：**全部使用 Material 资源**，不含任何第三方插画。
  *
  * 背景 = M3 主色（primary）；前景 = Material Symbols Rounded 的 calendar_month 字形。
@@ -28,38 +28,58 @@ const glyph = String.fromCodePoint(Number.parseInt(match[1], 16));
 const fontBase64 = (await readFile(FONT)).toString('base64');
 const MASTER = 512;
 
-/** 用 Chromium 渲染一张 512×512 母图（icon ratio 决定字形占画布比例） */
-async function renderMaster(ratio, out) {
+/** Liquid Glass 应用标识（与 web/src/components/glass.tsx 同一套矢量设计） */
+const GLASS_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#DCE6F7"/><stop offset="45%" stop-color="#E7E3F3"/><stop offset="100%" stop-color="#F6E3D2"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0%" stop-color="#7ED957" stop-opacity="0.95"/><stop offset="100%" stop-color="#2E7D32" stop-opacity="0.85"/></linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0%" stop-color="#A98BF0" stop-opacity="0.9"/><stop offset="100%" stop-color="#6A4FBF" stop-opacity="0.8"/></linearGradient>
+    <linearGradient id="g3" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0%" stop-color="#F0736A" stop-opacity="0.9"/><stop offset="100%" stop-color="#C1362C" stop-opacity="0.8"/></linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85"/><stop offset="55%" stop-color="#FFFFFF" stop-opacity="0.06"/><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="192" height="192" rx="48" fill="url(#bg)"/>
+  <rect x="4" y="4" width="192" height="192" rx="48" fill="none" stroke="#FFFFFF" stroke-opacity="0.65" stroke-width="2"/>
+  <g transform="rotate(38 100 100)">
+    <rect x="46" y="34" width="108" height="44" rx="22" fill="url(#g2)"/>
+    <rect x="46" y="34" width="108" height="22" rx="11" fill="url(#sheen)"/>
+  </g>
+  <g transform="rotate(38 100 100) translate(14 40)">
+    <rect x="46" y="34" width="108" height="44" rx="22" fill="url(#g3)"/>
+    <rect x="46" y="34" width="108" height="22" rx="11" fill="url(#sheen)"/>
+  </g>
+  <g transform="rotate(38 100 100) translate(-28 -8)">
+    <rect x="46" y="34" width="108" height="44" rx="22" fill="url(#g1)"/>
+    <rect x="46" y="34" width="108" height="22" rx="11" fill="url(#sheen)"/>
+    <circle cx="64" cy="52" r="5" fill="#FFFFFF" fill-opacity="0.75"/>
+  </g>
+</svg>`;
+
+/** 用 Chromium 渲染一张 512×512 母图（padding 决定玻璃方块占画布的比例） */
+async function renderMaster(padding, out, bg) {
   const browser = await chromium.launch({ channel: 'chromium' });
   const page = await browser.newPage({ viewport: { width: MASTER, height: MASTER }, deviceScaleFactor: 1 });
-  const html = `<!doctype html><meta charset="utf-8"><style>
-    @font-face {
-      font-family: 'Material Symbols Rounded';
-      src: url(data:font/woff2;base64,${fontBase64}) format('woff2');
-      font-weight: 400;
-    }
-    html, body { margin: 0; width: ${MASTER}px; height: ${MASTER}px; background: ${PRIMARY}; }
-    .glyph {
-      width: ${MASTER}px; height: ${MASTER}px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Material Symbols Rounded';
-      font-size: ${Math.round(MASTER * ratio)}px;
-      color: ${ON_PRIMARY};
-      font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 48;
-      line-height: 1;
-    }
-  </style><div class="glyph">${glyph}</div>`;
-  await page.setContent(html, { waitUntil: 'load' });
-  await page.waitForTimeout(350); // 等字体解码
-  await page.screenshot({ path: out });
+  await page.setContent(
+    `<!doctype html><meta charset="utf-8"><style>
+      html, body { margin: 0; width: ${MASTER}px; height: ${MASTER}px; background: ${bg}; }
+      .wrap { width: ${MASTER}px; height: ${MASTER}px; padding: ${padding}px; box-sizing: border-box; }
+      svg { display: block; width: 100%; height: 100%; }
+    </style><div class="wrap">${GLASS_SVG}</div>`,
+    { waitUntil: 'load' },
+  );
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: out, omitBackground: bg === 'transparent' });
   await browser.close();
 }
-
 await mkdir('build/icons', { recursive: true });
 const masterFull = 'build/icons/master-full.png'; // 传统图标：字形更大
 const masterFg = 'build/icons/master-fg.png'; // 自适应前景：留安全区
-await renderMaster(0.62, masterFull);
-await renderMaster(0.46, masterFg);
+await renderMaster(6, masterFull, 'transparent');
+await renderMaster(34, masterFg, 'transparent');
 
 const DENSITIES = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
 const FOREGROUND = { mdpi: 108, hdpi: 162, xhdpi: 216, xxhdpi: 324, xxxhdpi: 432 };

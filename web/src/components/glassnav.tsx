@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Liquid Glass 底边栏。
  *
  * 替代 Material Web 的 md-navigation-bar：一个悬浮的玻璃药丸容器（模糊 + 冰彩高光 +
@@ -29,6 +29,8 @@ export function GlassNavBar({
   return (
     <nav className="glass-nav" ref={ref} aria-label="主导航">
       <div className="glass-nav-inner">
+        {/* 折射层：SVG 位移滤镜，做出玻璃的光影折射（无可用的滤镜时自动退化为高光） */}
+        <span className="glass-nav-refraction" aria-hidden="true" />
         {tabs.map((tab) => {
           const selected = tab.id === active;
           return (

@@ -1475,3 +1475,57 @@ md-filled-text-field {
 .splash-shapes .glass-mark {
   filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--md-sys-color-shadow) 24%, transparent));
 }
+
+/* ------------------------------------------------- 设置页控制行（整理后）-- */
+.list-control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 14px 20px;
+  margin-top: -6px;
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.list-control-row + md-list-item.rounded-middle {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* 玻璃底边栏的折射层：用 SVG 位移滤镜做出光影折射（liquid glass 的核心观感） */
+.glass-nav-refraction {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+  filter: url(#liquid-glass-refraction);
+  background:
+    radial-gradient(80% 120% at 18% 0%, color-mix(in srgb, #ffffff 60%, transparent), transparent 62%),
+    radial-gradient(70% 110% at 82% 100%, color-mix(in srgb, var(--md-sys-color-primary) 32%, transparent), transparent 68%);
+}
+
+/* 玻璃边缘的高光描边（镜面反射） */
+.glass-nav-inner::before {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 85%, transparent);
+}
+
+/* 没有 SVG 滤镜时（老 WebView）退化为纯高光，不留空白 */
+@supports not (filter: url(#x)) {
+  .glass-nav-refraction { filter: none; opacity: 0.35; }
+}
+
+/* 安全区：原生会把系统栏高度写进 --native-safe-top/bottom，浏览器用 env() */
+.stage {
+  padding-top: max(env(safe-area-inset-top, 0px), var(--native-safe-top, 0px));
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-bottom, 0px));
+}
+
+html.native-shell .stage {
+  padding-top: var(--native-safe-top, 0px);
+  padding-bottom: var(--native-safe-bottom, 0px);
+}
+
+html.native-shell .phone {
+  height: calc(100dvh - var(--native-safe-top, 0px) - var(--native-safe-bottom, 0px));
+}

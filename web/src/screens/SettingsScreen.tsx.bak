@@ -95,20 +95,13 @@ export default function SettingsScreen() {
         <div className="screen-content">
           <div className="list-group" ref={listRef}>
             {/* ------------------------------------------------ 1 深色模式 */}
-            <md-list-item type="text" className="rounded-outer-top">
+            <md-list-item type="button" className="rounded-outer-top" onClick={toggleDarkMode}>
               <div slot="start" className="list-icon-badge">
                 <MdIcon name="dark_mode" />
               </div>
               <div slot="headline">深色模式</div>
               <div slot="supporting-text">
                 {settings.darkMode ? '当前为深色模式' : '当前为浅色模式（默认设计目标）'}
-              </div>
-              <div slot="end">
-                <MdSwitch
-                  selected={settings.darkMode}
-                  onSelectedChange={toggleDarkMode}
-                  ariaLabel="深色模式开关"
-                />
               </div>
             </md-list-item>
 
@@ -171,7 +164,7 @@ export default function SettingsScreen() {
             </md-list-item>
 
             {/* -------------------------------------- 6 语音输入强度调整 */}
-            <md-list-item type="text" className="rounded-middle">
+            <md-list-item type="button" className="rounded-middle">
               <div slot="start" className="list-icon-badge">
                 <MdIcon name="mic" />
               </div>
@@ -179,7 +172,48 @@ export default function SettingsScreen() {
               <div slot="supporting-text">识别置信度门限：{Math.round(speechValue)}%（0/25/50/75/100 卡扣，点数字可直接编辑）</div>
             </md-list-item>
 
-            <div className="list-control-row">
+            {/* -------------------------------------- 7 相机清晰度调整 */}
+            <md-list-item type="button" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="camera_video" />
+              </div>
+              <div slot="headline">相机清晰度调整</div>
+              <div slot="supporting-text">拍摄分辨率与画质：{Math.round(cameraValue)}%（0/25/50/75/100 卡扣，点数字可直接编辑）</div>
+            </md-list-item>
+
+            {/* ------------------------------------------------ 8 关于本软件 */}
+            <md-list-item
+              type="button"
+              className="rounded-outer-bottom"
+              onClick={() => nav.push('about', {}, 'slide')}
+            >
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="info" />
+              </div>
+              <div slot="headline">关于本软件</div>
+              <div slot="supporting-text">应用信息 · Material 3 设计说明 · 致谢与开源链接</div>
+              <MdIcon slot="end" name="chevron_right" />
+            </md-list-item>
+
+            {/* ------------------------- stacked controls (drawn in front) */}
+            <div className="group-overlay" style={{ top: 20 }}>
+              <MdSwitch
+                selected={settings.darkMode}
+                onSelectedChange={toggleDarkMode}
+                ariaLabel="深色模式开关"
+              />
+            </div>
+
+            {/* 液态玻璃底边栏开关，叠在第 4 行上 */}
+            <div className="group-overlay" style={{ top: 245 }}>
+              <MdSwitch
+                selected={settings.liquidGlass}
+                onSelectedChange={toggleLiquidGlass}
+                ariaLabel="液态玻璃底边栏开关"
+              />
+            </div>
+
+            <div className="group-overlay" style={{ top: 387, width: 182 }}>
               <MdSlider
                 className="expressive-slider flex-1 detented"
                 value={speechValue}
@@ -209,16 +243,7 @@ export default function SettingsScreen() {
               </button>
             </div>
 
-            {/* -------------------------------------- 7 相机清晰度调整 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="camera_video" />
-              </div>
-              <div slot="headline">相机清晰度调整</div>
-              <div slot="supporting-text">拍摄分辨率与画质：{Math.round(cameraValue)}%（0/25/50/75/100 卡扣，点数字可直接编辑）</div>
-            </md-list-item>
-
-            <div className="list-control-row">
+            <div className="group-overlay" style={{ top: 462, width: 182 }}>
               <MdSlider
                 className="expressive-slider flex-1 detented"
                 value={cameraValue}
@@ -247,24 +272,6 @@ export default function SettingsScreen() {
                 {Math.round(cameraValue)}%
               </button>
             </div>
-
-            {/* ------------------------------------------------ 8 关于本软件 */}
-            <md-list-item
-              type="button"
-              className="rounded-outer-bottom"
-              onClick={() => nav.push('about', {}, 'slide')}
-            >
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="info" />
-              </div>
-              <div slot="headline">关于本软件</div>
-              <div slot="supporting-text">应用信息 · Material 3 设计说明 · 致谢与开源链接</div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-
-
-
           </div>
 
           <div className="mt-16">

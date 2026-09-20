@@ -21,6 +21,7 @@ import { useSpeechRecognition } from '../lib/speech';
 import { analyzeImage, askQuestion, topicFor } from '../lib/api';
 import { pickImageFile, prepareImageFile } from '../lib/imaging';
 import { detectIntent, formatDateTime } from '../lib/utils';
+import { isNativeShell, nativeLiveUpdate, nativeRequestPermissions } from '../lib/native';
 import type { Draft } from '../lib/types';
 
 export default function HomeScreen() {
@@ -93,6 +94,7 @@ export default function HomeScreen() {
       }
       return;
     }
+    if (isNativeShell()) nativeRequestPermissions();
     const granted = await notice.request();
     setRecording('continuous');
     speech.start();
@@ -111,6 +113,7 @@ export default function HomeScreen() {
       showSnackbar({ message: '当前浏览器不支持实时语音识别，可在右侧输入框手动输入', duration: 5000 });
       return;
     }
+    if (isNativeShell()) nativeRequestPermissions();
     const granted = await notice.request();
     setRecording('temporary');
     speech.start();
@@ -137,7 +140,11 @@ export default function HomeScreen() {
       .toString()
       .padStart(2, '0');
     const ss = (noticeSeconds % 60).toString().padStart(2, '0');
-    notice.show(recordingRef.current === 'temporary' ? '临时录制 · 多分课表' : '正在录音 · 多分课表', `${mm}:${ss} · 实时语音转文字进行中`);
+    const liveTitle = recordingRef.current === 'temporary' ? '临时录制 · 多分课表' : '正在录音 · 多分课表';
+    const liveBody = ` ${mm}:${ss} · 实时语音转文字进行中 `;
+    notice.show(liveTitle, liveBody);
+    // 流体云 / Live Updates：按录音时长推进进度（0-100）
+    nativeLiveUpdate(liveTitle, liveBody, Math.min(100, Math.round(noticeSeconds * 1.7)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noticeSeconds, isRecording]);
 

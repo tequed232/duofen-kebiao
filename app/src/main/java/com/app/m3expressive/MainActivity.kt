@@ -102,17 +102,35 @@ class MainActivity : ComponentActivity() {
 
         setContentView(webView)
 
+        // Android 13+ 通知权限：流体云卡片依赖它，启动时就申请
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+            }
+        }
+
         // 状态栏 / 导航栏留白：Android 15+ 强制 edge-to-edge，不给 insets 的话
         // 顶部标题会被状态栏（时间、电量）压住。这里把系统栏高度作为 WebView 的内边距，
         // 并把窗口与 WebView 底色设成应用的 surface 色，让留白区域自然衔接。
         val surface = ColorUtils.setAlphaComponent(android.graphics.Color.parseColor("#F5FBF6"), 255)
         window.decorView.setBackgroundColor(surface)
         webView.setBackgroundColor(surface)
+        // 系统栏高度同时写进 CSS 变量（网页用它给状态栏/手势条留白），
+        // 这样无论 ROM 是否把 insets 先行消费，界面都不会被状态栏压住。
         ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
             val bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
             )
-            view.updatePadding(top = bars.top, bottom = bars.bottom, left = bars.left, right = bars.right)
+            view.updatePadding(top = 0, bottom = 0, left = bars.left, right = bars.right)
+            view.post {
+                webView.evaluateJavascript(
+                    "document.documentElement.style.setProperty('--native-safe-top','${bars.top}px');" +
+                        "document.documentElement.style.setProperty('--native-safe-bottom','${bars.bottom}px');",
+                    null,
+                )
+            }
             insets
         }
         ViewCompat.requestApplyInsets(webView)
@@ -175,9 +193,17 @@ class MainActivity : ComponentActivity() {
 
     /** 给网页用的原生桥：流体云进度通知 + 平台标识 */
     private inner class NativeBridge {
+        /** 流体云 / Live Updates：网页录音时持续调用，带上进度 */
         @JavascriptInterface
-        fun liveUpdate(title: String, text: String) {
-            runOnUiThread { LiveUpdates.update(this@MainActivity, title, text) }
+        fun liveUpdate(title: String, text: String, progress: Int) {
+            runOnUiThread {
+                LiveUpdates.update(
+                    this@MainActivity,
+                    title,
+                    text,
+                    if (progress in 0..100) progress else null,
+                )
+            }
         }
 
         @JavascriptInterface

@@ -1,28 +1,37 @@
-﻿# 多分课表 v1.0.11 —— 彩蛋移除 + Liquid Glass 底边栏
+﻿# 多分课表 v1.0.12 —— 折射回归、状态栏留白、流体云通知、玻璃图标、设置整理
 
-## 移除彩蛋
+## 1. 底边栏的光影折射回来了
 
-- 删除了「戳一下喵一下」的彩蛋：`web/src/components/meow.tsx`、`web/src/lib/meow.ts` 已移除，
-  首页「拍照 / 导入图片」中间、关于页里的可点彩蛋一并撤掉，相关提示与音效不再出现。
+`glass-nav-inner` 里新增独立的**折射层** `.glass-nav-refraction`：使用 SVG 位移滤镜
+（`feTurbulence` + `feDisplacementMap`，`filter: url(#liquid-glass-refraction)`）叠加冰彩光晕，
+再加上顶部反光条与镜面内描边，恢复 Liquid Glass 的光影折射观感；不支持 SVG 滤镜的老内核自动退化为纯高光。
 
-## Liquid Glass 视觉（参考开源库自行绘制，不嵌入任何图片素材）
+## 2. 状态栏留白（双保险）
 
-- 新增 `web/src/components/glass.tsx`：冰彩渐变圆角方块 + 三枚半透明玻璃药丸的应用标识
-  （绿 / 紫 / 红对应 M3 primary / tertiary / error），用于开屏、关于页与首页中部。
-- 新增 `web/src/components/glassnav.tsx`：**Liquid Glass 底边栏**替代 Material 3 原生导航栏 ——
-  悬浮玻璃药丸容器（`backdrop-filter: blur(22px) saturate(1.7)` + 顶部反光条 + 冰彩染色光晕），
-  选中项是玻璃胶囊指示器；设置里「底边栏风格（互斥）」仍可切回 M3 原生导航栏。
+- 原生：insets 不再只做 WebView padding，而是把系统栏高度写入 CSS 变量
+  `--native-safe-top` / `--native-safe-bottom`，页面据此留白——无论 ROM 是否先消费 insets 都不会被压住。
+- Web：`.stage` 使用 `max(env(safe-area-inset-*), var(--native-safe-*))`，浏览器按刘海安全区，
+  APK 按原生实测高度；`.phone` 高度同步扣减。
 
-## 引用的开源实现（关于页与 README 均已链接致谢）
+## 3. 流体云 / Live Updates 真的会弹了
 
-| 库 | 星标 | 参考点 |
-| --- | --- | --- |
-| [rdev/liquid-glass-react](https://github.com/rdev/liquid-glass-react) | 6.2k | SVG 位移折射 + 鼠标跟随高光 |
-| [AndrewPrifer/liquid-dom](https://github.com/AndrewPrifer/liquid-dom) | 2.5k | 对实时 DOM 做玻璃透镜折射（框架无关） |
-| [shuding/liquid-glass](https://github.com/shuding/liquid-glass) | 1.2k | SVG + Canvas 玻璃着色器思路 |
+- **启动即申请通知权限**：Android 13+ 缺 `POST_NOTIFICATIONS` 时流体云卡片根本发不出来，现在原生在启动时申请。
+- 网页录音开始时通过 JS 桥调用 `DuofenNative.requestPermissions()` 补齐相机/麦克风/通知权限。
+- **进度真的在走**：`liveUpdate(title, text, progress)` 现在带进度参数（按录音时长 0→100），
+  原生 `LiveUpdates.update(..., progress)` 用 `Notification.ProgressStyle` 渲染流体云进度条。
+
+## 4. APK 图标换成 Liquid Glass 设计
+
+`scripts/make-android-icon.mjs` 改为直接渲染项目的 `GlassMark` 矢量（冰彩渐变圆角方块 + 绿/紫/红玻璃药丸），
+生成自适应图标（anydpi-v26）+ mdpi~xxxhdpi 传统图标 + 圆形版；已逐张查看确认。
+
+## 5. 设置页控件整理
+
+去掉全部 4 个「绝对定位叠在列表行上」的控件（`group-overlay`）：
+开关改为放进 `md-list-item` 的 **end 插槽**（M3 官方做法），滑块变成列表项下方的
+**独立控制行**（`.list-control-row`，正常文档流）。任何屏幕高度、字号、语言下都不会错位或重叠。
 
 ## 一致性与验证
 
 - `npm run apk:parity` → APK 内嵌 **54/54 文件与 `dist/` 逐个 sha256 相同** ✅
-- Web 自动化：**91 步全部通过、0 console 错误、0 page error** ✅（测试脚本已适配玻璃底边栏）
-- 视觉：已逐张查看确认底边栏玻璃效果与应用标识渲染正常
+- Web 自动化：**91 步全部通过、0 console 错误、0 page error** ✅

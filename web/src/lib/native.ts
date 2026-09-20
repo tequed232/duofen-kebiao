@@ -8,7 +8,7 @@
  */
 
 interface DuofenNative {
-  liveUpdate?: (title: string, text: string) => void;
+  liveUpdate?: (title: string, text: string, progress: number) => void;
   stopLiveUpdate?: () => void;
   requestPermissions?: () => void;
   platform?: () => string;
@@ -29,11 +29,11 @@ export function markNativeShell(): void {
 }
 
 /** 发布/更新流体云进度卡片；返回 true 表示已交给原生处理 */
-export function nativeLiveUpdate(title: string, text: string): boolean {
+export function nativeLiveUpdate(title: string, text: string, progress = -1): boolean {
   const api = bridge();
   if (typeof api?.liveUpdate !== 'function') return false;
   try {
-    api.liveUpdate(title, text);
+    api.liveUpdate(title, text, progress);
     return true;
   } catch {
     return false;
