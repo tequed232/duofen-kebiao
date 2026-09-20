@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "m3-expressive-voice-notes",
   "private": true,
   "version": "1.0.0",
@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "node scripts/subset-icons.mjs && node scripts/check-icons.mjs && vite build",
     "apk": "gradlew.bat assembleRelease",
+    "check:images": "node scripts/check-image-cache.mjs",
     "apk:parity": "node scripts/check-apk-parity.mjs build/release/duofen-kebiao-latest.apk",
     "preview": "vite preview --port 4173",
     "verify": "node scripts/verify.mjs"

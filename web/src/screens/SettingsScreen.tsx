@@ -17,7 +17,7 @@ import { isNativeShell, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib
 
 export default function SettingsScreen() {
   const nav = useNav();
-  const { settings, updateSettings, records, seed, dynamicColor, schedule, showSnackbar } = useAppState();
+  const { settings, updateSettings, records, seed, dynamicColor, schedule, showSnackbar, imageStats, pruneImages } = useAppState();
 
   const [speechValue, setSpeechValue] = useState(settings.speechIntensity);
   const [cameraValue, setCameraValue] = useState(settings.cameraSharpness);
@@ -141,6 +141,24 @@ export default function SettingsScreen() {
               <div slot="supporting-text">导航时拼在教室前：{settings.schoolName}</div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
+
+            {/* -------------------------------------- 本地图片缓存上限 */}
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="photo_library" />
+              </div>
+              <div slot="headline">本地图片缓存</div>
+              <div slot="supporting-text">
+                最多保留 {imageStats.limit} 张（当前 {imageStats.used} 张）：超出后自动从最旧的记录开始删图，文字内容不受影响
+              </div>
+            </md-list-item>
+            <div className="list-control-row">
+              <md-outlined-button className="btn-s" onClick={() => void pruneImages()}>
+                <MdIcon slot="icon" name="cleaning_services" />
+                立即清理到上限
+              </md-outlined-button>
+              <span className="md-body-small muted">{imageStats.used} / {imageStats.limit} 张</span>
+            </div>
 
             {/* -------------------------------------- 实时通知（流体云） */}
             <md-list-item type="text" className="rounded-middle">

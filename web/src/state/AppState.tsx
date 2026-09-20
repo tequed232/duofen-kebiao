@@ -17,6 +17,7 @@ import { formatDateTime, uid } from '../lib/utils';
 import { EMBEDDED_SCHEDULE } from '../data/schedule';
 import type { ScheduleData } from '../lib/schedule';
 import { libraryTextbook, type Textbook } from '../lib/textbooks';
+import { IMAGE_CACHE_LIMIT, countImages, pruneToLimit } from '../lib/imageCache';
 
 /** Temporary highlight applied when the filter screen jumps back to the schedule. */
 export interface ScheduleHighlight {
@@ -70,6 +71,9 @@ interface AppStateValue {
   /** 课程名 → 教材（内置教材库 + 用户识别/填写的覆盖） */
   textbooks: Record<string, Textbook>;
   setTextbook: (courseName: string, textbook: Textbook | null) => void;
+  /** 本地已缓存的图片张数 / 上限（默认 25），以及手动清理入口 */
+  imageStats: { used: number; limit: number };
+  pruneImages: () => Promise<void>;
   updateSettings: (patch: Partial<AppSettings>, options?: UpdateOptions) => void;
   createRecord: (input: RecordInput) => Promise<NoteRecord>;
   updateRecord: (id: string, patch: Partial<NoteRecord>) => Promise<void>;
@@ -253,12 +257,41 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         createdAt: now,
         updatedAt: now,
       };
-      setRecords((value) => [record, ...value]);
       await db.putRecord(record);
+      // 写入后立刻按上限裁剪：本地最多保留 IMAGE_CACHE_LIMIT 张图（文字一律保留）
+      setRecords((value) => {
+        const result = pruneToLimit([record, ...value]);
+        if (result.removed) {
+          void (async () => {
+            for (const changed of result.changed) await db.putRecord(changed);
+          })();
+        }
+        return result.records;
+      });
       return record;
     },
     [],
   );
+
+  /** 本地图片缓存：超出上限就从最旧的记录开始删图（文字一律保留） */
+  const imageStats = useMemo(
+    () => ({ used: countImages(records, draft.images ?? []), limit: IMAGE_CACHE_LIMIT }),
+    [records, draft.images],
+  );
+
+  const pruneImages = useCallback(async () => {
+    const result = pruneToLimit(records);
+    if (!result.removed) {
+      showSnackbar({ message: `本地图片 ${countImages(records)} 张，未超过 ${IMAGE_CACHE_LIMIT} 张上限`, duration: 3500 });
+      return;
+    }
+    setRecords(result.records);
+    for (const record of result.changed) await db.putRecord(record);
+    showSnackbar({
+      message: `已清理 ${result.removed} 张旧图片，保留最近 ${IMAGE_CACHE_LIMIT} 张（文字内容不受影响）`,
+      duration: 4500,
+    });
+  }, [records, showSnackbar]);
 
   const updateRecord = useCallback<AppStateValue['updateRecord']>(async (id, patch) => {
     let updated: NoteRecord | undefined;
@@ -348,12 +381,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setScheduleHighlight,
       textbooks,
       setTextbook,
+      imageStats,
+      pruneImages,
       updateSettings,
       createRecord,
       updateRecord,
       removeRecord,
       clearAllRecords,
       restoreRecords,
+      imageStats,
+      pruneImages,
       setDraft,
       appendTranscript,
       addBranchAnswer,
@@ -378,12 +415,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setScheduleHighlight,
       textbooks,
       setTextbook,
+      imageStats,
+      pruneImages,
       updateSettings,
       createRecord,
       updateRecord,
       removeRecord,
       clearAllRecords,
       restoreRecords,
+      imageStats,
+      pruneImages,
       setDraft,
       appendTranscript,
       addBranchAnswer,

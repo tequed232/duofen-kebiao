@@ -74,7 +74,7 @@
     "settings": {
       "list": {
         "w": 380,
-        "h": 905,
+        "h": 1047,
         "x": 16,
         "y": 72
       },
@@ -105,23 +105,28 @@
           "radius": "0px 0px 8px 8px"
         },
         {
-          "h": 72,
-          "y": 530,
-          "radius": "8px"
+          "h": 88,
+          "y": 581,
+          "radius": "0px 0px 8px 8px"
         },
         {
-          "h": 88,
-          "y": 605,
+          "h": 72,
+          "y": 672,
           "radius": "8px"
         },
         {
           "h": 88,
           "y": 747,
-          "radius": "0px 0px 8px 8px"
+          "radius": "8px"
         },
         {
           "h": 88,
           "y": 889,
+          "radius": "0px 0px 8px 8px"
+        },
+        {
+          "h": 88,
+          "y": 1031,
           "radius": "8px 8px 28px 28px"
         }
       ],
@@ -155,7 +160,7 @@
     },
     "persisted": [
       {
-        "title": "照片记录 · 2026/09/20 22:38",
+        "title": "照片记录 · 2026/09/20 23:10",
         "images": 1
       }
     ],
@@ -206,11 +211,11 @@
     "qaCollapsed": 1,
     "branchCount": 2,
     "branchText": "\n军事\n问：军事理论用什么教材？\n当前记录里没有找到与该问题相关的内容。可以先在主页录制语音或导入图片，再针对内容提问。\n\n这段\n问：这段记录讲了什么？\n当前记录里没有找到与该问题相关的内容。可以先在主页录制语音或导入图片，再针对内容提问。",
-    "sliderSupporting": "\nAPI编辑\n未配置，点击填写语音与图片接口\n",
-    "sliderSupportingAfterReload": "\nAPI编辑\n未配置，点击填写语音与图片接口\n",
+    "sliderSupporting": "\n底边栏风格（互斥）\n当前：液态玻璃（模糊 + 折射，关闭 M3 容器底色）",
+    "sliderSupportingAfterReload": "\n底边栏风格（互斥）\n当前：液态玻璃（模糊 + 折射，关闭 M3 容器底色）",
     "storedSettings": {
       "darkMode": false,
-      "speechIntensity": 75,
+      "speechIntensity": 1,
       "cameraSharpness": 1,
       "sttApiUrl": "",
       "sttApiKey": "",

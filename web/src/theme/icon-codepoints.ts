@@ -16,6 +16,7 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "check_circle": 0xe86c,
   "chevron_left": 0xe408,
   "chevron_right": 0xe409,
+  "cleaning_services": 0xf0ff,
   "close": 0xe14c,
   "code": 0xe86f,
   "colorize": 0xe3b8,
