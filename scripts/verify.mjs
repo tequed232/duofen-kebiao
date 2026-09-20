@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Browser verification for the production build.
  *
  * - launches Chromium with a fake camera device so the live preview can be checked
@@ -237,7 +237,7 @@ try {
   });
 
   await step('transcript panel expands', async () => {
-    await clickTop('.container-box.surface-high');
+    await clickTop('.container-box.surface-high .row', 0);
     await waitTop('.sheet-panel');
     await page.waitForTimeout(800);
   });
@@ -462,7 +462,7 @@ try {
   });
 
   await step('detail text panel', async () => {
-    await clickTop('.container-box.surface-high');
+    await clickTop('.container-box.surface-high .row', 0);
     await waitTop('.sheet-panel');
     await page.waitForTimeout(900);
   });
@@ -566,7 +566,7 @@ try {
     // 首页显示思维导图分支；折叠的回答在总结面板里
     extra.mindmapLeaf = (await top().locator('.mindmap-leaf').last().innerText()).replace(/\s+/g, ' ');
     if (!extra.mindmapLeaf.includes('问：')) throw new Error(`question not added to the mind map: ${extra.mindmapLeaf}`);
-    await clickTop('.container-box.tertiary');
+    await clickTop('.container-box.tertiary .row', 0);
     await waitTop('.sheet-panel');
     await page.waitForTimeout(800);
     extra.qaFold = await top().locator('.qa-entry').count();

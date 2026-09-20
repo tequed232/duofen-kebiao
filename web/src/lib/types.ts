@@ -1,4 +1,4 @@
-/** Shared domain types. */
+﻿/** Shared domain types. */
 
 export interface QaEntry {
   id: string;
@@ -55,6 +55,8 @@ export interface AppSettings {
   schoolName: string;
   /** 底边栏使用液态玻璃（liquid glass）效果 */
   liquidGlass: boolean;
+  /** 录音时发送实时通知（Android 16 实况通知 / ColorOS 流体云） */
+  liveNotify: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -71,6 +73,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   termStart: '',
   schoolName: '广东财贸职业学院',
   liquidGlass: true,
+  liveNotify: true,
 };
 
 /** The live capture/draft session shown on the Home screen. */

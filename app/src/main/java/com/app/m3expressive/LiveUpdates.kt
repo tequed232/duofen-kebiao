@@ -25,6 +25,7 @@ import androidx.core.app.NotificationManagerCompat
 object LiveUpdates {
 
     const val CHANNEL_ID = "m3expressive_live_updates"
+    const val ACTION_CONFIRM = "com.app.m3expressive.LIVE_CONFIRM"
     private const val NOTIFICATION_ID = 1001
 
     /** Android 16 = API 36 */
@@ -37,9 +38,10 @@ object LiveUpdates {
         val channel = NotificationChannel(
             CHANNEL_ID,
             "实时记录状态",
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             description = "语音识别与图片处理进度（Android 16 Live Updates / ColorOS 流体云）"
+            setSound(null, null)
             setShowBadge(false)
             enableVibration(false)
         }
@@ -62,6 +64,19 @@ object LiveUpdates {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_PROGRESS)
+            // 直接确认：不打开应用也能结束当前实时任务
+            .addAction(
+                Notification.Action.Builder(
+                    null,
+                    "确认",
+                    PendingIntent.getBroadcast(
+                        context,
+                        1,
+                        Intent(ACTION_CONFIRM).setPackage(context.packageName),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                ).build(),
+            )
     }
 
     /** 开始 / 更新进行中的实时状态；progress 为 null 表示不确定进度。 */
@@ -82,6 +97,24 @@ object LiveUpdates {
         if (!promoted) builder.setProgress(100, 100, false)
         notifySafely(context, builder.build())
         Handler(Looper.getMainLooper()).postDelayed({ clear(context) }, autoDismissMillis)
+    }
+
+    /** 设置页「发送实况测试」：走一遍完整流程，方便用户确认流体云是否出现 */
+    fun test(context: Context) {
+        var value = 0
+        val handler = Handler(Looper.getMainLooper())
+        val step = object : Runnable {
+            override fun run() {
+                value += 12
+                if (value >= 100) {
+                    finish(context, "实况测试完成 · 多分课表", "已确认设备支持实况通知")
+                    return
+                }
+                update(context, "实况测试 · 多分课表", "正在验证流体云进度：$value%", value)
+                handler.postDelayed(this, 450)
+            }
+        }
+        handler.post(step)
     }
 
     fun clear(context: Context) {

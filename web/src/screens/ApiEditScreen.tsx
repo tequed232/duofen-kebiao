@@ -1,4 +1,4 @@
-/**
+﻿/**
  * API修改 (API edit)
  *
  * "API编辑" top app bar (back / refresh / delete-all), the three outlined API fields
@@ -16,6 +16,29 @@ import { analyzeImage } from '../lib/api';
 import { dataUrlSizeKb, pickImageFile, prepareImageFile } from '../lib/imaging';
 import { isProbablyUrl } from '../lib/utils';
 
+/** API 设置页的常见问题（照着填就不会卡住） */
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: '提示 401 / 无效密钥怎么办？',
+    a: '先点「显示密钥」核对有没有多余空格或换行；再确认密钥与接口地址属于同一家服务（DeepSeek 的密钥配 DeepSeek 的地址）。密钥只在你的本机浏览器里保存。',
+  },
+  {
+    q: '语音识别一直转不出文字？',
+    a: '浏览器端建议直接用内置的实时语音识别（圆圈按钮，单点=长时间录制）；只有在 Chrome/Edge/Android WebView 上才支持。若走接口，请确认地址以 /v1/audio/transcriptions 结尾且服务允许跨域（CORS）。',
+  },
+  {
+    q: '图片识别很慢或超时？',
+    a: '图片会先按「相机清晰度」压缩再上传。把清晰度调低、或换更小的图片即可；也可以在设置里把相机清晰度调到 50% 左右。',
+  },
+  {
+    q: '接口地址能不能留空？',
+    a: '可以。留空表示不使用接口：语音走浏览器内置识别，图片只保存不识别，其他功能不受影响。',
+  },
+  {
+    q: '换个服务商要改什么？',
+    a: '只改「接口地址」和「密钥」两项即可，任何兼容 OpenAI 格式的服务都能用（自建、阿里云百炼、硅基流动等）。',
+  },
+];
 export default function ApiEditScreen() {
   const nav = useNav();
   const { settings, updateSettings, showSnackbar } = useAppState();
@@ -189,6 +212,75 @@ export default function ApiEditScreen() {
             <md-text-button onClick={() => setShowKeys((value) => !value)}>
               {showKeys ? '隐藏密钥' : '显示密钥'}
             </md-text-button>
+          </div>
+
+          {/* ---------------------------------------------- 操作指引 / FAQ */}
+          <div className="mt-16">
+            <SectionHeader icon="help_center" title="怎么填？三步搞定" />
+            <div className="col gap-12">
+              <div className="about-note">
+                <div className="row gap-8">
+                  <MdIcon name="looks_one" size={18} />
+                  <span className="md-title-small-emphasized flex-1">拿到密钥</span>
+                </div>
+                <div className="md-body-small muted mt-4">
+                  打开 DeepSeek 开放平台 → API keys → 创建密钥（形如 sk-…）。语音识别与图片识别
+                  也可以换成任何兼容 OpenAI 接口的服务，填对应地址即可。
+                </div>
+                <div className="row gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
+                  <md-filled-tonal-button
+                    className="btn-s"
+                    onClick={() => window.open('https://platform.deepseek.com/api_keys', '_blank', 'noopener,noreferrer')}
+                  >
+                    <MdIcon slot="icon" name="open_in_new" />
+                    打开 DeepSeek API 控制台
+                  </md-filled-tonal-button>
+                  <md-outlined-button
+                    className="btn-s"
+                    onClick={() => window.open('https://api-docs.deepseek.com/zh-cn/', '_blank', 'noopener,noreferrer')}
+                  >
+                    <MdIcon slot="icon" name="menu_book" />
+                    接口文档
+                  </md-outlined-button>
+                </div>
+              </div>
+
+              <div className="about-note">
+                <div className="row gap-8">
+                  <MdIcon name="looks_two" size={18} />
+                  <span className="md-title-small-emphasized flex-1">填地址与密钥</span>
+                </div>
+                <div className="md-body-small muted mt-4">
+                  语音转文字：填 <code>…/v1/audio/transcriptions</code>；图片转文字：填
+                  <code>…/v1/chat/completions</code>（多模态模型）。两者可以是不同服务，互不影响。
+                </div>
+              </div>
+
+              <div className="about-note">
+                <div className="row gap-8">
+                  <MdIcon name="looks_3" size={18} />
+                  <span className="md-title-small-emphasized flex-1">点保存并试一次</span>
+                </div>
+                <div className="md-body-small muted mt-4">
+                  保存后会弹出录音试用；也可以随时回到这里用「测试图片」跑一遍识别，确认返回正常。
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16">
+            <SectionHeader icon="quiz" title="常见问题（FAQ）" />
+            <div className="col gap-8">
+              {FAQ.map((item) => (
+                <details className="about-note" key={item.q}>
+                  <summary className="md-title-small-emphasized">{item.q}</summary>
+                  <div className="md-body-small muted mt-4">{item.a}</div>
+                </details>
+              ))}
+            </div>
+            <div className="md-body-small muted mt-8">
+              还解决不了？到仓库提 Issue（关于页有入口），或在 Bilibili 空间留言，我会补进这份 FAQ。
+            </div>
           </div>
 
           <div className="mt-16">

@@ -2,7 +2,7 @@
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
-export const APP_VERSION = 'v1.0.14';
+export const APP_VERSION = 'v1.0.16';
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = '广东财贸信创3班版权所有';
 
@@ -37,4 +37,23 @@ export const GLASS_LIBS: { name: string; url: string; stars: string; note: strin
     stars: '1.2k',
     note: '可复制的 Liquid Glass 着色器（SVG + Canvas），底边栏玻璃层的思路来源',
   },
+];
+
+/** 引入的模块（依赖）——关于页逐条致谢 */
+export const MODULES: { title: string; url: string; note: string }[] = [
+  { title: 'material-web', url: 'https://github.com/material-components/material-web', note: 'Material 3 组件（按钮/输入/导航/对话框…）' },
+  { title: 'material-color-utilities', url: 'https://github.com/material-foundation/material-color-utilities', note: '动态配色（SchemeExpressive）' },
+  { title: 'material-symbols', url: 'https://github.com/marella/material-symbols', note: 'Material Symbols Rounded 图标字体（按需裁剪子集）' },
+  { title: 'react', url: 'https://github.com/facebook/react', note: '界面框架（19）' },
+  { title: 'vite', url: 'https://github.com/vitejs/vite', note: '构建与开发服务器' },
+  { title: 'typescript', url: 'https://github.com/microsoft/TypeScript', note: '类型系统' },
+  { title: 'playwright', url: 'https://github.com/microsoft/playwright', note: '自动化验收（91 步）与视觉校验' },
+  { title: 'fontkit', url: 'https://github.com/foliojs/fontkit', note: '图标字体子集化' },
+  { title: 'subset-font', url: 'https://github.com/papandreou/subset-font', note: '生成裁剪后的 woff2' },
+  { title: 'liquid-glass-react', url: 'https://github.com/rdev/liquid-glass-react', note: '液态玻璃折射的参考实现（当前底边栏为等价自绘）' },
+  { title: 'liquid-dom', url: 'https://github.com/AndrewPrifer/liquid-dom', note: 'Web 端玻璃透镜折射参考' },
+  { title: 'shuding/liquid-glass', url: 'https://github.com/shuding/liquid-glass', note: 'SVG 着色器思路参考' },
+  { title: 'anubis', url: 'https://github.com/TecharoHQ/anubis', note: '反爬防火墙（deploy/anubis 配置与监控）' },
+  { title: 'androidx.webkit', url: 'https://github.com/androidx/androidx', note: 'WebViewAssetLoader（APK 以 https 源加载同一份 Web 构建）' },
+  { title: 'Roboto', url: 'https://github.com/googlefonts/roboto', note: '界面字体' },
 ];

@@ -1539,3 +1539,174 @@ html.native-shell .phone {
 .glass-nav {
   padding-bottom: calc(var(--native-inset-bottom, 0px) + 10px);
 }
+
+/* ---------------------------------------- 高刷新率 / 自适应质量（144Hz）--- */
+/* 玻璃层常驻合成层，避免高刷下重新栅格化导致掉帧 */
+.glass-nav-inner,
+.glass-nav-refraction,
+.glass-nav-specular {
+  will-change: backdrop-filter, transform, opacity;
+  transform: translateZ(0);
+  contain: paint;
+}
+
+/* 掉帧时（perf.ts 会把 html[data-perf=low]）自动降级：关掉水滴与强折射，保帧率 */
+html[data-perf='low'] .glass-drop-layer {
+  display: none;
+}
+
+html[data-perf='low'] .glass-nav-inner {
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+}
+
+html[data-perf='low'] .glass-nav-refraction {
+  filter: none;
+  opacity: 0.4;
+}
+
+html[data-perf='low'] .glass-nav-specular {
+  opacity: 0.3;
+}
+
+/* ---------------------------------------------------------- 录音波形图 ----- */
+.waveform {
+  --wave-accent: var(--md-sys-color-primary);
+  --wave-idle: color-mix(in srgb, var(--md-sys-color-on-surface) 16%, transparent);
+  width: 100%;
+  display: block;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest) 65%, transparent);
+}
+
+.waveform[data-active='false'] {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------- ICAT 式画质对比滑块 ---- */
+.compare {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compare-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--md-sys-color-surface-container-highest);
+  touch-action: pan-y;
+  cursor: ew-resize;
+}
+
+.compare-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 160ms linear;
+}
+
+.compare-clip {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+}
+
+.compare-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: color-mix(in srgb, #ffffff 88%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--md-sys-color-shadow) 25%, transparent);
+  pointer-events: none;
+}
+
+.compare-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--md-sys-color-shadow) 32%, transparent);
+}
+
+.compare-tag {
+  position: absolute;
+  top: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: var(--md-label-medium);
+  background: color-mix(in srgb, var(--md-sys-color-surface) 82%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+
+.compare-tag.left {
+  left: 8px;
+}
+
+.compare-tag.right {
+  right: 8px;
+}
+
+.compare-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.compare-zoom {
+  flex: 1;
+  accent-color: var(--md-sys-color-primary);
+}
+
+/* FAQ 折叠项（API 设置页） */
+details.about-note > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+details.about-note > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.about-note > summary::after {
+  content: 'expand_more';
+  font-family: 'Material Symbols Rounded';
+  float: right;
+  opacity: 0.6;
+}
+
+details.about-note[open] > summary::after {
+  content: 'expand_less';
+}
+
+/* 顶部导航栏：按用户设备实测（状态栏 128 物理像素 = 42.7dp @3x）下移，
+   底部不再跟随系统栏，只留 8px 安全距离（用户要求 5–10px）。 */
+.app-bar {
+  padding-top: calc(var(--native-inset-top, 0px) + 8px);
+}
+
+.glass-nav {
+  padding-bottom: 8px;
+}
+
+/* 波形是纯装饰层：不拦截点击，容器整体仍可点开 */
+.waveform {
+  pointer-events: none;
+}
+
+/* 关闭状态的对话框必须完全不可点、不可见（否则会拦截整页点击） */
+md-dialog:not([open]) {
+  display: none !important;
+  pointer-events: none !important;
+}

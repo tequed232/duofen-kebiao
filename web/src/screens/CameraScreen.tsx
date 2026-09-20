@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 摄像 (Camera)
  *
  * Live camera preview (20dp rounded), a filled "返回" button drawn on top of the
@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppNavBar, Chip } from '../components/layout';
 import { MdIcon, MdIconButton, MdTextField } from '../components/md';
+import { CompareSlider } from '../components/compare';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
 import { analyzeImage } from '../lib/api';
@@ -26,6 +27,8 @@ export default function CameraScreen() {
   const [capturing, setCapturing] = useState(false);
   const [tag, setTag] = useState('');
   const [lastShot, setLastShot] = useState<string | null>(null);
+  /** 清晰度对比（ICAT 式：左边标准、右边当前设置） */
+  const [compare, setCompare] = useState<{ before: string; after: string } | null>(null);
 
   const knownTags = useMemo(() => {
     const set = new Set<string>();
@@ -96,6 +99,9 @@ export default function CameraScreen() {
     const video = videoRef.current;
     if (!video) return;
     const dataUrl = captureVideoFrame(video, settings.cameraSharpness);
+    // ICAT 式对比：同一帧在「标准」与「当前清晰度」下的差异
+    const standardFrame = captureVideoFrame(video, 0);
+    if (standardFrame && dataUrl) setCompare({ before: standardFrame, after: dataUrl });
     if (!dataUrl) {
       showSnackbar({ message: '拍摄失败，请等待预览稳定后重试', duration: 4000 });
       return;
@@ -235,6 +241,19 @@ export default function CameraScreen() {
               <MdIcon slot="icon" name="photo_camera" size={32} />
             </md-fab>
           </div>
+
+          {compare ? (
+            <div className="mt-16">
+              <div className="md-title-small-emphasized mb-8">清晰度对比（拖动分界线 / 可放大）</div>
+              <CompareSlider
+                before={compare.before}
+                after={compare.after}
+                beforeLabel="标准"
+                afterLabel={`当前 %`}
+                height={180}
+              />
+            </div>
+          ) : null}
 
           <div className="md-body-small hint" style={{ textAlign: 'center' }}>
             {lastShot ? '刚刚拍摄的照片已保存到历史记录。' : '快门会保存当前画面到历史记录，并交给图片转文字API识别。'}

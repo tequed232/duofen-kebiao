@@ -10,6 +10,7 @@
 interface DuofenNative {
   liveUpdate?: (title: string, text: string, progress: number) => void;
   stopLiveUpdate?: () => void;
+  testLiveUpdate?: () => void;
   requestPermissions?: () => void;
   platform?: () => string;
 }
@@ -50,6 +51,23 @@ export function nativeStopLiveUpdate(): boolean {
   } catch {
     return false;
   }
+}
+
+/** 设置页「发送实况测试」：走一遍流体云流程，确认设备是否显示实况通知 */
+export function nativeTestLiveUpdate(): boolean {
+  const api = bridge();
+  if (typeof api?.testLiveUpdate !== 'function') return false;
+  try {
+    api.testLiveUpdate();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 通知上「确认」按钮的回调注册（仅 APK） */
+export function onNativeLiveConfirm(handler: () => void): void {
+  (window as unknown as { __duofenLiveConfirm__?: () => void }).__duofenLiveConfirm__ = handler;
 }
 
 /** 请求相机 / 麦克风 / 通知权限（仅 APK） */

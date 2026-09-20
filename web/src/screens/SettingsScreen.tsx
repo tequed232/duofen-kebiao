@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 设置 (Settings)
  *
  * A 6 item list group (M3 Expressive connected list: 3dp gaps, 28dp outer corners,
@@ -13,10 +13,11 @@ import { MapChooserDialog } from '../components/schedule';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
 import { mapProviderById } from '../lib/schedule';
+import { isNativeShell, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib/native';
 
 export default function SettingsScreen() {
   const nav = useNav();
-  const { settings, updateSettings, records, seed, dynamicColor, schedule } = useAppState();
+  const { settings, updateSettings, records, seed, dynamicColor, schedule, showSnackbar } = useAppState();
 
   const [speechValue, setSpeechValue] = useState(settings.speechIntensity);
   const [cameraValue, setCameraValue] = useState(settings.cameraSharpness);
@@ -140,6 +141,52 @@ export default function SettingsScreen() {
               <div slot="supporting-text">导航时拼在教室前：{settings.schoolName}</div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
+
+            {/* -------------------------------------- 实时通知（流体云） */}
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="notifications_active" />
+              </div>
+              <div slot="headline">实时通知（流体云）</div>
+              <div slot="supporting-text">
+                {settings.liveNotify
+                  ? isNativeShell()
+                    ? '已开启：录音时在状态栏显示实时进度（Android 16 实况通知 / ColorOS 流体云）'
+                    : '已开启：浏览器里用系统通知显示录音进度'
+                  : '已关闭：录音时不发送任何实时通知'}
+              </div>
+              <div slot="end">
+                <MdSwitch
+                  selected={settings.liveNotify}
+                  onSelectedChange={(value) =>
+                    updateSettings(
+                      { liveNotify: value },
+                      { message: value ? '已开启实时通知' : '已关闭实时通知' },
+                    )
+                  }
+                  ariaLabel="实时通知开关"
+                />
+              </div>
+            </md-list-item>
+            <div className="list-control-row">
+              <md-filled-tonal-button
+                className="btn-s"
+                onClick={() => {
+                  if (!isNativeShell()) {
+                    showSnackbar({ message: '浏览器中通知由系统权限控制，请允许通知权限', duration: 4000 });
+                    return;
+                  }
+                  const sent = nativeTestLiveUpdate();
+                  showSnackbar({
+                    message: sent ? '已发送实况测试，请查看状态栏 / 流体云' : '当前环境不支持实况通知',
+                    duration: 4500,
+                  });
+                }}
+              >
+                <MdIcon slot="icon" name="send" />
+                发送实况测试
+              </md-filled-tonal-button>
+            </div>
 
             {/* -------------------------------------- 4 液态玻璃底边栏 */}
             <md-list-item type="button" className="rounded-middle" onClick={() => setStyleDialogOpen(true)}>

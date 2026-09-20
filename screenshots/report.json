@@ -33,7 +33,7 @@
       },
       "topBox": {
         "w": 380,
-        "h": 168,
+        "h": 212,
         "x": 16,
         "y": 8,
         "bg": "rgb(228, 234, 229)",
@@ -41,9 +41,9 @@
       },
       "middleBox": {
         "w": 380,
-        "h": 346,
+        "h": 304,
         "x": 16,
-        "y": 225,
+        "y": 269,
         "bg": "rgb(30, 77, 84)",
         "radius": "28px"
       },
@@ -53,7 +53,7 @@
         "w": 312,
         "h": 76,
         "x": 84,
-        "y": 642,
+        "y": 644,
         "bg": "rgba(0, 0, 0, 0)",
         "radius": "0px"
       },
@@ -74,7 +74,7 @@
     "settings": {
       "list": {
         "w": 380,
-        "h": 763,
+        "h": 905,
         "x": 16,
         "y": 72
       },
@@ -100,23 +100,28 @@
           "radius": "8px"
         },
         {
-          "h": 72,
-          "y": 388,
-          "radius": "8px"
+          "h": 88,
+          "y": 439,
+          "radius": "0px 0px 8px 8px"
         },
         {
-          "h": 88,
-          "y": 463,
+          "h": 72,
+          "y": 530,
           "radius": "8px"
         },
         {
           "h": 88,
           "y": 605,
-          "radius": "0px 0px 8px 8px"
+          "radius": "8px"
         },
         {
           "h": 88,
           "y": 747,
+          "radius": "0px 0px 8px 8px"
+        },
+        {
+          "h": 88,
+          "y": 889,
           "radius": "8px 8px 28px 28px"
         }
       ],
@@ -132,7 +137,6 @@
         "#3A4B3F"
       ]
     },
-    "trialDialog": "录音试用语音转文字API\n将录制最长 15 秒的语音并直接调用：\nhttps://example.com/v1/audio/transcriptions\n准备就绪\n00:00\n提示：若接口未返回内容，请确认地址支持 multipart/form-data、字段名为 file，并已填写密钥。\n关闭\n\n开始录音",
     "recordingProgress": 1,
     "recordingText": "正在录音 · 长时间录制\n00:01\n",
     "recordingStopped": true,
@@ -151,7 +155,7 @@
     },
     "persisted": [
       {
-        "title": "照片记录 · 2026/09/20 21:49",
+        "title": "照片记录 · 2026/09/20 22:38",
         "images": 1
       }
     ],
@@ -202,8 +206,8 @@
     "qaCollapsed": 1,
     "branchCount": 2,
     "branchText": "\n军事\n问：军事理论用什么教材？\n当前记录里没有找到与该问题相关的内容。可以先在主页录制语音或导入图片，再针对内容提问。\n\n这段\n问：这段记录讲了什么？\n当前记录里没有找到与该问题相关的内容。可以先在主页录制语音或导入图片，再针对内容提问。",
-    "sliderSupporting": "\n语音输入强度调整\n识别置信度门限：75%（0/25/50/75/100 卡扣，点数字可直接编辑）",
-    "sliderSupportingAfterReload": "\n语音输入强度调整\n识别置信度门限：75%（0/25/50/75/100 卡扣，点数字可直接编辑）",
+    "sliderSupporting": "\nAPI编辑\n未配置，点击填写语音与图片接口\n",
+    "sliderSupportingAfterReload": "\nAPI编辑\n未配置，点击填写语音与图片接口\n",
     "storedSettings": {
       "darkMode": false,
       "speechIntensity": 75,
@@ -217,7 +221,8 @@
       "mapProvider": "",
       "termStart": "",
       "schoolName": "广东财贸职业学院",
-      "liquidGlass": true
+      "liquidGlass": true,
+      "liveNotify": true
     },
     "menuItems": "\n显示全部记录",
     "schedule": {
@@ -287,10 +292,10 @@
     "shot:04-settings",
     "ok:api edit screen",
     "shot:05-api-edit",
-    "ok:saving the speech API opens the recording trial",
+    "FAIL:saving the speech API opens the recording trial: locator.fill: Timeout 8000ms exceeded.",
     "shot:29-api-trial",
-    "ok:close the recording trial dialog",
-    "ok:api back",
+    "FAIL:close the recording trial dialog: locator.click: Timeout 7000ms exceeded.",
+    "FAIL:api back: locator.click: Timeout 7000ms exceeded.",
     "ok:home tab",
     "shot:30-voice-progress",
     "ok:quick start voice shows a progress bar",

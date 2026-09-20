@@ -10,8 +10,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppNavBar, SectionHeader, TopAppBar, useLongPress } from '../components/layout';
-import { MdIcon, MdIconButton, MdTextField } from '../components/md';
+import { MdDialog, MdIcon, MdIconButton, MdTextField } from '../components/md';
 import { GlassMark } from '../components/glass';
+import { Waveform } from '../components/waveform';
 import { ExpandableSheet } from '../components/overlays';
 import { KeyPointList, MindMapView, QaBranchList, TranscriptView } from '../components/content';
 import { RecordingProgress, useElapsedSeconds, useSystemNotice } from '../components/voice';
@@ -21,7 +22,7 @@ import { useSpeechRecognition } from '../lib/speech';
 import { analyzeImage, askQuestion, topicFor } from '../lib/api';
 import { pickImageFile, prepareImageFile } from '../lib/imaging';
 import { detectIntent, formatDateTime } from '../lib/utils';
-import { isNativeShell, nativeLiveUpdate, nativeRequestPermissions } from '../lib/native';
+import { isNativeShell, nativeLiveUpdate, nativeRequestPermissions, onNativeLiveConfirm } from '../lib/native';
 import type { Draft } from '../lib/types';
 
 export default function HomeScreen() {
@@ -144,7 +145,9 @@ export default function HomeScreen() {
     const liveBody = ` ${mm}:${ss} · 实时语音转文字进行中 `;
     notice.show(liveTitle, liveBody);
     // 流体云 / Live Updates：按录音时长推进进度（0-100）
-    nativeLiveUpdate(liveTitle, liveBody, Math.min(100, Math.round(noticeSeconds * 1.7)));
+    if (liveNotifyRef.current) {
+      nativeLiveUpdate(liveTitle, liveBody, Math.min(100, Math.round(noticeSeconds * 1.7)));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noticeSeconds, isRecording]);
 
@@ -161,6 +164,15 @@ export default function HomeScreen() {
     if (detectIntent(question) === 'ask') void submitQuestion();
     else appendManualText();
   };
+
+  // 实时通知开关（设置里可关）；通知上的「确认」按钮会回到这里触发弹窗
+  const liveNotifyRef = useRef(settings.liveNotify);
+  liveNotifyRef.current = settings.liveNotify;
+  const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    onNativeLiveConfirm(() => setLiveConfirmOpen(true));
+  }, []);
 
   const sheetOpen = topOpen || middleOpen;
 
@@ -317,6 +329,8 @@ export default function HomeScreen() {
 
           {/* 快速开始：点击语音后的进度条 + 计时，同时发布系统通知 */}
           <div onClick={(event) => event.stopPropagation()}>
+            {/* 录音波形：与进度条同一个统一界面 */}
+            <Waveform active={speech.listening} />
             <RecordingProgress
               active={isRecording}
               label={recording === 'temporary' ? '临时录制中' : '正在录音 · 长时间录制'}
@@ -453,6 +467,29 @@ export default function HomeScreen() {
         </div>
       </div>
 
+      {/* 实时通知的「直接确认」弹窗：通知上点确认，或录音结束后都会出现 */}
+      <MdDialog
+        open={liveConfirmOpen}
+        headline="实时记录已结束"
+        onClosed={() => setLiveConfirmOpen(false)}
+        actions={
+          <>
+            <md-text-button onClick={() => setLiveConfirmOpen(false)}>稍后再说</md-text-button>
+            <md-filled-tonal-button
+              onClick={() => {
+                setLiveConfirmOpen(false);
+                showSnackbar({ message: '已确认，记录保存在本机历史里', duration: 3500 });
+              }}
+            >
+              直接确认
+            </md-filled-tonal-button>
+          </>
+        }
+      >
+        语音识别与图片处理已经完成。
+        {draft.transcript.trim() ? '本次识别到的文字已写入草稿。' : '本次没有识别到文字。'}
+        你可以点「直接确认」结束这次实时通知，或稍后在历史里查看。
+      </MdDialog>
       <AppNavBar active="home" onSelect={selectTab} />
       </div>
 

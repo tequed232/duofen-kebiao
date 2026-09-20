@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var confirmReceiver: android.content.BroadcastReceiver? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -102,6 +103,22 @@ class MainActivity : ComponentActivity() {
 
         setContentView(webView)
 
+        // 通知上的「确认」按钮 → 直接回到网页并触发确认流程（不用打开应用再点一次）
+        confirmReceiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: Intent?) {
+                webView.evaluateJavascript(
+                    "window.__duofenLiveConfirm__ && window.__duofenLiveConfirm__();",
+                    null,
+                )
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            confirmReceiver,
+            android.content.IntentFilter(LiveUpdates.ACTION_CONFIRM),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+
         // Android 13+ 通知权限：流体云卡片依赖它，启动时就申请
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -126,8 +143,8 @@ class MainActivity : ComponentActivity() {
             view.updatePadding(left = cutout.left, right = cutout.right)
             view.post {
                 webView.evaluateJavascript(
-                    "document.documentElement.style.setProperty('--native-inset-top','${bars.top}px');" +
-                        "document.documentElement.style.setProperty('--native-inset-bottom','${bars.bottom}px');",
+                    "document.documentElement.style.setProperty('--native-inset-top','${bars.top / resources.displayMetrics.density}px');" +
+                        "document.documentElement.style.setProperty('--native-inset-bottom','${bars.bottom / resources.displayMetrics.density}px');",
                     null,
                 )
             }
@@ -204,6 +221,12 @@ class MainActivity : ComponentActivity() {
                     if (progress in 0..100) progress else null,
                 )
             }
+        }
+
+        /** 设置页「发送实况测试」 */
+        @JavascriptInterface
+        fun testLiveUpdate() {
+            runOnUiThread { LiveUpdates.test(this@MainActivity) }
         }
 
         @JavascriptInterface
