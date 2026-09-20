@@ -1323,3 +1323,17 @@ md-filled-text-field {
   text-align: left;
   cursor: pointer;
 }
+
+/* M3E 形状按钮：使用 M3 主色，避免在浅色容器上显得像黑色方块 */
+.meow-art {
+  color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, var(--md-sys-color-surface-container-high));
+}
+
+.splash-shapes {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--md-sys-color-primary);
+}
