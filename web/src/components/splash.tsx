@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 启动界面 (splash)。
  *
  * 应用图标 + 名称 + M3 加载指示器；数据就绪后自动（或轻点）进入，
@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { MdIcon } from './md';
+import { M3EShapeIcon } from './m3shape';
 import { APP_NAME, APP_SHORT_NAME } from '../lib/meta';
 
 export function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => void }) {
@@ -30,7 +31,11 @@ export function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => 
       role="button"
       aria-label="轻点进入"
     >
-      <img className="splash-art" src="./art/college-art.jpg" alt="广东财贸职业学院 官方教材呈现" />
+      <div className="splash-shapes" aria-hidden="true">
+        <M3EShapeIcon shape="clover" size={54} />
+        <M3EShapeIcon shape="cookie" size={72} rotation={12} />
+        <M3EShapeIcon shape="burst" size={44} rotation={-8} />
+      </div>
       <div className="splash-mark" style={{ width: 56, height: 56, borderRadius: 18 }}>
         <MdIcon name="calendar_month" size={28} />
       </div>

@@ -1,20 +1,22 @@
 /**
- * 可点的美术资源（广东财贸职业学院 · 官方教材呈现）。
- * 点一下：弹一下 + 喵一声（WebAudio 合成）。
+ * 可点的 M3E 形状按钮。
+ *
+ * 原先这里放的是第三方美术资源（B 站作者插画 / 学校海报），未经授权，现已全部下架，
+ * 改为 Material 3 Expressive 自带的形状母题（cookie / clover / burst / sunny / pill）。
+ * 点一下：形状弹一下 + 喵一声 —— 音效是本项目用 WebAudio 自己合成的，不含任何外部素材。
  */
 import { useState } from 'react';
 import { playMeow } from '../lib/meow';
-
-const ART_SRC = './art/college-art.jpg';
+import { M3EShapeIcon, type M3EShape } from './m3shape';
 
 export function MeowArt({
   className = 'meow-art',
   onMeow,
-  alt = '广东财贸职业学院 官方教材呈现',
+  shape = 'cookie',
 }: {
   className?: string;
   onMeow?: () => void;
-  alt?: string;
+  shape?: M3EShape;
 }) {
   const [pop, setPop] = useState(false);
 
@@ -22,7 +24,7 @@ export function MeowArt({
     <button
       type="button"
       className={[className, pop ? 'pop' : ''].join(' ').trim()}
-      aria-label="戳一下，喵～"
+      aria-label="Material 3 Expressive 形状，戳一下喵～"
       title="戳一下，喵～"
       onClick={() => {
         setPop(true);
@@ -31,7 +33,7 @@ export function MeowArt({
         onMeow?.();
       }}
     >
-      <img src={ART_SRC} alt={alt} />
+      <M3EShapeIcon shape={shape} size={36} />
     </button>
   );
 }

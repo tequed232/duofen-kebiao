@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 猫娘图标的底色：取自美术资源的米金色 -->
-    <color name="ic_launcher_background">#F7EFE0</color>
+    <!-- Material 3 主色：图标背景层（不含任何第三方素材） -->
+    <color name="ic_launcher_background">#12512E</color>
 </resources>

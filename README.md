@@ -1,4 +1,25 @@
-﻿# 多分课表（使用DeepSeek Harness，Google Gemini，M3ECanvas制作，本人仅有一点点审美技巧和Python开发经验 ）
+﻿## ⚠️ 致歉声明（Apology）
+
+本项目早期版本（**v1.0.8 及以前**）在界面、开屏页与 Android 安装图标中，使用了**未经授权**的第三方美术素材：
+
+- 来自 Bilibili 创作者（空间号 **18112887**）的插画作品；
+- 一张学校教材宣传图（广东财贸职业学院 · 官方教材呈现）。
+
+我们在未取得作者许可、也未标明出处的情况下使用了这些素材，**对此深表歉意**。这是我们版权意识不足造成的错误，
+与上述作者及学校无关。
+
+**处理结果（v1.0.9 起）：**
+
+- 上述素材已从仓库、Web 构建产物与 APK 中**全部删除**（`web/public/art/` 已移除，代码中不再引用任何图片文件）；
+- 安装图标改用 **Material Symbols Rounded** 字形 + **Material 3 主色**重新绘制；
+- 界面装饰元素改用 **Material 3 Expressive** 自带的形状语汇（cookie / clover / burst / sunny / pill）；
+- 项目自此**只使用 Material 3 官方资源**（Material Symbols 图标、Roboto 字体、M3 配色与形状），颜色一律取 `--md-sys-color-*` 角色。
+
+若相关权利人认为仍有需要处理的内容，请通过本仓库的 Issue 联系我们，我们会**第一时间删除或补办授权**。
+在此再次向被侵权的作者致歉。
+
+---
+# 多分课表（使用DeepSeek Harness，Google Gemini，M3ECanvas制作，本人仅有一点点审美技巧和Python开发经验 ）
  作于2026.9.19 时年大一
 
 Material 3 Expressive 风格的移动端 Web 应用：**实时语音转文字 + 图片转文字总结 + 历史记录 + 设置/API 配置**。

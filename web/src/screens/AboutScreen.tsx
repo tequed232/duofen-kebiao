@@ -103,6 +103,25 @@ export default function AboutScreen() {
         </div>
 
         <div className="mt-16">
+          <SectionHeader icon="shapes" title="M3E 视觉元素" />
+          <div className="about-note">
+            <div className="row gap-8">
+              <MdIcon name="shapes" size={18} />
+              <span className="md-body-small muted flex-1">
+                界面里的装饰元素全部来自 Material 3 Expressive 自带的形状语汇（cookie / clover / burst /
+                sunny / pill），颜色一律取 --md-sys-color-* 角色；图标为 Material Symbols Rounded 子集，
+                字体为 Roboto。项目不包含任何第三方插画、照片或字体素材。
+              </span>
+            </div>
+            <div className="row gap-12 mt-12" style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <MeowArt shape="clover" />
+              <MeowArt shape="cookie" />
+              <MeowArt shape="burst" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-16">
           <SectionHeader icon="volunteer_activism" title="致谢" />
           {ART_CREDITS.map((credit) => (
             <div className="about-note" key={credit.url}>
@@ -111,9 +130,6 @@ export default function AboutScreen() {
                 <span className="md-title-small-emphasized flex-1">{credit.label}</span>
               </div>
               <div className="md-body-small muted mt-4">{credit.note}</div>
-              {credit.url.includes('18112887') ? (
-                <MeowArt className="about-art" alt="广东财贸职业学院 官方教材呈现（美术资源）" />
-              ) : null}
               <div className="row gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
                 <md-filled-tonal-button
                   className="btn-s"
@@ -126,11 +142,27 @@ export default function AboutScreen() {
               </div>
             </div>
           ))}
+        </div>
 
-          <div className="about-note mt-12">
+        <div className="mt-16">
+          <SectionHeader icon="gavel" title="关于此前使用他人美术素材的致歉" />
+          <div className="about-note">
+            <div className="md-body-small muted">
+              本项目的早期版本曾在界面、开屏页与安装图标中使用了来自 Bilibili 创作者（空间 18112887）的插画，
+              以及一张学校教材宣传图，事前未取得作者授权，也未标明出处，对此我们深表歉意。
+              这些素材已于 <strong>v1.0.9</strong> 全部移除：Web 端不再引用任何图片文件，
+              Android 图标改用 Material Symbols 与 Material 3 Expressive 形状重新绘制。
+              若权利人认为仍有需要处理的内容，请通过仓库 Issue 联系我们，我们会第一时间删除或补办授权。
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-16">
+          <SectionHeader icon="code" title="开源项目" />
+          <div className="about-note">
             <div className="row gap-8">
               <MdIcon name="code" size={18} />
-              <span className="md-title-small-emphasized flex-1">开源项目</span>
+              <span className="md-title-small-emphasized flex-1">源码与构建产物</span>
             </div>
             <div className="md-body-small muted mt-4">
               源码、构建产物与更新记录都在 GitHub 上；Web 版由 GitHub Pages 托管。
@@ -154,8 +186,8 @@ export default function AboutScreen() {
         </div>
 
         <div className="md-body-small muted mt-16 mb-16">
-          课表数据来源：教务系统导出的「学生课表.doc」，由 scripts/import-schedule.mjs 解析后内嵌；
-          教材信息由 12 张教材封面照片整理，可在课程详情里拍照识别或手动修改。
+          课表数据来自教务系统导出的课表文件，由导入功能解析后保存在本机；教材信息可在课程详情里拍照识别或手动修改。
+          本应用不含任何第三方图片素材：视觉元素来自 Material 3 Expressive 形状、Material Symbols Rounded 图标与 Roboto 字体。
         </div>
       </div>
     </div>

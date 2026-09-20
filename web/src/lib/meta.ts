@@ -2,17 +2,12 @@
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
-export const APP_VERSION = 'v1.0.8';
+export const APP_VERSION = 'v1.0.9';
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = '广东财贸信创3班版权所有';
 
-/** 致谢：美术资源 */
+/** 致谢（第三方美术素材已全部下架，只保留作者本人空间） */
 export const ART_CREDITS: { label: string; url: string; note: string }[] = [
-  {
-    label: '美术资源 · Bilibili 空间',
-    url: 'https://space.bilibili.com/18112887',
-    note: '界面插画与视觉资源参考/来自该创作者的美术作品',
-  },
   {
     label: '作者 Bilibili 空间',
     url: 'https://space.bilibili.com/407275151',

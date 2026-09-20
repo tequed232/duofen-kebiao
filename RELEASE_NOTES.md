@@ -1,35 +1,34 @@
-﻿# 多分课表 v1.0.7 —— APK 与网页一致（含图标修复）
+﻿# 多分课表 v1.0.9 —— 全量替换为 Material 3 Expressive 资源
 
-**APK 里跑的就是网站本身**：同一个 Web 构建（`dist/`，55 个文件）打进包内用 WebView 加载，
-构建时自动同步，`npm run apk:parity` 逐文件比对（文件名 + sha256），本次结果 **55/55 完全一致**。
+## ⚠️ 致歉
 
-## 本版修复
+早期版本（v1.0.8 及以前）在界面、开屏页与安装图标中使用了**未经授权**的第三方美术素材：
+Bilibili 创作者（空间号 18112887）的插画、以及一张学校教材宣传图。
+**我们未获许可也未标明出处，对此深表歉意**——这是版权意识不足造成的错误，与作者及学校无关。
 
-- **动态图标漏字修复**：输入框右侧的返回图标之前渲染成文字「ke」——图标字体子集脚本没有扫描
-  `const fieldIcon = cond ? 'send' : 'keyboard_return'` 这类变量赋值，导致 `keyboard_return` 未进子集。
-  现已修正扫描规则（只取三元分支里的图标名，避免把判断字符串误当图标），重新裁剪字体。
-- 视觉验收：用虚拟设备对 **APK 内嵌资源** 与 **线上网页** 逐屏截图比对，课表页两张截图 sha256 完全相同。
+自本版起，上述素材已从仓库、Web 产物与 APK 中**全部删除**；若权利人认为仍有需要处理的内容，
+请通过仓库 Issue 联系，我们会第一时间删除或补办授权。
 
-## 一致性保障（第一要求）
+## 替换为 Material 3 Expressive 官方资源
 
-| 环节 | 做法 |
-| --- | --- |
-| 界面来源 | `preBuild` 触发 `syncWebAssets`，把 `dist/` 复制进 `assets/www`，每次编译都刷新 |
-| 运行方式 | `WebViewAssetLoader` 以 `https://appassets.androidplatform.net/assets/www/` 提供，IndexedDB / fetch / getUserMedia 与网站一致 |
-| 版本号 | 单一来源 `web/src/lib/meta.ts` 的 `APP_VERSION`，APK `versionName`/`versionCode` 由它推导 |
-| 校验 | `npm run apk:parity`（逐文件哈希）+ `node scripts/visual-parity.mjs`（逐屏截图） |
+| 位置 | 原来 | 现在 |
+| --- | --- | --- |
+| Android 安装图标 | 第三方插画 | **Material Symbols Rounded** 的 `calendar_month` 字形 + **M3 主色**（`#12512E`），含自适应图标与各密度 PNG |
+| 开屏页 | 第三方插画 | **M3E 形状**组合（clover / cookie / burst）+ Material Symbols 图标 + M3 加载指示器 |
+| 记录页「拍照 / 导入图片」中间 | 第三方插画 | **M3E 形状按钮**（cookie），点一下弹动 + 喵一声（音效为本项目 WebAudio 合成，非外部素材） |
+| 关于页 | 第三方插画 | **M3E 形状展示**，并新增「关于此前使用他人美术素材的致歉」段落 |
+| 界面装饰 | — | 一律使用 M3E 形状语汇（cookie / clover / burst / sunny / pill），颜色只取 `--md-sys-color-*` |
 
-## 原生只做网页做不到的事
+现在项目内**不含任何图片文件**：APK 的 `assets/www` 中 `.jpg/.png/.webp` 数量为 **0**，
+视觉全部由 SVG 形状、Material Symbols 字体（子集 112 KB）与 Roboto 组成。
 
-运行时权限（相机 / 麦克风 / 通知）、**系统文件资源管理器 SAF** 响应文件选择、
-外部链接交给系统（地图 / GitHub / Bilibili）、**Android 16 · ColorOS 流体云**进度通知
-（网页通过 `window.DuofenNative.liveUpdate()` 调用，浏览器自动退回 Notification API）。
+## 一致性（第一要求，保持）
 
-## 安装信息
-
-应用名 **多分课表**，图标为猫娘美术资源；`arm64-v8a`、`minSdk 26`、`targetSdk 35`。
+APK 仍是**同一份 Web 构建**：`npm run apk:parity` 本次结果 **54/54 文件 sha256 完全一致**。
+体积也从 3.61 MB 降到 **2.81 MB**（少了图片资源）。
 
 ## 验证
 
-- Web：91 步全部通过，0 console 错误、0 page error
-- 一致性：55/55 文件 sha256 相同；课表页 APK/网页截图 sha256 相同
+- Web 自动化：91 步全部通过，0 console 错误、0 page error
+- 一致性：APK 内嵌 54 个文件与 `dist/` 逐文件哈希相同 ✅
+- 视觉：图标与各屏幕已逐张查看确认（M3E 形状、Material 图标渲染正常）
