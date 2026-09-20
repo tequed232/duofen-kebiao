@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 主页 (Home)
  *
  * Top container  : live speech-to-text raw transcript   -> tap = fullscreen panel
@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppNavBar, SectionHeader, TopAppBar, useLongPress } from '../components/layout';
 import { MdIcon, MdIconButton, MdTextField } from '../components/md';
-import { MeowArt } from '../components/meow';
+import { GlassMark } from '../components/glass';
 import { ExpandableSheet } from '../components/overlays';
 import { KeyPointList, MindMapView, QaBranchList, TranscriptView } from '../components/content';
 import { RecordingProgress, useElapsedSeconds, useSystemNotice } from '../components/voice';
@@ -436,7 +436,9 @@ export default function HomeScreen() {
             <MdIcon slot="icon" name="photo_camera" />
             拍照
           </md-filled-button>
-          <MeowArt onMeow={() => showSnackbar({ message: '喵～', duration: 1600 })} />
+          <span className="glass-mark-slot" aria-hidden="true">
+            <GlassMark size={56} />
+          </span>
           <md-filled-button onClick={() => void importImage()} disabled={busy ? '' : undefined}>
             <MdIcon slot="icon" name="add_photo_alternate" />
             导入图片

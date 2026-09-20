@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 关于 (About) - 多分课表
  *
  * 应用信息、Material 3 Expressive 设计说明、数据存储说明、美术资源致谢与
@@ -7,10 +7,10 @@
 import { useState } from 'react';
 import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdIcon } from '../components/md';
-import { MeowArt } from '../components/meow';
+import { GlassMark } from '../components/glass';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
-import { ART_CREDITS, GITHUB_URL, APP_NAME, APP_VERSION } from '../lib/meta';
+import { ART_CREDITS, GLASS_LIBS, GITHUB_URL, APP_NAME, APP_VERSION } from '../lib/meta';
 
 const DESIGN_NOTES: { icon: string; title: string; body: string }[] = [
   {
@@ -103,7 +103,7 @@ export default function AboutScreen() {
         </div>
 
         <div className="mt-16">
-          <SectionHeader icon="shapes" title="M3E 视觉元素" />
+          <SectionHeader icon="blur_on" title="视觉与图标" />
           <div className="about-note">
             <div className="row gap-8">
               <MdIcon name="shapes" size={18} />
@@ -114,9 +114,11 @@ export default function AboutScreen() {
               </span>
             </div>
             <div className="row gap-12 mt-12" style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <MeowArt shape="clover" />
-              <MeowArt shape="cookie" />
-              <MeowArt shape="burst" />
+              <GlassMark size={96} />
+            </div>
+            <div className="md-body-small muted mt-8">
+              应用标识与底边栏采用 Liquid Glass 质感（半透明玻璃药丸 + 冰彩渐变），由项目自行以矢量方式绘制，
+              不包含任何外部图片素材；配色仍取自 M3 颜色角色。
             </div>
           </div>
         </div>

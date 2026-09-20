@@ -41,26 +41,19 @@
       },
       "middleBox": {
         "w": 380,
-        "h": 354,
+        "h": 344,
         "x": 16,
         "y": 225,
         "bg": "rgb(30, 77, 84)",
         "radius": "28px"
       },
-      "navBar": {
-        "w": 412,
-        "h": 80,
-        "x": 0,
-        "y": 812,
-        "bg": "rgba(0, 0, 0, 0)",
-        "radius": "0px"
-      },
+      "navBar": null,
       "buttonGroup": null,
       "textField": {
         "w": 312,
         "h": 76,
         "x": 84,
-        "y": 650,
+        "y": 640,
         "bg": "rgba(0, 0, 0, 0)",
         "radius": "0px"
       },
@@ -70,18 +63,13 @@
         "buttonShapeInnerEnd": null,
         "fieldShape": "16px",
         "fieldOutline": "#28332B",
-        "navContainerHeight": "80px",
-        "navContainerColor": "transparent",
-        "navIndicatorWidth": "64px",
-        "navIndicatorHeight": "32px",
-        "navIndicatorColor": "#3A4B3F"
+        "navContainerHeight": null,
+        "navContainerColor": null,
+        "navIndicatorWidth": null,
+        "navIndicatorHeight": null,
+        "navIndicatorColor": null
       },
-      "icon": {
-        "codepoint": "ebcc",
-        "w": 24,
-        "h": 24,
-        "font": "\"Material Symbols Rounded\", \"Material Icons\""
-      }
+      "icon": null
     },
     "settings": {
       "list": {
@@ -180,7 +168,7 @@
     },
     "persisted": [
       {
-        "title": "照片记录 · 2026/09/20 16:24",
+        "title": "照片记录 · 2026/09/20 17:03",
         "images": 1
       }
     ],

@@ -72,6 +72,20 @@ page.on('pageerror', (error) => pageErrors.push(String(error?.stack ?? error)));
 const top = () => page.locator('.screen:not([aria-hidden="true"])');
 
 const clickTop = async (selector, index = 0) => {
+  // 底边栏可能是 Liquid Glass 自绘栏（.glass-tab）或 M3 原生导航栏（md-navigation-tab）
+  if (selector === 'md-navigation-tab') {
+    const clicked = await page.evaluate((i) => {
+      const screen = document.querySelector('.screen:not([aria-hidden="true"])');
+      const glass = screen ? screen.querySelectorAll('.glass-tab') : [];
+      if (!glass.length) return false;
+      glass[i]?.click();
+      return true;
+    }, index);
+    if (clicked) {
+      await page.waitForTimeout(700);
+      return;
+    }
+  }
   await top().locator(selector).nth(index).click({ timeout: 7000 });
 };
 
@@ -145,7 +159,7 @@ try {
   extra.theme = await readTheme();
 
   await step('the schedule is the home screen', async () => {
-    await waitTop('md-navigation-bar');
+    await waitTop('.glass-nav, md-navigation-bar');
     // 课表是主页：启动后应直接停在课表页
     await waitTop('.week-board');
     extra.homeRoute = await page.evaluate(() => {
@@ -162,7 +176,7 @@ try {
   });
 
   await step('home renders', async () => {
-    await waitTop('md-navigation-bar');
+    await waitTop('.glass-nav, md-navigation-bar');
     await waitTop('.container-box.tertiary');
     await waitTop('md-filled-button', 0);
   });

@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { MdIcon } from './md';
-import { M3EShapeIcon } from './m3shape';
+import { GlassMark } from './glass';
 import { APP_NAME, APP_SHORT_NAME } from '../lib/meta';
 
 export function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => void }) {
@@ -32,9 +32,7 @@ export function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => 
       aria-label="轻点进入"
     >
       <div className="splash-shapes" aria-hidden="true">
-        <M3EShapeIcon shape="clover" size={54} />
-        <M3EShapeIcon shape="cookie" size={72} rotation={12} />
-        <M3EShapeIcon shape="burst" size={44} rotation={-8} />
+        <GlassMark size={92} />
       </div>
       <div className="splash-mark" style={{ width: 56, height: 56, borderRadius: 18 }}>
         <MdIcon name="calendar_month" size={28} />

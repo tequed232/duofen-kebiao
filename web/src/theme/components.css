@@ -1337,3 +1337,141 @@ md-filled-text-field {
   margin-bottom: 10px;
   color: var(--md-sys-color-primary);
 }
+
+/* ============================================ Liquid Glass 底边栏 ========= */
+/* 悬浮玻璃药丸：模糊 + 冰彩高光 + 顶部反光条，选中项是玻璃胶囊指示器 */
+.glass-nav {
+  flex: 0 0 auto;
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: transparent;
+  pointer-events: none;
+}
+
+.glass-nav-inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  height: 68px;
+  padding: 6px;
+  border-radius: 34px;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--md-sys-color-surface-container-high) 78%, transparent),
+      color-mix(in srgb, var(--md-sys-color-surface-container) 62%, transparent)
+    );
+  backdrop-filter: blur(22px) saturate(1.7);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
+  border: 1px solid color-mix(in srgb, #ffffff 55%, transparent);
+  box-shadow:
+    0 10px 24px color-mix(in srgb, var(--md-sys-color-shadow) 26%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 70%, transparent),
+    inset 0 -10px 18px color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+/* 顶部反光条（玻璃质感的关键高光） */
+.glass-nav-inner::before {
+  content: '';
+  position: absolute;
+  inset: 2px 8px auto 8px;
+  height: 42%;
+  border-radius: 28px;
+  background: linear-gradient(to bottom, color-mix(in srgb, #ffffff 46%, transparent), transparent);
+  pointer-events: none;
+}
+
+/* 冰彩染色：呼应图标里的绿/紫/红玻璃药丸 */
+.glass-nav-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background:
+    radial-gradient(60% 90% at 12% 110%, color-mix(in srgb, var(--md-sys-color-primary) 26%, transparent), transparent 70%),
+    radial-gradient(55% 85% at 52% 115%, color-mix(in srgb, var(--md-sys-color-tertiary) 22%, transparent), transparent 72%),
+    radial-gradient(55% 85% at 92% 110%, color-mix(in srgb, var(--md-sys-color-error) 18%, transparent), transparent 72%);
+}
+
+.glass-tab {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-ref-typeface-brand);
+  font-size: 12px;
+  line-height: 14px;
+  cursor: pointer;
+  border-radius: 28px;
+  transition: color 200ms linear, transform 180ms var(--md-sys-motion-spring-spatial-fast, ease-out);
+}
+
+.glass-tab:active {
+  transform: scale(0.94);
+}
+
+.glass-tab.active {
+  color: var(--md-sys-color-on-primary-container);
+}
+
+/* 选中项的玻璃胶囊指示器 */
+.glass-tab-indicator {
+  position: absolute;
+  inset: 2px 4px;
+  border-radius: 26px;
+  opacity: 0;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--md-sys-color-primary-container) 92%, #ffffff 8%),
+    color-mix(in srgb, var(--md-sys-color-primary-container) 70%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, #ffffff 60%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 80%, transparent),
+    0 4px 10px color-mix(in srgb, var(--md-sys-color-shadow) 18%, transparent);
+  transition: opacity 220ms linear, transform 260ms var(--md-sys-motion-spring-spatial-default, ease-out);
+  pointer-events: none;
+}
+
+.glass-tab.active .glass-tab-indicator {
+  opacity: 1;
+}
+
+.glass-tab-label {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-tab > :not(.glass-tab-indicator) {
+  position: relative;
+  z-index: 1;
+}
+
+/* 首页「拍照 / 导入图片」中间的应用标识 */
+.glass-mark-slot {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 70%, transparent);
+}
+
+.glass-mark-slot .glass-mark,
+.about-art .glass-mark,
+.splash-shapes .glass-mark {
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--md-sys-color-shadow) 24%, transparent));
+}

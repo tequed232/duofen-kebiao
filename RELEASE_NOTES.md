@@ -1,19 +1,28 @@
-﻿# 多分课表 v1.0.10 —— 状态栏留白
+﻿# 多分课表 v1.0.11 —— 彩蛋移除 + Liquid Glass 底边栏
 
-## 修复
+## 移除彩蛋
 
-- **Android**：Android 15+ 强制 edge-to-edge，之前 WebView 会画到状态栏下面，页面顶部的标题/图标被时间、电量压住。
-  现在原生把 **系统栏 + 刘海 insets** 作为 WebView 的内边距（`setOnApplyWindowInsetsListener`），
-  并把窗口与 WebView 底色设成应用 surface 色（`#F5FBF6`），留白区域与界面自然衔接；底部手势条同样让出空间。
-- **Web**：补上刘海屏安全区 —— `.stage` 使用 `env(safe-area-inset-*)`，`.phone` 高度用
-  `100dvh - 安全区` 计算；运行在 APK 里时自动加 `native-shell` 类跳过浏览器安全区，避免与原生 insets 重复留白。
-- viewport 早已是 `viewport-fit=cover`，因此 PWA / 微信 / 刘海屏浏览器同样受益。
+- 删除了「戳一下喵一下」的彩蛋：`web/src/components/meow.tsx`、`web/src/lib/meow.ts` 已移除，
+  首页「拍照 / 导入图片」中间、关于页里的可点彩蛋一并撤掉，相关提示与音效不再出现。
 
-## 一致性（第一要求，保持）
+## Liquid Glass 视觉（参考开源库自行绘制，不嵌入任何图片素材）
 
-APK 仍是同一份 Web 构建：`npm run apk:parity` → **54/54 文件 sha256 完全一致** ✅
+- 新增 `web/src/components/glass.tsx`：冰彩渐变圆角方块 + 三枚半透明玻璃药丸的应用标识
+  （绿 / 紫 / 红对应 M3 primary / tertiary / error），用于开屏、关于页与首页中部。
+- 新增 `web/src/components/glassnav.tsx`：**Liquid Glass 底边栏**替代 Material 3 原生导航栏 ——
+  悬浮玻璃药丸容器（`backdrop-filter: blur(22px) saturate(1.7)` + 顶部反光条 + 冰彩染色光晕），
+  选中项是玻璃胶囊指示器；设置里「底边栏风格（互斥）」仍可切回 M3 原生导航栏。
 
-## 验证
+## 引用的开源实现（关于页与 README 均已链接致谢）
 
-- Web 自动化：91 步全部通过，0 console 错误、0 page error
-- 体积：APK 2.81 MB
+| 库 | 星标 | 参考点 |
+| --- | --- | --- |
+| [rdev/liquid-glass-react](https://github.com/rdev/liquid-glass-react) | 6.2k | SVG 位移折射 + 鼠标跟随高光 |
+| [AndrewPrifer/liquid-dom](https://github.com/AndrewPrifer/liquid-dom) | 2.5k | 对实时 DOM 做玻璃透镜折射（框架无关） |
+| [shuding/liquid-glass](https://github.com/shuding/liquid-glass) | 1.2k | SVG + Canvas 玻璃着色器思路 |
+
+## 一致性与验证
+
+- `npm run apk:parity` → APK 内嵌 **54/54 文件与 `dist/` 逐个 sha256 相同** ✅
+- Web 自动化：**91 步全部通过、0 console 错误、0 page error** ✅（测试脚本已适配玻璃底边栏）
+- 视觉：已逐张查看确认底边栏玻璃效果与应用标识渲染正常

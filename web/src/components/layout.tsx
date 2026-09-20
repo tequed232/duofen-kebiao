@@ -1,7 +1,8 @@
-/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
+﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useAppState } from '../state/AppState';
+import { GlassNavBar } from './glassnav';
 
 /* ------------------------------------------------------------- app bar --- */
 
@@ -85,8 +86,13 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     </md-navigation-bar>
   );
 
+  // 液态玻璃底边栏（默认）：自绘玻璃药丸；关闭时回退 Material 3 原生导航栏
+  if (settings.liquidGlass) {
+    return <GlassNavBar tabs={TABS} active={active} onSelect={onSelect} />;
+  }
+
   return (
-    <nav className={['nav-bar', settings.liquidGlass ? 'glass' : ''].join(' ').trim()}>
+    <nav className={['nav-bar', 'm3'].join(' ').trim()}>
       {/*
         液态玻璃底边栏。
         仓库里已安装 liquid-glass-react（GitHub 上的 LiquidGlass 实现），但它的包装层用

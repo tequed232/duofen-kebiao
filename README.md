@@ -238,6 +238,19 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 
 ---
 
+## Liquid Glass 视觉与引用
+
+底边栏与应用标识采用 Liquid Glass 质感（半透明玻璃药丸 + 冰彩渐变 + 顶部反光），
+由项目以 SVG/CSS 自行绘制，不嵌入任何图片素材；实现思路参考以下开源库，特此致谢：
+
+* [rdev/liquid-glass-react](https://github.com/rdev/liquid-glass-react) ⭐6.2k — Apple 风格 Liquid Glass 的 React 实现（SVG 位移折射 + 鼠标高光）
+* [AndrewPrifer/liquid-dom](https://github.com/AndrewPrifer/liquid-dom) ⭐2.5k — 面向 Web 的实时 DOM 玻璃透镜折射
+* [shuding/liquid-glass](https://github.com/shuding/liquid-glass) ⭐1.2k — 可复制的 Liquid Glass 着色器（SVG + Canvas）
+
+设置 → 底边栏风格（互斥）可在 **Liquid Glass** 与 **Material 3 原生导航栏** 之间切换。
+
+---
+
 ## 唯一设计基准：Web
 
 **所有功能（课表、识别/记录、历史、设置、筛选、教材、关于…）都以 `web/` 为唯一设计基准。**
