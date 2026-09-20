@@ -56,10 +56,29 @@ export default function App() {
 
         {/* 液态玻璃底边栏的折射滤镜（无外部依赖） */}
         <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>
-          <filter id="liquid-glass-refraction">
-            <feTurbulence type="fractalNoise" baseFrequency="0.008 0.02" numOctaves="2" seed="7" result="noise" />
-            <feGaussianBlur in="noise" stdDeviation="2" result="soft" />
-            <feDisplacementMap in="SourceGraphic" in2="soft" scale="16" xChannelSelector="R" yChannelSelector="G" />
+          <filter id="liquid-glass-refraction" x="-25%" y="-25%" width="150%" height="150%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.01 0.024" numOctaves="2" seed="7" result="noise" />
+            <feGaussianBlur in="noise" stdDeviation="2.4" result="soft" />
+            {/* 这个 feDisplacementMap 的 scale 由底边栏在指针滑动时实时改写（液体折射） */}
+            <feDisplacementMap
+              id="liquid-glass-displacement"
+              in="SourceGraphic"
+              in2="soft"
+              scale="16"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+          {/* 水滴融合（goo）：模糊后提高 alpha 对比，让相邻水滴连成一体 */}
+          <filter id="liquid-goo" x="-30%" y="-40%" width="160%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur" />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10"
+              result="goo"
+            />
+            <feBlend in="SourceGraphic" in2="goo" />
           </filter>
         </svg>
       </div>
