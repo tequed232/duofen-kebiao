@@ -48,6 +48,7 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "image": 0xe251,
   "info": 0xe88e,
   "key": 0xe73c,
+  "keyboard_return": 0xe31b,
   "label": 0xe892,
   "light_mode": 0xe518,
   "lightbulb": 0xe0f0,

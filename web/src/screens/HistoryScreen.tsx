@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 历史 (History)
  *
  * "最近三次记录" top app bar with a more_vert overflow menu, a search field

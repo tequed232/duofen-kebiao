@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 设置 (Settings)
  *
  * A 6 item list group (M3 Expressive connected list: 3dp gaps, 28dp outer corners,

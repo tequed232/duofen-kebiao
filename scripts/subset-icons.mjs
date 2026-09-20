@@ -56,9 +56,14 @@ const files = await walk(SRC_DIR);
 const names = new Set(EXTRA_ICONS);
 for (const file of files) {
   const text = await readFile(file, 'utf8');
-  // `icon="x"`, `name: 'x'` and ternaries such as `icon: a ? 'filter_list' : 'list'`
+  // `icon="x"`、`name: 'x'`、`icon: a ? 'filter_list' : 'list'`
   for (const match of text.matchAll(/\b(?:name|icon)\b\s*[=:]\s*([^,;}\n]+)/g)) {
     for (const literal of match[1].matchAll(/['"]([a-z0-9_]+)['"]/g)) names.add(literal[1]);
+  }
+  // `const fieldIcon = cond ? 'send' : 'keyboard_return'`：只取三元分支里的名字，
+  // 避免把判断用的字符串（例如 'ask'）当成图标名导致子集构建失败
+  for (const match of text.matchAll(/\b[A-Za-z_]*[Ii]con\s*=\s*([^;\n]+)/g)) {
+    for (const literal of match[1].matchAll(/[?:]\s*['"]([a-z0-9_]+)['"]/g)) names.add(literal[1]);
   }
 }
 

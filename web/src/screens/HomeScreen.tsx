@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 主页 (Home)
  *
  * Top container  : live speech-to-text raw transcript   -> tap = fullscreen panel

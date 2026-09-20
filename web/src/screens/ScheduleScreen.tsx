@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 课表 (schedule) - "多分课表"
  *
  * The schedule is embedded in the app (web/src/data/schedule.ts, generated from the

@@ -1,4 +1,4 @@
-﻿/** Global application state: settings, records, live draft, snackbar and theme. */
+/** Global application state: settings, records, live draft, snackbar and theme. */
 import {
   createContext,
   useCallback,

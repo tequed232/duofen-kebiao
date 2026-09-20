@@ -1,4 +1,4 @@
-﻿/** Small helpers shared across screens. */
+/** Small helpers shared across screens. */
 
 export function uid(prefix = 'id'): string {
   const random = Math.random().toString(36).slice(2, 8);

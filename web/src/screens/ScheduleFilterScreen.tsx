@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 筛选 (schedule filter)
  *
  * Tabs: 老师 / 课程 / 地点 / 时间. Search across the embedded schedule, list the hits

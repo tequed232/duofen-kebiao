@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Thin React wrappers around the Material Web (`@material/web`) custom elements.
  *
  * Material Web components expose imperative properties (`selected`, `value`,

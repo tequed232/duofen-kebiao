@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Screen stack navigation with Material 3 Expressive transitions.
  *
  * The stack is mirrored into `history.state` so the browser back gesture / back

@@ -1,4 +1,4 @@
-﻿/** Shared domain types. */
+/** Shared domain types. */
 
 export interface QaEntry {
   id: string;

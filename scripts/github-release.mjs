@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Create a GitHub release and upload assets using the REST API.
  *
  * The token is read from GITHUB_TOKEN / GH_TOKEN (never printed). In this workspace it

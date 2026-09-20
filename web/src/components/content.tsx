@@ -1,4 +1,4 @@
-﻿/** Record card, carousel, mind map and the QA / key point views. */
+/** Record card, carousel, mind map and the QA / key point views. */
 import { useState } from 'react';
 import type { NoteRecord, QaBranch } from '../lib/types';
 import { relativeTime, truncate } from '../lib/utils';
