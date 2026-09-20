@@ -117,17 +117,17 @@ class MainActivity : ComponentActivity() {
         val surface = ColorUtils.setAlphaComponent(android.graphics.Color.parseColor("#F5FBF6"), 255)
         window.decorView.setBackgroundColor(surface)
         webView.setBackgroundColor(surface)
-        // 系统栏高度同时写进 CSS 变量（网页用它给状态栏/手势条留白），
-        // 这样无论 ROM 是否把 insets 先行消费，界面都不会被状态栏压住。
+        // 全屏呈现：不再为状态栏整页留白（用户反馈留白比不留更难看）。
+        // 改为把状态栏高度交给网页，只让「顶栏内容」下移 —— 顶栏背景铺到状态栏下面，
+        // 既不会被时间/电量压住，也不会出现一条空白色带。
         ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
-            )
-            view.updatePadding(top = 0, bottom = 0, left = bars.left, right = bars.right)
+            val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(left = cutout.left, right = cutout.right)
             view.post {
                 webView.evaluateJavascript(
-                    "document.documentElement.style.setProperty('--native-safe-top','${bars.top}px');" +
-                        "document.documentElement.style.setProperty('--native-safe-bottom','${bars.bottom}px');",
+                    "document.documentElement.style.setProperty('--native-inset-top','${bars.top}px');" +
+                        "document.documentElement.style.setProperty('--native-inset-bottom','${bars.bottom}px');",
                     null,
                 )
             }

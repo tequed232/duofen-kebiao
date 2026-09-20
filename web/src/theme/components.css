@@ -1529,3 +1529,13 @@ html.native-shell .stage {
 html.native-shell .phone {
   height: calc(100dvh - var(--native-safe-top, 0px) - var(--native-safe-bottom, 0px));
 }
+
+/* 状态栏只影响顶栏内容的垂直位置：顶栏背景始终铺满到屏幕顶部，不出现空白色带 */
+.app-bar {
+  padding-top: calc(var(--native-inset-top, 0px) + 8px);
+}
+
+/* 手势条同理：只抬升玻璃底边栏的内容，背景仍铺到底 */
+.glass-nav {
+  padding-bottom: calc(var(--native-inset-bottom, 0px) + 10px);
+}

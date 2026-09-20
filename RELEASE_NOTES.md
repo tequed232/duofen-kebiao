@@ -1,37 +1,32 @@
-﻿# 多分课表 v1.0.12 —— 折射回归、状态栏留白、流体云通知、玻璃图标、设置整理
+﻿# 多分课表 v1.0.13 —— 全屏呈现 + 1080×1920 紧凑适配
 
-## 1. 底边栏的光影折射回来了
+## 1. 撤掉状态栏留白（按你的反馈）
 
-`glass-nav-inner` 里新增独立的**折射层** `.glass-nav-refraction`：使用 SVG 位移滤镜
-（`feTurbulence` + `feDisplacementMap`，`filter: url(#liquid-glass-refraction)`）叠加冰彩光晕，
-再加上顶部反光条与镜面内描边，恢复 Liquid Glass 的光影折射观感；不支持 SVG 滤镜的老内核自动退化为纯高光。
+之前是给**整页**预留状态栏高度，看起来就是一条空白色带。现在改成：
 
-## 2. 状态栏留白（双保险）
+- 页面**真·全屏**（`edge-to-edge`），没有空白色带；
+- 原生把状态栏/手势条高度写进 CSS 变量 `--native-inset-top/bottom`；
+- **只有顶栏内容**下移（`.app-bar { padding-top: calc(var(--native-inset-top) + 8px) }`），
+  顶栏背景依然铺到屏幕最顶部 —— 时间、电量不会压住标题，也不会有留白条；
+- 玻璃底边栏同理（内容上抬，背景铺到底）。
 
-- 原生：insets 不再只做 WebView padding，而是把系统栏高度写入 CSS 变量
-  `--native-safe-top` / `--native-safe-bottom`，页面据此留白——无论 ROM 是否先消费 insets 都不会被压住。
-- Web：`.stage` 使用 `max(env(safe-area-inset-*), var(--native-safe-*))`，浏览器按刘海安全区，
-  APK 按原生实测高度；`.phone` 高度同步扣减。
+## 2. 针对 1080×1920（≈360×640dp）的紧凑适配
 
-## 3. 流体云 / Live Updates 真的会弹了
+1080×1920 是 16:9 短屏，此前按 412×892 设计会偏挤。新增 `@media (max-height: 760px)`：
 
-- **启动即申请通知权限**：Android 13+ 缺 `POST_NOTIFICATIONS` 时流体云卡片根本发不出来，现在原生在启动时申请。
-- 网页录音开始时通过 JS 桥调用 `DuofenNative.requestPermissions()` 补齐相机/麦克风/通知权限。
-- **进度真的在走**：`liveUpdate(title, text, progress)` 现在带进度参数（按录音时长 0→100），
-  原生 `LiveUpdates.update(..., progress)` 用 `Notification.ProgressStyle` 渲染流体云进度条。
+| 项目 | 常规 | 紧凑（≤760dp） |
+| --- | --- | --- |
+| 顶栏高度 | 64px | 52px |
+| 内容内边距 | 16px | 8/12px |
+| 首页上容器 | 148–216 | 120–168 |
+| 课表可视高度 | 640px | 42vh |
+| 课列最小行高 | 56px | 46px |
+| 玻璃底边栏 | 68px | 60px |
 
-## 4. APK 图标换成 Liquid Glass 设计
-
-`scripts/make-android-icon.mjs` 改为直接渲染项目的 `GlassMark` 矢量（冰彩渐变圆角方块 + 绿/紫/红玻璃药丸），
-生成自适应图标（anydpi-v26）+ mdpi~xxxhdpi 传统图标 + 圆形版；已逐张查看确认。
-
-## 5. 设置页控件整理
-
-去掉全部 4 个「绝对定位叠在列表行上」的控件（`group-overlay`）：
-开关改为放进 `md-list-item` 的 **end 插槽**（M3 官方做法），滑块变成列表项下方的
-**独立控制行**（`.list-control-row`，正常文档流）。任何屏幕高度、字号、语言下都不会错位或重叠。
+实测 360×640：顶栏 64px、底栏 68px 贴底、课表可滚动、课程块不再被挤掉。
 
 ## 一致性与验证
 
-- `npm run apk:parity` → APK 内嵌 **54/54 文件与 `dist/` 逐个 sha256 相同** ✅
-- Web 自动化：**91 步全部通过、0 console 错误、0 page error** ✅
+- `npm run apk:parity` → APK 内嵌 54/54 文件与 `dist/` 逐个 sha256 相同 ✅
+- Web 自动化：91 步全部通过、0 console 错误、0 page error ✅
+- 已在 360×640（=1080×1920 @3x）下逐张看图确认排版

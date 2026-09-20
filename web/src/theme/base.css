@@ -428,3 +428,73 @@ html.native-shell .phone {
   height: 100dvh;
   border-radius: 0;
 }
+
+/* ================================================ 全屏 + 矮屏紧凑适配 ==== */
+/* 用户设备为 1080×1920（≈360×640dp）：不再为状态栏预留空白，改为真·全屏，
+   并针对矮屏收紧间距、压缩课表/时间轴的可视高度，避免内容被挤出屏幕。 */
+html.native-shell .stage,
+.stage {
+  padding: 0;
+}
+
+html.native-shell .phone {
+  height: 100dvh;
+  border-radius: 0;
+}
+
+@media (max-height: 760px) {
+  .screen-content {
+    padding: 8px 12px 10px;
+  }
+
+  .app-bar {
+    min-height: 52px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .app-bar .md-headline-small,
+  .app-bar .md-headline-small-emphasized {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .home-stack > .container-box.surface-high {
+    min-height: 120px;
+    max-height: 168px;
+  }
+
+  .home-stack > .container-box.tertiary {
+    min-height: 150px;
+  }
+
+  .home-footer {
+    padding: 8px 12px 10px;
+    gap: 8px;
+  }
+
+  .glass-nav {
+    padding: 6px 12px 8px;
+  }
+
+  .glass-nav-inner {
+    height: 60px;
+  }
+
+  .glass-tab {
+    height: 48px;
+    font-size: 11px;
+  }
+
+  .week-board-body {
+    max-height: 42vh;
+  }
+
+  .week-cell {
+    min-height: 46px;
+  }
+
+  .course-chip {
+    font-size: 11px;
+  }
+}
