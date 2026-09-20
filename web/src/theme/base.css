@@ -405,3 +405,26 @@ body {
   display: block;
   margin-top: 8px;
 }
+
+/* ------------------------------------------- 系统状态栏 / 刘海屏安全区 ----- */
+/* 浏览器（刘海屏、PWA、微信）里用 env() 留出安全区；
+   APK 里由原生给 WebView 加 insets padding，因此这里跳过，避免重复留白 */
+html:not(.native-shell) .stage {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
+html:not(.native-shell) .phone {
+  height: min(892px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+}
+
+/* APK 里原生已经让出了状态栏，顶部不再叠加内边距 */
+html.native-shell .stage {
+  padding: 0;
+  background: var(--md-sys-color-surface);
+}
+
+html.native-shell .phone {
+  height: 100dvh;
+  border-radius: 0;
+}

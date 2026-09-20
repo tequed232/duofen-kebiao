@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Android 原生桥（可选增强，不影响网页行为）。
  *
  * APK 是同一个 Web 构建跑在 WebView 里，原生侧通过 window.DuofenNative 暴露能力：
@@ -21,6 +21,11 @@ function bridge(): DuofenNative | undefined {
 /** 是否运行在 Android 宿主（APK）里 */
 export function isNativeShell(): boolean {
   return typeof bridge()?.liveUpdate === 'function';
+}
+
+/** 标记运行在 APK 宿主里：CSS 据此跳过浏览器安全区，交给原生 insets 处理 */
+export function markNativeShell(): void {
+  if (isNativeShell()) document.documentElement.classList.add('native-shell');
 }
 
 /** 发布/更新流体云进度卡片；返回 true 表示已交给原生处理 */

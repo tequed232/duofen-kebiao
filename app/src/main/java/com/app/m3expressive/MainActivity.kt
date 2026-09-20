@@ -1,4 +1,4 @@
-package com.app.m3expressive
+﻿package com.app.m3expressive
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -21,6 +21,10 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.webkit.WebViewAssetLoader
 
 /**
@@ -97,6 +101,21 @@ class MainActivity : ComponentActivity() {
         }
 
         setContentView(webView)
+
+        // 状态栏 / 导航栏留白：Android 15+ 强制 edge-to-edge，不给 insets 的话
+        // 顶部标题会被状态栏（时间、电量）压住。这里把系统栏高度作为 WebView 的内边距，
+        // 并把窗口与 WebView 底色设成应用的 surface 色，让留白区域自然衔接。
+        val surface = ColorUtils.setAlphaComponent(android.graphics.Color.parseColor("#F5FBF6"), 255)
+        window.decorView.setBackgroundColor(surface)
+        webView.setBackgroundColor(surface)
+        ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+            )
+            view.updatePadding(top = bars.top, bottom = bars.bottom, left = bars.left, right = bars.right)
+            insets
+        }
+        ViewCompat.requestApplyInsets(webView)
 
         // 可预测式返回：先走网页自己的历史栈，退无可退再退出应用
         onBackPressedDispatcher.addCallback(
