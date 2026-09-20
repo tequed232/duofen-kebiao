@@ -1,4 +1,12 @@
-﻿## ⚠️ 致歉声明（Apology）
+﻿## 素材授权台账
+
+任何第三方素材进入本仓库之前，都必须先在 [`docs/asset-permissions.md`](./docs/asset-permissions.md) 留下**书面授权记录**；
+没有记录的素材一律不得进入代码或构建产物。当前正在向插画作者 **miratsu**（Bilibili 空间 18112887）申请授权，
+状态与私信模板见该文档；`.github/workflows/permission-reminder.yml` 会每周提醒跟进，状态更新后自动停止。
+
+---
+
+## ⚠️ 致歉声明（Apology）
 
 本项目早期版本（**v1.0.8 及以前**）在界面、开屏页与 Android 安装图标中，使用了**未经授权**的第三方美术素材：
 
