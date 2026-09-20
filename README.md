@@ -234,7 +234,7 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 
 ## 贡献者
 
-见 [CONTRIBUTORS.md](./CONTRIBUTORS.md)：感谢 [@liuli1719](https://github.com/liuli1719)（小妍）的界面走查与体验反馈。
+见 [CONTRIBUTORS.md](./CONTRIBUTORS.md)：感谢 [@liuli1719](https://github.com/liuli1719)（小妍）的界面走查与体验反馈，以及 [@fxxggllj](https://github.com/fxxggllj) 的代码走查与构建验证。
 
 ---
 

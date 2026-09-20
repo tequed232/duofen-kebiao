@@ -1,4 +1,4 @@
-# 贡献者 · Contributors
+﻿# 贡献者 · Contributors
 
 感谢每一位让 **多分课表** 变得更好的人。
 
@@ -6,6 +6,7 @@
 | --- | --- |
 | [@tequed232](https://github.com/tequed232) | 项目发起；Material 3 Expressive 界面与动效、课表与教材数据、Android 宿主与流体云、Anubis / Cloudflare 部署 |
 | [@liuli1719](https://github.com/liuli1719)（小妍） | 界面走查与体验反馈，贡献者名单共建 |
+| [@fxxggllj](https://github.com/fxxggllj) | 代码走查与构建验证（Liquid Glass 底边栏 / Android 封装） |
 
 ## 怎么加入这份名单
 
