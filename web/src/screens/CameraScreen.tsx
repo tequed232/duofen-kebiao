@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 摄像 (Camera)
  *
  * Live camera preview (20dp rounded), a filled "返回" button drawn on top of the

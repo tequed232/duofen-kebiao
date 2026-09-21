@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Browser verification for the production build.
  *
  * - launches Chromium with a fake camera device so the live preview can be checked

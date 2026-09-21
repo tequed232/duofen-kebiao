@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Liquid Glass 底边栏（实时折射 + 水滴融合）
  *
  * 与 rdev/liquid-glass-react、shuding/liquid-glass 同源的 Web 实现思路：

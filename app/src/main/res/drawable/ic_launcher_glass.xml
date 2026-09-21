@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- Liquid Glass 应用标识（矢量，无需任何 PNG 位图；minSdk 26 直接用自适应图标） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- 冰彩渐变圆角方块底（用两层近似渐变） -->
+    <path
+        android:fillColor="#E7E3F3"
+        android:pathData="M56,10h88a46,46 0 0 1 46,46v88a46,46 0 0 1 -46,46h-88a46,46 0 0 1 -46,-46v-88a46,46 0 0 1 46,-46z" />
+    <path
+        android:fillColor="#F3E7DC"
+        android:fillAlpha="0.75"
+        android:pathData="M56,10h44v180h-44a46,46 0 0 1 -46,-46v-88a46,46 0 0 1 46,-46z" />
+
+    <!-- 三枚玻璃药丸（绿 / 紫 / 红），整体倾斜 38° -->
+    <group android:rotation="38" android:pivotX="100" android:pivotY="100">
+        <group android:translateX="-26" android:translateY="-10">
+            <path
+                android:fillColor="#7ED957"
+                android:pathData="M68,34h86a22,22 0 0 1 0,44h-86a22,22 0 0 1 0,-44z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillAlpha="0.55"
+                android:pathData="M68,34h86a22,22 0 0 1 0,20h-86a22,22 0 0 1 0,-20z" />
+        </group>
+        <group android:translateX="12" android:translateY="38">
+            <path
+                android:fillColor="#F0736A"
+                android:pathData="M68,34h86a22,22 0 0 1 0,44h-86a22,22 0 0 1 0,-44z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillAlpha="0.5"
+                android:pathData="M68,34h86a22,22 0 0 1 0,20h-86a22,22 0 0 1 0,-20z" />
+        </group>
+        <group android:translateY="14">
+            <path
+                android:fillColor="#A98BF0"
+                android:pathData="M68,34h86a22,22 0 0 1 0,44h-86a22,22 0 0 1 0,-44z" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:fillAlpha="0.5"
+                android:pathData="M68,34h86a22,22 0 0 1 0,20h-86a22,22 0 0 1 0,-20z" />
+        </group>
+    </group>
+</vector>

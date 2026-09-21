@@ -1,4 +1,4 @@
-﻿/** Mounts the React tree (kept separate so main.tsx can do theme setup first). */
+/** Mounts the React tree (kept separate so main.tsx can do theme setup first). */
 import { StrictMode } from 'react';
 import { markNativeShell } from './lib/native';
 import { startPerfWatch } from './lib/perf';

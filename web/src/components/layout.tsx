@@ -1,4 +1,4 @@
-﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
+/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useAppState } from '../state/AppState';

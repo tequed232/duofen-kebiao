@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 生成 Android 启动图标：**全部使用 Material 资源**，不含任何第三方插画。
  *
  * 背景 = M3 主色（primary）；前景 = Material Symbols Rounded 的 calendar_month 字形。

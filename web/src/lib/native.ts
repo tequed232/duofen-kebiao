@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Android 原生桥（可选增强，不影响网页行为）。
  *
  * APK 是同一个 Web 构建跑在 WebView 里，原生侧通过 window.DuofenNative 暴露能力：

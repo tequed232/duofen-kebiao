@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 删除设置页里剩余的绝对定位 overlay 块（按 div 配平精确切除，避免误删）。
  * Usage: node scripts/drop-settings-overlays.mjs
  */
