@@ -2,7 +2,7 @@
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
-export const APP_VERSION = 'v1.0.16';
+export const APP_VERSION = 'v2.0.0';
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = '广东财贸信创3班版权所有';
 
