@@ -130,13 +130,21 @@ class MainActivity : ComponentActivity() {
             pendingCourse = intent.getStringExtra("course")
         }
 
-        // 原生 Dock（酷安布局）：叠在 WebView 之上，网页不再自己画底边栏，
-        // 内容由 --native-dock 预留高度 → 不会有东西被遮挡。
+        // 原生 Dock（酷安布局）：网页不再自己画底边栏，内容由 --native-dock 预留高度。
+        // 注意：**必须最后 addView**（叠在 WebView 之上），否则会被网页的不透明背景盖住 ——
+        // 这正是"底栏在手机上不可见"的原因。
         val dockHeight = NativeDock.heightPx(this)
         val dockView = NativeDock(this) { index ->
             val id = NativeDock.TAB_IDS.getOrNull(index) ?: "schedule"
             webView.evaluateJavascript("window.DuofenDock && window.DuofenDock.select('$id')", null)
         }
+        root.addView(
+            webView,
+            android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
         root.addView(
             dockView,
             android.widget.FrameLayout.LayoutParams(
@@ -145,16 +153,8 @@ class MainActivity : ComponentActivity() {
                 android.view.Gravity.BOTTOM,
             ),
         )
+        dockView.bringToFront()
         dock = dockView
-        // WebView 背景透明：让下方的原生玻璃层透出来（网页底边栏区域也保持透明）
-        webView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        root.addView(
-            webView,
-            android.widget.FrameLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-            ),
-        )
         webView.clearCache(true)
         setContentView(root)
 
