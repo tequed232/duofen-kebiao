@@ -1,4 +1,4 @@
-﻿/** 应用元信息：名称、版本、外部链接（改名时只需要改这里）。 */
+/** 应用元信息：名称、版本、外部链接（改名时只需要改这里）。 */
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
@@ -6,12 +6,17 @@ export const APP_VERSION = 'v2.0.0';
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = 'Tequed232 拥有本项目的最终解释权';
 
-/** 致谢（第三方美术素材已全部下架，只保留作者本人空间） */
+/** 致谢（第三方美术素材已全部下架，只保留作者本人空间与特别感谢的人） */
 export const ART_CREDITS: { label: string; url: string; note: string }[] = [
   {
     label: '作者 Bilibili 空间',
     url: 'https://space.bilibili.com/407275151',
     note: '项目作者的个人空间，欢迎来玩',
+  },
+  {
+    label: '特别感谢 米达达',
+    url: 'https://space.bilibili.com/3546769371695776',
+    note: '感谢米达达对本项目的帮助与支持，点下面的按钮去 TA 的 B 站空间看看',
   },
 ];
 /**
