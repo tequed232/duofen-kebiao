@@ -1,10 +1,11 @@
-﻿/** Application shell: the 412x892 phone stage, the screen stack, splash and snackbar. */
+/** Application shell: the 412x892 phone stage, the screen stack, splash and snackbar. */
 import { useEffect, useState } from 'react';
 import { NavHost, useNav, type RouteName } from './nav/navigation';
 import { SnackbarLayer } from './components/overlays';
 import { SplashScreen } from './components/splash';
 import { useAppState } from './state/AppState';
 import { nativeDockActive } from './lib/native';
+import { startClassReminderLoop } from './lib/classReminder';
 import HomeScreen from './screens/HomeScreen';
 import CameraScreen from './screens/CameraScreen';
 import HistoryScreen from './screens/HistoryScreen';
@@ -37,13 +38,29 @@ const SCREENS = {
 const WITH_NAV_BAR: RouteName[] = ['home', 'camera', 'history', 'settings', 'schedule'];
 
 export default function App() {
-  const { current, selectTab } = useNav();
-  const { ready, settings } = useAppState();
+  const { current, selectTab, push } = useNav();
+  const { ready, settings, schedule, textbooks } = useAppState();
   const bottom = WITH_NAV_BAR.includes(current.route) ? 96 : 16;
 
   // 开屏：数据就绪后自动进入；进入时主页组件从下向上依次弹出
   const [splash, setSplash] = useState(true);
   const [entering, setEntering] = useState(false);
+
+  // 上课提醒：每 30 秒检查一次，临近上课时发实况通知（灵动岛 / 流体云）
+  useEffect(() => {
+    if (!ready) return undefined;
+    return startClassReminderLoop(() => ({ schedule, textbooks, settings }));
+  }, [ready, schedule, textbooks, settings]);
+
+  // 通知里的「课本」动作：宿主打开应用后调用它跳到教材窗口
+  useEffect(() => {
+    (window as unknown as { DuofenOpen?: unknown }).DuofenOpen = {
+      textbooks: () => {
+        selectTab('schedule');
+        push('textbookList', {}, 'slide');
+      },
+    };
+  }, [selectTab, push]);
 
   // 原生 Dock（APK）：把标签切换能力暴露给宿主，并同步选中项
   useEffect(() => {

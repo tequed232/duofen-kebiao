@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 设置 (Settings)
  *
  * A 6 item list group (M3 Expressive connected list: 3dp gaps, 28dp outer corners,
@@ -23,6 +23,7 @@ export default function SettingsScreen() {
   /** 点数字直接输入精确值 */
   const [styleDialogOpen, setStyleDialogOpen] = useState(false);
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
+  const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 卡扣（每 5%）落位时给数值一个短促的反馈 */
   const [snapPulse, setSnapPulse] = useState({ speech: false, camera: false });
@@ -169,6 +170,35 @@ export default function SettingsScreen() {
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
 
+            {/* -------------------------------------- 上课提醒（灵动岛 / 流体云） */}
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="notifications_active" />
+              </div>
+              <div slot="headline">上课提醒（灵动岛）</div>
+              <div slot="supporting-text">
+                {settings.classReminder
+                  ? `已开启：提前 ${settings.classReminderLead} 分钟用实况通知提醒，通知里可直接「导航」到教室、点「课本」看这节课要带的书`
+                  : '已关闭：上课前不发送提醒'}
+              </div>
+              <div slot="end">
+                <MdSwitch
+                  selected={settings.classReminder}
+                  onSelectedChange={(value) =>
+                    updateSettings({ classReminder: value }, { message: value ? '已开启上课提醒' : '已关闭上课提醒' })
+                  }
+                  ariaLabel="上课提醒开关"
+                />
+              </div>
+            </md-list-item>
+            <div className="list-control-row">
+              <md-outlined-button className="btn-s" onClick={() => setLeadDialogOpen(true)}>
+                <MdIcon slot="icon" name="schedule" />
+                提前 {settings.classReminderLead} 分钟
+              </md-outlined-button>
+              <span className="md-body-small muted">提前量可调：5 / 10 / 15 / 20 / 30 分钟</span>
+            </div>
+
             {/* ------------------------------------------------ 8 关于本软件 */}
             <md-list-item
               type="button"
@@ -247,6 +277,28 @@ export default function SettingsScreen() {
       
 
       
+
+      <MdDialog
+        open={leadDialogOpen}
+        headline="上课提醒提前量"
+        onClosed={() => setLeadDialogOpen(false)}
+        actions={<md-text-button onClick={() => setLeadDialogOpen(false)}>取消</md-text-button>}
+      >
+        选一个提前量（到点会用实况通知提醒，通知里带「导航」与「课本」两个动作）：
+        <div className="col gap-8 mt-12">
+          {[5, 10, 15, 20, 30].map((value) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setLeadDialogOpen(false);
+                updateSettings({ classReminderLead: value }, { message: `已设为提前 ${value} 分钟提醒` });
+              }}
+            >
+              {settings.classReminderLead === value ? '✓ ' : ''}提前 {value} 分钟
+            </md-outlined-button>
+          ))}
+        </div>
+      </MdDialog>
 
       <MdDialog
         open={transitionDialogOpen}

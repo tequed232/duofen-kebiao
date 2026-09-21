@@ -26,6 +26,9 @@ object LiveUpdates {
 
     const val CHANNEL_ID = "m3expressive_live_updates"
     const val ACTION_CONFIRM = "com.app.m3expressive.LIVE_CONFIRM"
+
+    /** 通知里的「课本」动作：打开应用并跳到教材窗口 */
+    const val ACTION_SHOW_TEXTBOOKS = "com.app.m3expressive.SHOW_TEXTBOOKS"
     private const val NOTIFICATION_ID = 1001
 
     /** Android 16 = API 36 */
@@ -77,6 +80,111 @@ object LiveUpdates {
                     ),
                 ).build(),
             )
+    }
+
+    /**
+     * 上课提醒：实况通知（灵动岛 / 流体云）。
+     *
+     * 依据 Google 官方「Create live update notifications」的硬性要求：
+     *   ① 标准样式（这里用 ProgressStyle，低版本回落 BigTextStyle）
+     *   ② 清单里声明非运行时权限 POST_PROMOTED_NOTIFICATIONS
+     *   ③ 请求提升（EXTRA_REQUEST_PROMOTED_ONGOING / setRequestPromotedOngoing）
+     *   ④ 必须 ongoing、必须 setContentTitle、不得使用 customContentView
+     *   ⑤ colorized 必须为 TRUE，渠道重要性不得为 IMPORTANCE_MIN
+     *   ⑥ 状态胶囊用 setShortCriticalText（API 36+），时间用 setWhen：
+     *      距现在 ≥2 分钟时系统会显示**倒计时**
+     *
+     * 两个动作：导航（直接拉起地图到教室）、课本（回到应用看这节课要带的书）。
+     */
+    fun classReminder(
+        context: Context,
+        course: String,
+        room: String,
+        timeText: String,
+        textbooks: String,
+        minutesLeft: Int,
+        startAtMillis: Long,
+        navigateUri: String?,
+    ) {
+        ensureChannel(context)
+        val openApp = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentTitle("$course 即将上课")
+            .setContentText(
+                buildString {
+                    append(timeText)
+                    if (room.isNotBlank()) append(" · ").append(room)
+                    if (textbooks.isNotBlank()) append(" · 带：").append(textbooks)
+                },
+            )
+            .setContentIntent(openApp)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setColorized(true)
+            .setCategory(Notification.CATEGORY_EVENT)
+            .setWhen(startAtMillis)
+
+        // 状态胶囊文案（Android 16 的 setShortCriticalText）：compileSdk 35 无此成员，走反射
+        if (Build.VERSION.SDK_INT >= ANDROID_16) {
+            try {
+                val chip = if (minutesLeft <= 0) "现在上课" else "$minutesLeft 分钟后上课"
+                Notification.Builder::class.java
+                    .getMethod("setShortCriticalText", String::class.java)
+                    .invoke(builder, chip)
+            } catch (_: Throwable) {
+                /* 设备不支持则忽略 */
+            }
+        }
+
+        // 动作 1：导航到教室
+        if (!navigateUri.isNullOrBlank()) {
+            builder.addAction(
+                Notification.Action.Builder(
+                    null,
+                    "导航",
+                    PendingIntent.getActivity(
+                        context,
+                        2,
+                        Intent(Intent.ACTION_VIEW, android.net.Uri.parse(navigateUri)),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                ).build(),
+            )
+        }
+        // 动作 2：看这节课要带的课本（回到应用并跳到教材窗口）
+        builder.addAction(
+            Notification.Action.Builder(
+                null,
+                "课本",
+                PendingIntent.getActivity(
+                    context,
+                    3,
+                    Intent(context, MainActivity::class.java)
+                        .setAction(ACTION_SHOW_TEXTBOOKS)
+                        .putExtra("course", course),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            ).build(),
+        )
+
+        // 标准样式：Android 16 走 ProgressStyle（反射，复用 applyLiveUpdateStyle），否则 BigTextStyle
+        val promoted = applyLiveUpdateStyle(builder, 100)
+        if (!promoted) {
+            val detail = buildString {
+                append(timeText)
+                if (room.isNotBlank()) append(" · ").append(room)
+                if (textbooks.isNotBlank()) append(" · 带：").append(textbooks)
+            }
+            builder.setStyle(Notification.BigTextStyle().bigText(detail))
+        }
+
+        notifySafely(context, builder.build())
     }
 
     /** 开始 / 更新进行中的实时状态；progress 为 null 表示不确定进度。 */

@@ -59,6 +59,10 @@ export interface AppSettings {
   barMaterial: 'glass' | 'solid' | 'translucent';
   /** 录音时发送实时通知（Android 16 实况通知 / ColorOS 流体云） */
   liveNotify: boolean;
+  /** 上课提醒：临近上课时用实况通知（灵动岛 / 流体云）提醒 */
+  classReminder: boolean;
+  /** 提前多少分钟提醒（可调） */
+  classReminderLead: number;
   /** 页面切换的过渡模式：M3 规范 / 仅淡入淡出 / 横向滑移 / 无动画 */
   transition: 'm3' | 'fade' | 'slide' | 'none';
 }
@@ -79,6 +83,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   liquidGlass: true,
   barMaterial: 'solid',
   liveNotify: true,
+  classReminder: true,
+  classReminderLead: 10,
   transition: 'm3',
 };
 

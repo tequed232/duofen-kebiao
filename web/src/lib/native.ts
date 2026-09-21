@@ -139,3 +139,42 @@ export function nativeDockActive(index: number): void {
     /* 忽略 */
   }
 }
+
+/** 上课提醒（实况通知 / 灵动岛）：course/room/timeText/textbooks + 剩余分钟数 + 开始时间戳 + 导航链接 */
+export interface ClassReminder {
+  course: string;
+  room: string;
+  timeText: string;
+  textbooks: string;
+  minutesLeft: number;
+  startAtMillis: number;
+  navigateUri: string;
+}
+
+export function nativeClassReminder(payload: ClassReminder): boolean {
+  const api = (window as unknown as { DuofenNative?: { classReminder?: (...args: unknown[]) => void } }).DuofenNative;
+  if (typeof api?.classReminder !== 'function') return false;
+  try {
+    api.classReminder(
+      payload.course,
+      payload.room,
+      payload.timeText,
+      payload.textbooks,
+      payload.minutesLeft,
+      payload.startAtMillis,
+      payload.navigateUri,
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativeStopClassReminder(): void {
+  const api = (window as unknown as { DuofenNative?: { stopClassReminder?: () => void } }).DuofenNative;
+  try {
+    api?.stopClassReminder?.();
+  } catch {
+    /* 忽略 */
+  }
+}

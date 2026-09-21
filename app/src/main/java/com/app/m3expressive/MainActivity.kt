@@ -1,4 +1,4 @@
-﻿package com.app.m3expressive
+package com.app.m3expressive
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -43,6 +43,9 @@ class MainActivity : ComponentActivity() {
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var dock: NativeDock? = null
     private var confirmReceiver: android.content.BroadcastReceiver? = null
+    /** 通知里的「课本」动作被点击：下次页面加载完成后跳到教材窗口 */
+    private var pendingTextbooks = false
+    private var pendingCourse: String? = null
     private var insetTopPx = 0
     private var insetBottomPx = 0
 
@@ -93,6 +96,12 @@ class MainActivity : ComponentActivity() {
                     super.onPageFinished(view, url)
                     injectInsets()
                     view.postDelayed({ injectInsets() }, 600)
+                    if (pendingTextbooks) {
+                        pendingTextbooks = false
+                        view.postDelayed({
+                            view.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.textbooks()", null)
+                        }, 900)
+                    }
                 }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                     assetLoader.shouldInterceptRequest(request.url)
@@ -115,6 +124,12 @@ class MainActivity : ComponentActivity() {
         // 原生 Liquid Glass 底边栏（Android 13+）：叠在 WebView 之上，
         // 每帧 PixelCopy 抓取条带真实画面并用 AGSL 折射 → 与酷安同款的「背景实时掰弯」。
         val root = android.widget.FrameLayout(this)
+        // 通知里的「课本」动作：带这个 action 打开应用时，页面就绪后跳到教材窗口
+        if (intent?.action == LiveUpdates.ACTION_SHOW_TEXTBOOKS) {
+            pendingTextbooks = true
+            pendingCourse = intent.getStringExtra("course")
+        }
+
         // 原生 Dock（酷安布局）：叠在 WebView 之上，网页不再自己画底边栏，
         // 内容由 --native-dock 预留高度 → 不会有东西被遮挡。
         val dockHeight = NativeDock.heightPx(this)
@@ -305,10 +320,50 @@ class MainActivity : ComponentActivity() {
         /** 手指位置（归一化 0..1）与按下状态 → shader uniform，实现跟手折射 */
 
         /** 页面滚动冲量 → 折射强度与高光亮度 */
+        /** 上课提醒（实况通知 / 灵动岛）：网页排好课后由这里发通知 */
+        @JavascriptInterface
+        fun classReminder(
+            course: String,
+            room: String,
+            timeText: String,
+            textbooks: String,
+            minutesLeft: Int,
+            startAtMillis: Long,
+            navigateUri: String,
+        ) {
+            LiveUpdates.classReminder(
+                this@MainActivity,
+                course,
+                room,
+                timeText,
+                textbooks,
+                minutesLeft,
+                startAtMillis,
+                navigateUri.ifBlank { null },
+            )
+        }
+
+        /** 下课 / 取消提醒 */
+        @JavascriptInterface
+        fun stopClassReminder() {
+            LiveUpdates.clear(this@MainActivity)
+        }
+
         /** 网页同步当前选中的标签（路由变化时调用） */
         @JavascriptInterface
         fun dockActive(index: Int) {
             runOnUiThread { dock?.activeIndex = index }
+        }
+    }
+
+    /** 应用已在前台时点通知里的动作：走同一套逻辑 */
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == LiveUpdates.ACTION_SHOW_TEXTBOOKS) {
+            webView.postDelayed({
+                webView.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.textbooks()", null)
+            }, 600)
         }
     }
 
