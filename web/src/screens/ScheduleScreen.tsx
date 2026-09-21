@@ -92,18 +92,7 @@ export default function ScheduleScreen() {
   const dayIndex = weekdayIndex(selectedDate);
   const months = useMemo(() => termMonths(schedule), [schedule]);
 
-  /* 向下滚动收起课表，向上滚回顶部再展开（带滞回，避免边缘抖动） */
-  useEffect(() => {
-    const element = scrollRef.current;
-    if (!element) return undefined;
-    const onScroll = () => {
-      const top = element.scrollTop;
-      if (top > 32) setCollapsed(true);
-      else if (top < 8) setCollapsed(false);
-    };
-    element.addEventListener('scroll', onScroll, { passive: true });
-    return () => element.removeEventListener('scroll', onScroll);
-  }, [scrollRef]);
+  /* 不再随滚动自动收起课表：让课表随页面一起滚动，消除来回抖动（作者反馈） */
 
   /* highlight coming back from the filter screen */
   useEffect(() => {
