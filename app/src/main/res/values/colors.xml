@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material 3 主色：图标背景层（不含任何第三方素材） -->
-    <color name="ic_launcher_background">#12512E</color>
+    <!-- 取自插画蓝发的底色（CC0 素材，见 docs/asset-permissions.md） -->
+    <color name="ic_launcher_background">#4A63B8</color>
 </resources>
