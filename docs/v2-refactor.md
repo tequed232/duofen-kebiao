@@ -5,6 +5,29 @@
 
 ---
 
+## 〇、标准与来源（最高裁决依据）
+
+**一切设计取舍以 Google 官方产品 / 开发者文档为准**（作者已确认）。第三方风格（酷安、MAA 等）
+仅作为「多端表现」的参考；出现冲突时**一律以 Google 文档为准**。
+
+| 领域 | 官方文档 |
+| --- | --- |
+| Material 3 / Expressive 设计 | <https://m3.material.io/> · <https://m3.material.io/blog/building-with-m3-expressive> |
+| 动效与物理弹簧 | <https://m3.material.io/styles/motion/overview> |
+| 颜色系统与动态取色 | <https://m3.material.io/styles/color/system/overview> |
+| 组件实现（Web） | <https://github.com/material-components/material-web> |
+| Android 设计与质量 | <https://developer.android.com/design> · <https://developer.android.com/quality> |
+| 内存管理 | <https://developer.android.com/topic/performance/memory> · `ComponentCallbacks2#onTrimMemory` |
+| Edge-to-edge / 系统栏 | <https://developer.android.com/develop/ui/views/layout/edge-to-edge> |
+| WebView 宿主 | <https://developer.android.com/develop/ui/views/layout/webapps> · `WebViewAssetLoader` |
+| 可预测式返回 | <https://developer.android.com/guide/navigation/custom-back/predictive-back-gesture> |
+| 进度式通知（Android 16 Live Updates） | <https://developer.android.com/about/versions/16/features/progress-centric-notifications> |
+
+**落地要求**：任何新增组件、动效、间距、形状、颜色，都必须能在上表找到依据；
+文档未覆盖的做法要么不做，要么在 `docs/` 登记为**偏离项**（写明理由与影响）。
+
+---
+
 ## 一、前置问题清单（本次重构必须一并结清的账）
 
 ### P0 · 阻塞级
