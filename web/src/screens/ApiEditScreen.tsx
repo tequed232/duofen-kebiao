@@ -147,40 +147,54 @@ export default function ApiEditScreen() {
         />
 
         <div className="screen-content">
+          {/* 作者要求：只需要一个输入框 —— 填「导入 / 识别 API」，同一地址同时用于
+              语音转写、图片识别与问答（同一个多模态服务）。 */}
           <MdTextField
-            label="语音转文字API"
-            value={sttUrl}
-            onValueChange={setSttUrl}
-            placeholder="https://example.com/v1/audio/transcriptions"
-            supportingText={errors.sttUrl ?? 'POST multipart/form-data，字段名 file，返回 JSON 文本'}
-            error={Boolean(errors.sttUrl)}
-            leadingIcon={<MdIcon name="search" />}
+            label="导入 / 识别 API 地址"
+            value={visionUrl}
+            onValueChange={(value) => {
+              setVisionUrl(value);
+              setSttUrl(value);
+              setQaUrl(value);
+            }}
+            placeholder="https://api.deepseek.com/v1/chat/completions"
+            supportingText={
+              errors.visionUrl ??
+              '支持视觉多模态的模型接口：识别教材封面、课表截图与语音转写（如 deepseek-vl / qwen-vl-max / gpt-4o）'
+            }
+            error={Boolean(errors.visionUrl)}
+            leadingIcon={<MdIcon name="bolt" />}
             type="url"
           />
 
           <div className="mt-12">
             <MdTextField
-              label="语音转文字API密钥"
-              value={sttKey}
-              onValueChange={setSttKey}
+              label="API 密钥"
+              value={visionKey}
+              onValueChange={(value) => {
+                setVisionKey(value);
+                setSttKey(value);
+                setQaKey(value);
+              }}
               placeholder="可留空"
-              supportingText="以 Authorization: Bearer 方式发送，保存在本机"
+              supportingText="以 Authorization: Bearer 方式发送，仅保存在本机"
               leadingIcon={<MdIcon name="key" />}
               type={showKeys ? 'text' : 'password'}
             />
           </div>
 
           <div className="mt-12">
-            <MdTextField
-              label="图片转文字API（需视觉多模态模型）"
-              value={visionUrl}
-              onValueChange={setVisionUrl}
-              placeholder="https://api.deepseek.com/v1/chat/completions"
-              supportingText={errors.visionUrl ?? 'POST JSON { model, messages[{role,content:[{type:image_url,…}]}] }'}
-              error={Boolean(errors.visionUrl)}
-              leadingIcon={<MdIcon name="visibility" />}
-              type="url"
-            />
+            <label className="row gap-8 md-body-medium" style={{ alignItems: 'center' }}>
+              <MdSwitch
+                selected={showKeys}
+                onSelectedChange={(value) => setShowKeys(value)}
+                ariaLabel="显示密钥"
+              />
+              显示密钥
+            </label>
+          </div>
+
+          <div className="mt-12">
             {/* 教材识别依赖视觉多模态：这里明确提示用户该填什么 */}
             <div className="about-note mt-8">
               <div className="row gap-8">
@@ -198,37 +212,6 @@ export default function ApiEditScreen() {
                 若报错提示不支持图片，说明当前填的是纯文本模型，换一个视觉模型即可。
               </div>
             </div>
-          </div>
-
-          <div className="mt-12">
-            <MdTextField
-              label="图片转文字API密钥"
-              value={visionKey}
-              onValueChange={setVisionKey}
-              placeholder="可留空"
-              supportingText="以 Authorization: Bearer 方式发送"
-              leadingIcon={<MdIcon name="key" />}
-              type={showKeys ? 'text' : 'password'}
-            />
-          </div>
-
-          <div className="mt-12">
-            <MdTextField
-              label="问答API（可选）"
-              value={qaUrl}
-              onValueChange={setQaUrl}
-              placeholder="https://example.com/v1/qa"
-              supportingText={errors.qaUrl ?? '未配置时，提问会基于本机记录内容进行检索式回答'}
-              error={Boolean(errors.qaUrl)}
-              leadingIcon={<MdIcon name="search" />}
-              type="url"
-            />
-          </div>
-
-          <div className="row gap-8 mt-12">
-            <md-text-button onClick={() => setShowKeys((value) => !value)}>
-              {showKeys ? '隐藏密钥' : '显示密钥'}
-            </md-text-button>
           </div>
 
           {/* ---------------------------------------------- 操作指引 / FAQ */}
