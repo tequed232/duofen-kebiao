@@ -12,7 +12,6 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "blur_on": 0xe3a5,
   "bolt": 0xea0b,
   "calendar_month": 0xebcc,
-  "camera_video": 0xf7a6,
   "category": 0xe574,
   "check": 0xe5ca,
   "check_circle": 0xe86c,

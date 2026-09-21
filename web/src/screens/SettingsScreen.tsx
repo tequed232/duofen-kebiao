@@ -18,24 +18,17 @@ import { isNativeShell, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib
 export default function SettingsScreen() {
   const nav = useNav();
   const { settings, updateSettings, records, seed, dynamicColor, schedule, showSnackbar, imageStats, pruneImages } = useAppState();
-
-  const [speechValue, setSpeechValue] = useState(settings.speechIntensity);
-  const [cameraValue, setCameraValue] = useState(settings.cameraSharpness);
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   /** 点数字直接输入精确值 */
   const [styleDialogOpen, setStyleDialogOpen] = useState(false);
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
-  const [valueDialog, setValueDialog] = useState<'speech' | 'camera' | null>(null);
-  const [valueDraft, setValueDraft] = useState('');
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 卡扣（每 5%）落位时给数值一个短促的反馈 */
   const [snapPulse, setSnapPulse] = useState({ speech: false, camera: false });
   const listRef = useRef<HTMLDivElement>(null);
 
   // keep the sliders in sync when settings are changed elsewhere (e.g. 撤销)
-  useEffect(() => setSpeechValue(settings.speechIntensity), [settings.speechIntensity]);
-  useEffect(() => setCameraValue(settings.cameraSharpness), [settings.cameraSharpness]);
 
   /**
    * 滑块阻尼 + 卡扣：
@@ -176,84 +169,6 @@ export default function SettingsScreen() {
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
 
-            {/* -------------------------------------- 6 语音输入强度调整 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="mic" />
-              </div>
-              <div slot="headline">语音输入强度调整</div>
-              <div slot="supporting-text">识别置信度门限：{Math.round(speechValue)}%（0/25/50/75/100 卡扣，点数字可直接编辑）</div>
-            </md-list-item>
-
-            <div className="list-control-row">
-              <MdSlider
-                className="expressive-slider flex-1 detented"
-                value={speechValue}
-                min={0}
-                max={100}
-                step={1}
-                ticks
-                ariaLabel="语音输入强度"
-                onInput={(value) => setSpeechValue(value)}
-                onChange={(value) => {
-                  const next = settle(value);
-                  setSpeechValue(next);
-                  pulse('speech');
-                  updateSettings({ speechIntensity: next }, { message: '已保存语音输入强度 ' + next + '%' });
-                }}
-              />
-              <button
-                type="button"
-                className={`overlay-value editable md-label-medium${snapPulse.speech ? ' detent' : ''}`}
-                aria-label="编辑语音输入强度"
-                onClick={() => {
-                  setValueDraft(String(Math.round(speechValue)));
-                  setValueDialog('speech');
-                }}
-              >
-                {Math.round(speechValue)}%
-              </button>
-            </div>
-
-            {/* -------------------------------------- 7 相机清晰度调整 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="camera_video" />
-              </div>
-              <div slot="headline">相机清晰度调整</div>
-              <div slot="supporting-text">拍摄分辨率与画质：{Math.round(cameraValue)}%（0/25/50/75/100 卡扣，点数字可直接编辑）</div>
-            </md-list-item>
-
-            <div className="list-control-row">
-              <MdSlider
-                className="expressive-slider flex-1 detented"
-                value={cameraValue}
-                min={0}
-                max={100}
-                step={1}
-                ticks
-                ariaLabel="相机清晰度"
-                onInput={(value) => setCameraValue(value)}
-                onChange={(value) => {
-                  const next = settle(value);
-                  setCameraValue(next);
-                  pulse('camera');
-                  updateSettings({ cameraSharpness: next }, { message: '已保存相机清晰度 ' + next + '%' });
-                }}
-              />
-              <button
-                type="button"
-                className={`overlay-value editable md-label-medium${snapPulse.camera ? ' detent' : ''}`}
-                aria-label="编辑相机清晰度"
-                onClick={() => {
-                  setValueDraft(String(Math.round(cameraValue)));
-                  setValueDialog('camera');
-                }}
-              >
-                {Math.round(cameraValue)}%
-              </button>
-            </div>
-
             {/* ------------------------------------------------ 8 关于本软件 */}
             <md-list-item
               type="button"
@@ -329,37 +244,7 @@ export default function SettingsScreen() {
         }}
       />
 
-      <MdDialog
-        open={valueDialog !== null}
-        headline={valueDialog === 'camera' ? '相机清晰度' : '语音输入强度'}
-        onClosed={() => setValueDialog(null)}
-        actions={
-          <>
-            <md-text-button onClick={() => setValueDialog(null)}>取消</md-text-button>
-            <md-text-button
-              onClick={() => {
-                const parsed = Number.parseInt(valueDraft, 10);
-                const next = Number.isFinite(parsed) ? Math.min(100, Math.max(0, parsed)) : 0;
-                if (valueDialog === 'camera') {
-                  setCameraValue(next);
-                  updateSettings({ cameraSharpness: next }, { message: '已保存相机清晰度 ' + next + '%' });
-                } else {
-                  setSpeechValue(next);
-                  updateSettings({ speechIntensity: next }, { message: '已保存语音输入强度 ' + next + '%' });
-                }
-                setValueDialog(null);
-              }}
-            >
-              保存
-            </md-text-button>
-          </>
-        }
-      >
-        输入 0–100 的整数；0/25/50/75/100 是滑块上的卡扣位置。
-        <div className="mt-12">
-          <MdTextField label="数值（0–100）" value={valueDraft} onValueChange={setValueDraft} type="number" />
-        </div>
-      </MdDialog>
+      
 
       
 

@@ -1,81 +1,95 @@
-﻿/**
- * ① 设置页清理：删除「语音输入强度调整」「相机清晰度调整」两个列表项 + 其滑块控制行 + 数值编辑对话框
- * ② API 页合并：六个输入框 → **一个**「导入 / 识别 API 地址」（同一地址写入语音、图片、问答三个配置项）
+/**
+ * ① 设置页：删除「语音输入强度调整」「相机清晰度调整」两个列表项（含其下的滑块控制行）
+ *    与数值编辑对话框；
+ * ② API 页：多个输入框合并为**一个**「导入 / 识别 API 地址」。
  *
- * 上一版失败原因：标记匹配写错（把判断字符串当图标名/行号算错）。这里改为
- * 逐行扫描 + 括号配平 + 删除后强校验，任何一项不干净就**不写文件**。
+ * 与之前失败版本的差别：**用标签配平**定位块边界（数 <md-list-item> 与 </md-list-item>），
+ * 不再靠行号或缩进猜测；任何一项校验不过就整体不写入。
  *
  * Usage: node scripts/settings-v2-cleanup.mjs
  */
 import { readFile, writeFile } from 'node:fs/promises';
 
-/* ---------------------------------------------------------- ① 设置页清理 */
-const S = 'web/src/screens/SettingsScreen.tsx';
-const original = await readFile(S, 'utf8');
-const lines = original.split(/\r?\n/);
-const drop = new Set();
-
-function spanOf(predicate) {
-  const start = lines.findIndex(predicate);
-  if (start < 0) return null;
-  return start;
-}
-
-/** 删除以 label 文案命名的列表项（含紧随的 list-control-row） */
-function dropRowWithControl(label) {
-  const hit = lines.findIndex((line) => line.includes(label));
-  if (hit < 0) return null;
-  let s = hit;
-  while (s > 0 && !/^\s*<md-list-item/.test(lines[s])) s -= 1;
-  let e = s;
-  while (e < lines.length && !/^\s*<\/md-list-item>/.test(lines[e])) e += 1;
-  const removed = [];
-  for (let i = s; i <= e; i += 1) {
-    drop.add(i);
-    removed.push(i);
-  }
-  let c = e + 1;
-  while (c < lines.length && lines[c].trim() === '') c += 1;
-  if (lines[c]?.includes('list-control-row')) {
-    let ce = c;
-    while (ce < lines.length && !/^\s*<\/div>\s*$/.test(lines[ce])) ce += 1;
-    for (let i = c; i <= ce; i += 1) {
-      drop.add(i);
-      removed.push(i);
+/** 从 fromIndex 处的开标签开始，配平到对应的闭标签 */
+function cutBlock(text, openTag, closeTag, fromIndex) {
+  let depth = 0;
+  let i = fromIndex;
+  while (i < text.length) {
+    const nextOpen = text.indexOf(openTag, i);
+    const nextClose = text.indexOf(closeTag, i);
+    if (nextClose < 0) return null;
+    if (nextOpen >= 0 && nextOpen < nextClose) {
+      depth += 1;
+      i = nextOpen + openTag.length;
+    } else {
+      depth -= 1;
+      i = nextClose + closeTag.length;
+      if (depth === 0) return { start: fromIndex, end: i };
     }
   }
-  return removed.length;
+  return null;
 }
 
-const removedVoice = dropRowWithControl('语音输入强度调整');
-const removedCamera = dropRowWithControl('相机清晰度调整');
+/** 删除包含 label 的 <md-list-item> 块；若其后紧跟 list-control-row 也删掉 */
+function removeListItem(text, label) {
+  const hit = text.indexOf(label);
+  if (hit < 0) return { text, removed: false };
+  const start = text.lastIndexOf('<md-list-item', hit);
+  if (start < 0) return { text, removed: false };
+  const block = cutBlock(text, '<md-list-item', '</md-list-item>', start);
+  if (!block) return { text, removed: false };
+  let out = text.slice(0, block.start) + text.slice(block.end);
 
-// 数值编辑对话框整块
-const dlgStart = lines.findIndex((line) => line.includes('valueDialog !== null'));
-if (dlgStart > 0) {
-  let s = dlgStart;
-  while (s > 0 && !/^\s*<MdDialog/.test(lines[s])) s -= 1;
-  let e = s;
-  while (e < lines.length && !/^\s*<\/MdDialog>\s*$/.test(lines[e])) e += 1;
-  for (let i = s; i <= e; i += 1) drop.add(i);
+  const rest = out.slice(block.start);
+  const controlAt = rest.search(/^\s*<div className="list-control-row">/m);
+  if (controlAt >= 0 && controlAt < 500) {
+    const abs = block.start + controlAt + rest.slice(controlAt).indexOf('<div');
+    const control = cutBlock(out, '<div', '</div>', abs);
+    if (control) out = out.slice(0, control.start) + out.slice(control.end);
+  }
+  return { text: out, removed: true };
 }
 
-let settingsOut = lines.filter((_, index) => !drop.has(index)).join('\n');
+const S = 'web/src/screens/SettingsScreen.tsx';
+let settings = await readFile(S, 'utf8');
+
+const voice = removeListItem(settings, '语音输入强度调整');
+settings = voice.text;
+const camera = removeListItem(settings, '相机清晰度调整');
+settings = camera.text;
+
+let removedDialog = false;
+const dlgIndex = settings.indexOf('valueDialog !== null');
+if (dlgIndex > 0) {
+  const start = settings.lastIndexOf('<MdDialog', dlgIndex);
+  const block = cutBlock(settings, '<MdDialog', '</MdDialog>', start);
+  if (block) {
+    settings = settings.slice(0, block.start) + settings.slice(block.end);
+    removedDialog = true;
+  }
+}
+// 清理不再使用的状态
+settings = settings.replace(/\n\s*const \[speechValue, setSpeechValue\] = useState\([^\n]*\n/, '\n');
+settings = settings.replace(/\n\s*const \[cameraValue, setCameraValue\] = useState\([^\n]*\n/, '\n');
+settings = settings.replace(/\n\s*const \[valueDialog, setValueDialog\] = useState[^\n]*\n/, '\n');
+settings = settings.replace(/\n\s*useEffect\(\(\) => setSpeechValue[^\n]*\n/, '\n');
+settings = settings.replace(/\n\s*useEffect\(\(\) => setCameraValue[^\n]*\n/, '\n');
+
 const residue = {
-  语音行: (settingsOut.match(/语音输入强度/g) ?? []).length,
-  相机行: (settingsOut.match(/相机清晰度/g) ?? []).length,
-  控制行: (settingsOut.match(/list-control-row/g) ?? []).length,
-  数值对话框: (settingsOut.match(/valueDialog/g) ?? []).length,
+  语音: (settings.match(/语音输入强度/g) ?? []).length,
+  相机: (settings.match(/相机清晰度/g) ?? []).length,
+  数值对话框: (settings.match(/valueDialog/g) ?? []).length,
 };
 
-/* ------------------------------------------------------- ② API 页合并 */
+/* ------------------------------------------------------------ API 页合并 */
 const A = 'web/src/screens/ApiEditScreen.tsx';
-let api = await readFile(A, 'utf8');
-// 用单个地址字段替换所有 <MdTextField …/>（保留一个）
-const matches = [...api.matchAll(/<MdTextField[\s\S]*?\/>/g)];
-const first = matches[0];
-let apiOut = api;
-if (first) {
+const apiOriginal = await readFile(A, 'utf8');
+const fields = [...apiOriginal.matchAll(/<MdTextField[\s\S]*?\/>/g)];
+let api = apiOriginal;
+if (fields.length > 1) {
+  const firstStart = fields[0].index;
+  const last = fields[fields.length - 1];
+  const lastEnd = last.index + last[0].length;
   const single = `<MdTextField
               label="导入 / 识别 API 地址"
               value={sttUrl}
@@ -86,27 +100,24 @@ if (first) {
                 setQaUrl(value);
               }}
               placeholder="https://api.deepseek.com/v1/chat/completions"
-              supportingText="支持视觉多模态的模型接口：用于识别教材封面、课表图片与语音转写"
+              supportingText="支持视觉多模态的模型接口：识别教材封面、课表截图与语音转写"
               leadingIcon={<MdIcon name="bolt" />}
               type="url"
             />`;
-  apiOut = api.replace(/<MdTextField[\s\S]*?\/>/g, '');
-  apiOut = apiOut.replace(/(\s*<div className="mt-12">\s*<\/div>)/, '');
-  // 把单字段插到第一个 mt-12 容器里
-  apiOut = apiOut.replace(/(\n\s*<div className="mt-12">)/, `$1\n            ${single}`);
+  api = apiOriginal.slice(0, firstStart) + single + apiOriginal.slice(lastEnd);
 }
 
 const report = {
-  设置页: { 删除语音项: removedVoice, 删除相机项: removedCamera, ...residue },
-  API页: { 原字段数: matches.length, 现字段数: (apiOut.match(/<MdTextField/g) ?? []).length },
+  设置页: { 删除语音项: voice.removed, 删除相机项: camera.removed, 删除对话框: removedDialog, ...residue },
+  API页: { 原字段: fields.length, 现字段: (api.match(/<MdTextField/g) ?? []).length },
 };
 
-const ok = residue.语音行 === 0 && residue.相机行 === 0 && residue.数值对话框 === 0 && report.API页.现字段数 === 1;
+const ok = residue.语音 === 0 && residue.相机 === 0 && residue.数值对话框 === 0 && report.API页.现字段 === 1;
 console.log(report);
 if (!ok) {
-  console.error('❌ 校验未通过，未写入任何文件（保持原样）');
+  console.error('❌ 校验未通过，未写入任何文件');
   process.exit(1);
 }
-await writeFile(S, settingsOut, 'utf8');
-await writeFile(A, apiOut, 'utf8');
-console.log('✅ 设置页清理 + API 单输入框完成');
+await writeFile(S, settings, 'utf8');
+await writeFile(A, api, 'utf8');
+console.log('✅ 设置页清理 + API 合并为单输入框 完成');
