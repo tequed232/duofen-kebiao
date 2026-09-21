@@ -15,6 +15,7 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "category": 0xe574,
   "check": 0xe5ca,
   "check_circle": 0xe86c,
+  "checklist": 0xe6b1,
   "chevron_left": 0xe408,
   "chevron_right": 0xe409,
   "cleaning_services": 0xf0ff,

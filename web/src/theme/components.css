@@ -1406,3 +1406,37 @@ md-filled-text-field {
 }
 
 /* 底边栏里的装饰层：没有视觉效果时也不应占位 */
+
+
+/* ==================== 教材窗口：多选 / 删除 / 快捷添加 ==================== */
+.textbook-card.selectable { cursor: pointer; }
+
+.textbook-card.selected {
+  outline: 2px solid var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary-container) 32%, var(--md-sys-color-surface-container-low));
+}
+
+.textbook-check { display: grid; place-items: center; color: var(--md-sys-color-outline); margin-right: 2px; }
+.textbook-check.on { color: var(--md-sys-color-primary); }
+
+.textbook-fab {
+  position: absolute;
+  right: 16px;
+  bottom: calc(80px + var(--native-dock, 0px) + 12px);
+  z-index: 20;
+}
+
+.textbook-action-bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(80px + var(--native-dock, 0px) + 8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 28%, transparent);
+  z-index: 21;
+}
