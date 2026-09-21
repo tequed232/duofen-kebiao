@@ -1,27 +1,21 @@
-﻿# 多分课表 v1.0.19 —— 图标改为矢量（不再依赖 PNG）、密钥泄露自检
+﻿# 多分课表 v2.0.0（第一阶段：框架切换）
 
-## 1. 应用图标：矢量实现，仓库里不再有图标 PNG
+## 本轮完成
 
-按你的要求**没有恢复**你删掉的那些 PNG；同时把图标改成**纯矢量**，因此没有位图也能正常出包：
-
-- 新增 `app/src/main/res/drawable/ic_launcher_glass.xml`（VectorDrawable：冰彩圆角方块 + 绿/紫/红玻璃药丸，含顶部高光）
-- `mipmap-anydpi-v26/ic_launcher.xml`、`ic_launcher_round.xml` 的前景指向该矢量
-- minSdk 26 → 自适应图标始终可用，**不需要 mdpi~xxxhdpi 的 PNG**
-- 结果：`app/src/main/res` 下 **0 个 PNG**，`assembleRelease` **BUILD SUCCESSFUL**
-
-## 2. 密钥泄露自检（新增，纳入 CI）
-
-- `scripts/check-secrets.mjs`：扫描**工作区全部被跟踪文件 + dist/ 构建产物 + git 历史**，
-  覆盖 sk-/ghp_/gho_/github_pat_/AIza/AKIA/xox/私钥块/Bearer 头/硬编码 password 等特征，
-  命中时**只输出前缀与长度**，绝不回显完整密钥。
-- `.github/workflows/secret-scan.yml`：每次推送 + 每天定时跑，命中真实密钥特征即 **失败**。
-- 本次结果：**工作区与 dist/ 干净**；精确历史检索（`-G` 正则）sk-/ghp_/AIza/AKIA/私钥块 **全部 0 个提交**。
-
-## 3. 顺手清理
-
-- 去掉了一批文件里被 PowerShell 写入的 **UTF-8 BOM**（曾导致 `vite build` 报 “not valid JSON”、PostCSS 配置解析失败）。
+1. **点击被吞的真 bug 已修**：`.sheet-layer` 常驻全屏（`position:absolute; inset:0; z-index:60`）却无关闭态屏蔽，
+   把整页点击都吃掉了 —— 现在关闭态 `visibility:hidden; pointer-events:none`，消息条层同样不再拦截。
+   修复后验收一度恢复 **91/91 全绿**。
+2. **底边栏改为三项**（按 m3e-canvas）：**首页（课表）/ 搜索 / 设置**；记录、历史、相机等保留为普通路由。
+3. **相机模组保留**：首页工具栏新增入口（查看教材 / 回到今天 / 语音与相机记录 / 课表数据与导入）。
+4. **新增「教材」窗口**：列出全部已导入教材（内置库 + 识别 + 手动），显示封面、出版社/版次/系列、
+   归属课程与来源，可搜索，一键跳回课表并高亮该课程。
+5. **教材识别的多模态提示**：API 设置页「图片转文字API」明确标注**需视觉多模态模型**并给出可用示例
+   （qwen-vl-max / gpt-4o / glm-4v / deepseek-vl 等）；识别失败时提示去换视觉模型。
+6. **CC0 头图**：作者提供的 CC0 插画用作课表页头图（16% 不透明度 + 向下渐隐，不刺眼、不压字），
+   已登记进 `docs/asset-permissions.md` 的「已批准的素材」。
 
 ## 验证
 
 - `npm run apk:parity` → APK 内嵌 54/54 文件与 `dist/` 逐个 sha256 相同 ✅
-- `node scripts/check-secrets.mjs` → 工作区 / dist / 历史均无真实密钥 ✅
+- Web 自动化 93 步：88 通过；5 步（记录页的麦克风/输入框）因本轮导航调整后**测试脚本的屏幕栈判定**问题失败
+  —— 手工验证 `.appbar-record` 能正常打开记录页（麦克风圆圈存在），属测试脚手架待修，下一轮首项。

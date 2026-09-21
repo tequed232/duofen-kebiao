@@ -8,6 +8,33 @@
   padding: 0 16px 8px;
 }
 
+/* 课表页头图：作者提供的 CC0 素材（见 docs/asset-permissions.md）。
+   压到 16% 不透明度并向下渐隐 —— 只看得到氛围，不会盖住文字、也不刺眼。 */
+.schedule-head {
+  position: relative;
+  overflow: hidden;
+}
+
+.schedule-hero {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -30%;
+  height: 165%;
+  background-image: url('/art/cc0-header.jpg');
+  background-size: cover;
+  background-position: 50% 20%;
+  opacity: 0.16;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.35) 58%, transparent 90%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.35) 58%, transparent 90%);
+}
+
+.schedule-head > * {
+  position: relative;
+  z-index: 1;
+}
+
 .schedule-meta {
   display: flex;
   align-items: center;

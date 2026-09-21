@@ -1710,3 +1710,28 @@ md-dialog:not([open]) {
   display: none !important;
   pointer-events: none !important;
 }
+
+/* 关闭态的覆盖层绝不能拦截点击（此前 .sheet-layer 常驻全屏，吃掉了整页点击） */
+.sheet-layer {
+  pointer-events: none;
+}
+
+.sheet-layer.open {
+  pointer-events: auto;
+}
+
+.sheet-layer:not(.open) {
+  visibility: hidden;
+}
+
+.snackbar-layer {
+  pointer-events: none;
+}
+
+.snackbar {
+  pointer-events: auto;
+}
+
+.viewer {
+  pointer-events: auto;
+}

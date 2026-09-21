@@ -284,13 +284,13 @@ export default function HomeScreen() {
     }
   }, [addBranchAnswer, draft.imageSummary, draft.transcript, effectiveKeyPoints, question, settings, showSnackbar]);
 
-  const selectTab = (tab: 'home' | 'history' | 'schedule' | 'settings') => {
-    // 课表是主页：点它回到栈底的课表页
+  const selectTab = (tab: 'schedule' | 'search' | 'settings') => {
+    // v2：底边栏三项 —— 首页=课表（栈底）、搜索=筛选页、设置
     if (tab === 'schedule') {
       nav.popTo('schedule');
       return;
     }
-    nav.push(tab, {}, 'slide');
+    nav.push(tab === 'search' ? 'scheduleFilter' : 'settings', {}, 'slide');
   };
 
   return (
@@ -490,7 +490,7 @@ export default function HomeScreen() {
         {draft.transcript.trim() ? '本次识别到的文字已写入草稿。' : '本次没有识别到文字。'}
         你可以点「直接确认」结束这次实时通知，或稍后在历史里查看。
       </MdDialog>
-      <AppNavBar active="home" onSelect={selectTab} />
+      <AppNavBar active="schedule" onSelect={selectTab} />
       </div>
 
       {/* ------------------------------------------------ fullscreen panels */}

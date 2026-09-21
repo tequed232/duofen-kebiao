@@ -172,15 +172,32 @@ export default function ApiEditScreen() {
 
           <div className="mt-12">
             <MdTextField
-              label="图片转文字API"
+              label="图片转文字API（需视觉多模态模型）"
               value={visionUrl}
               onValueChange={setVisionUrl}
-              placeholder="https://example.com/v1/vision/describe"
-              supportingText={errors.visionUrl ?? 'POST JSON { image, task }，返回描述与要点'}
+              placeholder="https://api.deepseek.com/v1/chat/completions"
+              supportingText={errors.visionUrl ?? 'POST JSON { model, messages[{role,content:[{type:image_url,…}]}] }'}
               error={Boolean(errors.visionUrl)}
-              leadingIcon={<MdIcon name="search" />}
+              leadingIcon={<MdIcon name="visibility" />}
               type="url"
             />
+            {/* 教材识别依赖视觉多模态：这里明确提示用户该填什么 */}
+            <div className="about-note mt-8">
+              <div className="row gap-8">
+                <MdIcon name="image_search" size={18} />
+                <span className="md-title-small-emphasized flex-1">用来识别教材封面 / 图片内容</span>
+              </div>
+              <div className="md-body-small muted mt-4">
+                必须填写**支持视觉多模态（图片输入）**的模型接口，纯文本模型无法识别图片。常见可用：
+                <code>qwen-vl-max</code>、<code>qwen2.5-vl-*</code>（阿里云百炼）、<code>gpt-4o</code>、
+                <code>glm-4v</code>、<code>deepseek-vl</code>、<code>internvl</code> 等；自建服务同理，
+                只要接口能接收图片（base64 或图片 URL）并返回文字描述即可。
+              </div>
+              <div className="md-body-small muted mt-4">
+                填好后到「课表 → 课程详情 → 教材 → 拍照识别封面」，识别出的书名会自动匹配到对应课程；
+                若报错提示不支持图片，说明当前填的是纯文本模型，换一个视觉模型即可。
+              </div>
+            </div>
           </div>
 
           <div className="mt-12">

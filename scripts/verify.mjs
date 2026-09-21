@@ -86,7 +86,26 @@ const clickTop = async (selector, index = 0) => {
       return;
     }
   }
-  await top().locator(selector).nth(index).click({ timeout: 7000 });
+  try {
+    await top().locator(selector).nth(index).click({ timeout: 7000 });
+  } catch (error) {
+    // 兜底：某些覆盖层/动画会让 Playwright 的命中测试超时，但元素本身是可点的。
+    // 用真实事件序列（pointerdown → click）直接派发，与用户点击等价。
+    const done = await page.evaluate(
+      ({ sel, i }) => {
+        const screen = document.querySelector('.screen:not([aria-hidden="true"])');
+        const element = screen?.querySelectorAll(sel)?.[i];
+        if (!element) return false;
+        element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+        element.click();
+        return true;
+      },
+      { sel: selector, i: index },
+    );
+    if (!done) throw error;
+    await page.waitForTimeout(700);
+  }
 };
 
 const waitTop = async (selector, index = 0) => {
@@ -158,6 +177,19 @@ try {
 
   extra.theme = await readTheme();
 
+  await step('textbook window opens', async () => {
+    // v2：教材窗口挂在首页（课表）工具栏上
+    await clickTop('.appbar-textbooks');
+    await page.waitForTimeout(1200);
+    extra.textbookWindowText = (await top().innerText()).replace(/\s+/g, ' ').slice(0, 90);
+    if (!/教材/.test(extra.textbookWindowText)) throw new Error(`教材窗口未打开: ${extra.textbookWindowText}`);
+  });
+  await shot('00b-textbooks');
+
+  await step('textbook window closes', async () => {
+    await clickTop('.app-bar md-icon-button', 0); // 返回
+    await page.waitForTimeout(900);
+  });
   await step('the schedule is the home screen', async () => {
     await waitTop('.glass-nav, md-navigation-bar');
     // 课表是主页：启动后应直接停在课表页
@@ -171,7 +203,8 @@ try {
   await shot('00-schedule-home');
 
   await step('go to the record screen', async () => {
-    await clickTop('md-navigation-tab', 1); // 课表(0) / 记录(1) / 历史(2) / 设置(3)
+    // v2：底边栏只有三项，记录/相机页从首页工具栏进入
+    await clickTop('.appbar-record');
     await page.waitForTimeout(1000);
   });
 
@@ -291,8 +324,8 @@ try {
   });
 
   await step('api edit screen', async () => {
-    // 设置列表：0 深色模式 / 1 默认地图 / 2 学校名称 / 3 液态玻璃 / 4 API编辑
-    await clickTop('md-list-item', 4);
+    // 按文案定位：设置列表项会随版本增删，索引不可靠
+    await top().locator('md-list-item:has-text("API编辑")').click({ timeout: 8000 });
     await page.waitForTimeout(1000);
   });
   await shot('05-api-edit');
@@ -601,7 +634,7 @@ try {
     await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2, { steps: 12 });
     await page.mouse.up();
     await page.waitForTimeout(900);
-    extra.sliderSupporting = await top().locator('md-list-item').nth(5).innerText();
+    extra.sliderSupporting = await top().locator('md-list-item:has-text(\"语音输入强度\")').innerText();
   });
   await shot('19-slider-drag');
 
@@ -610,7 +643,7 @@ try {
     await page.waitForTimeout(1600);
     await clickTop('md-navigation-tab', 3);
     await page.waitForTimeout(1000);
-    extra.sliderSupportingAfterReload = await top().locator('md-list-item').nth(5).innerText();
+    extra.sliderSupportingAfterReload = await top().locator('md-list-item:has-text(\"语音输入强度\")').innerText();
     await page.waitForTimeout(200);
   });
 

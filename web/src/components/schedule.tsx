@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 课表 (schedule) building blocks:
  *  - PagedWeekBoard: the 4x4 board (上午/中午/下午/晚上 × 4 days) that pages left/right
  *    through the seven days of a teaching week; the table itself does not move with
@@ -688,8 +688,10 @@ export function TextbookSection({ courseName }: { courseName: string }) {
         } catch (error) {
           openDialog({ cover: dataUrl, matched: courseName });
           showSnackbar({
-            message: `封面识别失败：${error instanceof Error ? error.message : '未知错误'}，可手动填写`,
-            duration: 6000,
+            message:
+              `封面识别失败：${error instanceof Error ? error.message : '未知错误'}。` +
+              '教材识别需要视觉多模态模型，请在 设置 → API编辑 里把「图片转文字API」换成支持图片输入的模型（如 qwen-vl-max / gpt-4o / glm-4v）。',
+            duration: 8000,
           });
         }
       } else {

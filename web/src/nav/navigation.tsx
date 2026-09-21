@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Screen stack navigation with Material 3 Expressive transitions.
  *
  * The stack is mirrored into `history.state` so the browser back gesture / back
@@ -30,7 +30,8 @@ export type RouteName =
   | 'blank'
   | 'schedule'
   | 'scheduleFilter'
-  | 'about';
+  | 'about'
+  | 'textbookList';
 
 export interface RouteEntry {
   key: string;

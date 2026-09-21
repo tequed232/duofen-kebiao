@@ -164,17 +164,13 @@ export default function ScheduleScreen() {
     setCollapsed(false);
   };
 
-  const selectTab = (tab: 'home' | 'history' | 'schedule' | 'settings') => {
-    // 课表是主页：点它回到栈底的课表页；其余标签正常入栈
+  const selectTab = (tab: 'schedule' | 'search' | 'settings') => {
+    // v2：底边栏三项 —— 首页=课表（栈底）、搜索=筛选页、设置
     if (tab === 'schedule') {
       nav.popTo('schedule');
       return;
     }
-    if (tab === 'home') {
-      nav.push('home', {}, 'slide');
-      return;
-    }
-    nav.push(tab, {}, 'slide');
+    nav.push(tab === 'search' ? 'scheduleFilter' : 'settings', {}, 'slide');
   };
 
   const todayCount = coursesOfDay(schedule, weekdayIndex(today), weekNumberFor(today, termStart)).length;
@@ -189,14 +185,17 @@ export default function ScheduleScreen() {
           leading={<MdIconButton icon="search_check_2" label="筛选课程" onClick={() => nav.push('scheduleFilter', {}, 'slide')} />}
           actions={
             <>
-              <MdIconButton icon="today" label="回到今天" onClick={goToday} />
-              <MdIconButton icon="edit" label="课表数据与导入" onClick={() => setImportOpen(true)} />
+              <MdIconButton className="appbar-textbooks" icon="menu_book" label="查看教材" onClick={() => nav.push('textbookList', {}, 'slide')} />
+              <MdIconButton className="appbar-today" icon="today" label="回到今天" onClick={goToday} />
+              <MdIconButton className="appbar-record" icon="photo_camera" label="语音与相机记录" onClick={() => nav.push('home', {}, 'slide')} />
+              <MdIconButton className="appbar-import" icon="edit" label="课表数据与导入" onClick={() => setImportOpen(true)} />
             </>
           }
         />
 
         <div className="screen-content" ref={scrollRef} style={{ paddingLeft: 0, paddingRight: 0 }}>
           <div className="schedule-head">
+            <div className="schedule-hero" aria-hidden="true" />
             <div className="schedule-meta md-body-small">
               <MdIcon name="calendar_month" size={16} />
               <span>

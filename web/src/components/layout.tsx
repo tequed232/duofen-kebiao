@@ -1,4 +1,4 @@
-/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
+﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useAppState } from '../state/AppState';
@@ -52,13 +52,13 @@ export function useScrolled<T extends HTMLElement>(threshold = 4) {
 
 /* -------------------------------------------------------- navigation bar --- */
 
-export type NavTabId = 'schedule' | 'home' | 'history' | 'settings';
+export type NavTabId = 'schedule' | 'search' | 'settings';
 
 /** 课表是主页（第一个标签、默认选中），记录 / 历史 / 设置排在其后 */
+/** v2 框架（m3e-canvas）：底边栏三项 —— 首页（课表）/ 搜索 / 设置 */
 const TABS: { id: NavTabId; label: string; icon: string }[] = [
-  { id: 'schedule', label: '课表', icon: 'calendar_month' },
-  { id: 'home', label: '记录', icon: 'graphic_eq' },
-  { id: 'history', label: '历史', icon: 'history' },
+  { id: 'schedule', label: '首页', icon: 'home' },
+  { id: 'search', label: '搜索', icon: 'search' },
   { id: 'settings', label: '设置', icon: 'settings' },
 ];
 

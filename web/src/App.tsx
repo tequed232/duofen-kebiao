@@ -1,4 +1,4 @@
-/** Application shell: the 412x892 phone stage, the screen stack, splash and snackbar. */
+﻿/** Application shell: the 412x892 phone stage, the screen stack, splash and snackbar. */
 import { useEffect, useState } from 'react';
 import { NavHost, useNav, type RouteName } from './nav/navigation';
 import { SnackbarLayer } from './components/overlays';
@@ -14,6 +14,7 @@ import BlankScreen from './screens/BlankScreen';
 import ScheduleScreen from './screens/ScheduleScreen';
 import ScheduleFilterScreen from './screens/ScheduleFilterScreen';
 import AboutScreen from './screens/AboutScreen';
+import TextbooksScreen from './screens/TextbooksScreen';
 
 const SCREENS = {
   home: HomeScreen,
@@ -26,6 +27,7 @@ const SCREENS = {
   schedule: ScheduleScreen,
   scheduleFilter: ScheduleFilterScreen,
   about: AboutScreen,
+  textbookList: TextbooksScreen,
 };
 
 /** Screens that own a bottom navigation bar keep the snackbar 16dp above it. */
