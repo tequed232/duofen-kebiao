@@ -1,8 +1,8 @@
-/** 应用元信息：名称、版本、外部链接（改名时只需要改这里）。 */
+﻿/** 应用元信息：名称、版本、外部链接（改名时只需要改这里）。 */
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
-export const APP_VERSION = 'v2.0.0';
+export const APP_VERSION = 'enhance 1.5';
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = 'Tequed232 拥有本项目的最终解释权';
 

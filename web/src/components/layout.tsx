@@ -67,8 +67,6 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   // 浏览器里用 Material 3 标准底栏。
   // 注意：md-navigation-bar 是 Lit 元素，事件必须用 addEventListener 绑定
   //（React 的 onXxx 属性它不认，之前因此导致"点标签没反应"）。
-  if (isNativeShell()) return null;
-
   const ref = useRef<HTMLElement & { activeIndex: number }>(null);
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
 

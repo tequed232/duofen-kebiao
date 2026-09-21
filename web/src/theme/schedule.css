@@ -702,13 +702,7 @@ html[data-glass-material] .glass-nav-inner.native-glass .glass-tab.active {
 
 
 /* 原生 Dock 预留空间：网页内容在 Dock 之上结束，两者不重叠（不再有遮挡） */
-html[data-native-dock='1'] .screen-content {
-  padding-bottom: calc(var(--native-dock, 74px) + 10px) !important;
-}
 
-html[data-native-dock='1'] .app-nav-bar {
-  display: none !important;
-}
 
 
 /* ==================== 层级规范（z-index 统一，浮层永远在最上层） ====================

@@ -130,14 +130,8 @@ class MainActivity : ComponentActivity() {
             pendingCourse = intent.getStringExtra("course")
         }
 
-        // 原生 Dock（酷安布局）：网页不再自己画底边栏，内容由 --native-dock 预留高度。
-        // 注意：**必须最后 addView**（叠在 WebView 之上），否则会被网页的不透明背景盖住 ——
-        // 这正是"底栏在手机上不可见"的原因。
-        val dockHeight = NativeDock.heightPx(this)
-        val dockView = NativeDock(this) { index ->
-            val id = NativeDock.TAB_IDS.getOrNull(index) ?: "schedule"
-            webView.evaluateJavascript("window.DuofenDock && window.DuofenDock.select('$id')", null)
-        }
+        // 【回滚】原生 Dock 在作者真机上不可用（可见但点击无反应），已停用：
+        // 网页自己绘制的 Material 3 底栏（在浏览器里已验证可用）重新接管导航。
         root.addView(
             webView,
             android.widget.FrameLayout.LayoutParams(
@@ -145,16 +139,6 @@ class MainActivity : ComponentActivity() {
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
-        root.addView(
-            dockView,
-            android.widget.FrameLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                dockHeight,
-                android.view.Gravity.BOTTOM,
-            ),
-        )
-        dockView.bringToFront()
-        dock = dockView
         webView.clearCache(true)
         setContentView(root)
 
