@@ -4,7 +4,7 @@
  *  - delete the build assets that embed the old name (the v1.0.3 web zip and APK)
  *
  * Usage:
- *   node --use-system-ca scripts/redact-release.mjs "[old name]" "广东财贸信创3班版权所有"
+ *   node --use-system-ca scripts/redact-release.mjs "[old name]" "（历史班级署名）"
  */
 import { readFile } from 'node:fs/promises';
 

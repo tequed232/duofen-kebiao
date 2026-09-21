@@ -4,7 +4,7 @@ export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
 export const APP_VERSION = 'v2.0.0';
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
-export const COPYRIGHT = '广东财贸信创3班版权所有';
+export const COPYRIGHT = 'Tequed232 拥有本项目的最终解释权';
 
 /** 致谢（第三方美术素材已全部下架，只保留作者本人空间） */
 export const ART_CREDITS: { label: string; url: string; note: string }[] = [

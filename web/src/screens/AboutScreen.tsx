@@ -36,7 +36,7 @@ const DESIGN_NOTES: { icon: string; title: string; body: string }[] = [
   {
     icon: 'storage',
     title: '数据与隐私',
-    body: '记录、设置、课表与教材都存在本机浏览器（IndexedDB），不上传服务器；课表由脚本从教务系统导出的 .doc/.rtf 解析后内嵌，署名统一为「广东财贸信创3班版权所有」。',
+    body: '记录、设置、课表与教材都存在本机浏览器（IndexedDB），不上传服务器；内置课表已清空（原数据含教师姓名、教室与班级人数等个人信息），课表由你自行导入或手动填写。Tequed232 拥有本项目的最终解释权。',
   },
 ];
 
