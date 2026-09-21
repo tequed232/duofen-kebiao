@@ -24,6 +24,7 @@ export default function SettingsScreen() {
   const [styleDialogOpen, setStyleDialogOpen] = useState(false);
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
+  const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 卡扣（每 5%）落位时给数值一个短促的反馈 */
   const [snapPulse, setSnapPulse] = useState({ speech: false, camera: false });
@@ -102,6 +103,22 @@ export default function SettingsScreen() {
                   ariaLabel="深色模式开关"
                 />
               </div>
+            </md-list-item>
+
+            {/* -------------------------------------- 界面缩放（窄屏适配） */}
+            <md-list-item type="button" className="rounded-middle" onClick={() => setScaleDialogOpen(true)}>
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="aspect_ratio" />
+              </div>
+              <div slot="headline">界面缩放</div>
+              <div className="md-body-small muted" slot="supporting-text">
+                {settings.uiScale === 'small'
+                  ? '小：整页 92%（窄屏推荐，状态栏与 Dock 留白同步缩小）'
+                  : settings.uiScale === 'large'
+                    ? '大：整页 108%'
+                    : '标准：100%（当前）'}
+              </div>
+              <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
 
             {/* -------------------------------------- 2 默认跳转地图 */}
@@ -277,6 +294,33 @@ export default function SettingsScreen() {
       
 
       
+
+      <MdDialog
+        open={scaleDialogOpen}
+        headline="界面缩放"
+        onClosed={() => setScaleDialogOpen(false)}
+        actions={<md-text-button onClick={() => setScaleDialogOpen(false)}>取消</md-text-button>}
+      >
+        窄屏设备（例如 1080×2362 @3.5x ≈ 309×675dp）建议选「小」，元素不会挤在一起：
+        <div className="col gap-8 mt-12">
+          {([
+            ['small', '小：92%'],
+            ['normal', '标准：100%'],
+            ['large', '大：108%'],
+          ] as const).map(([value, label]) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setScaleDialogOpen(false);
+                updateSettings({ uiScale: value }, { message: `界面缩放：${label}` });
+              }}
+            >
+              {settings.uiScale === value ? '✓ ' : ''}
+              {label}
+            </md-outlined-button>
+          ))}
+        </div>
+      </MdDialog>
 
       <MdDialog
         open={leadDialogOpen}

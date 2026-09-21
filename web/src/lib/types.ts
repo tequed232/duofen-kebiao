@@ -61,6 +61,8 @@ export interface AppSettings {
   liveNotify: boolean;
   /** 上课提醒：临近上课时用实况通知（灵动岛 / 流体云）提醒 */
   classReminder: boolean;
+  /** 界面缩放：小 / 标准 / 大（窄屏设备可调小以免拥挤） */
+  uiScale: 'small' | 'normal' | 'large';
   /** 提前多少分钟提醒（可调） */
   classReminderLead: number;
   /** 页面切换的过渡模式：M3 规范 / 仅淡入淡出 / 横向滑移 / 无动画 */
@@ -84,6 +86,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   barMaterial: 'solid',
   liveNotify: true,
   classReminder: true,
+  uiScale: 'normal',
   classReminderLead: 10,
   transition: 'm3',
 };

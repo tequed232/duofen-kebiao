@@ -46,6 +46,12 @@ export default function App() {
   const [splash, setSplash] = useState(true);
   const [entering, setEntering] = useState(false);
 
+  // 界面缩放：写到 <html data-ui-scale>，由 CSS 的 zoom 统一缩放整页
+  //（窄屏设备如 308dp 宽可调成「小」，避免元素拥挤；安全区留白也随之等比缩放）
+  useEffect(() => {
+    document.documentElement.dataset.uiScale = settings.uiScale ?? 'normal';
+  }, [settings.uiScale]);
+
   // 上课提醒：每 30 秒检查一次，临近上课时发实况通知（灵动岛 / 流体云）
   useEffect(() => {
     if (!ready) return undefined;

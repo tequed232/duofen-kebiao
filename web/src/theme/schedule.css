@@ -750,3 +750,42 @@ md-dialog[open] {
 .md-snackbar {
   z-index: 91 !important;
 }
+
+
+/* ==================== 界面缩放（窄屏最终适配） ====================
+   用 Chromium/WebView 支持的 zoom 统一缩放整页（含 px 尺寸与安全区留白），
+   比逐个改 rem 更彻底；Dock 与状态栏留白会等比缩放，不会错位。 */
+html[data-ui-scale='small'] {
+  zoom: 0.92;
+}
+
+html[data-ui-scale='large'] {
+  zoom: 1.08;
+}
+
+/* 极窄屏（<340dp）默认再收一点，避免 4 列课表与文字挤压；
+   用户可在「设置 → 界面缩放」里覆盖 */
+@media (max-width: 340px) {
+  html[data-ui-scale='normal'] .week-board,
+  html[data-ui-scale='normal'] .board-grid {
+    font-size: 0.96em;
+  }
+}
+
+
+/* 缩放后仍满屏：zoom 不会缩放 100vw/100dvh，这里按比例放大外壳尺寸，
+   使缩放后的实际像素正好铺满屏幕（左右无空隙、上下不露底）。 */
+html[data-ui-scale='small'] .phone {
+  width: calc(100vw / 0.92);
+  height: calc(100dvh / 0.92);
+}
+
+html[data-ui-scale='large'] .phone {
+  width: calc(100vw / 1.08);
+  height: calc(100dvh / 1.08);
+}
+
+html[data-ui-scale='small'] .stage,
+html[data-ui-scale='large'] .stage {
+  overflow: hidden;
+}
