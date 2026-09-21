@@ -146,7 +146,9 @@ export default function SettingsScreen() {
                 <MdIcon name="school" />
               </div>
               <div slot="headline">学校名称</div>
-              <div slot="supporting-text">导航时拼在教室前：{settings.schoolName}</div>
+              <div slot="supporting-text">
+                导航时拼在教室前：{settings.schoolName || '未设置（点这里填写，例如「某某学院」）'}
+              </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
 
