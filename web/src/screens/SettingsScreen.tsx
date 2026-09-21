@@ -158,93 +158,7 @@ export default function SettingsScreen() {
             </div>
 
             {/* -------------------------------------- 实时通知（流体云） */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="notifications_active" />
-              </div>
-              <div slot="headline">实时通知（流体云）</div>
-              <div slot="supporting-text">
-                {settings.liveNotify
-                  ? isNativeShell()
-                    ? '已开启：录音时在状态栏显示实时进度（Android 16 实况通知 / ColorOS 流体云）'
-                    : '已开启：浏览器里用系统通知显示录音进度'
-                  : '已关闭：录音时不发送任何实时通知'}
-              </div>
-              <div slot="end">
-                <MdSwitch
-                  selected={settings.liveNotify}
-                  onSelectedChange={(value) =>
-                    updateSettings(
-                      { liveNotify: value },
-                      { message: value ? '已开启实时通知' : '已关闭实时通知' },
-                    )
-                  }
-                  ariaLabel="实时通知开关"
-                />
-              </div>
-            </md-list-item>
-            <div className="list-control-row">
-              <md-filled-tonal-button
-                className="btn-s"
-                onClick={() => {
-                  if (!isNativeShell()) {
-                    showSnackbar({ message: '浏览器中通知由系统权限控制，请允许通知权限', duration: 4000 });
-                    return;
-                  }
-                  const sent = nativeTestLiveUpdate();
-                  showSnackbar({
-                    message: sent ? '已发送实况测试，请查看状态栏 / 流体云' : '当前环境不支持实况通知',
-                    duration: 4500,
-                  });
-                }}
-              >
-                <MdIcon slot="icon" name="send" />
-                发送实况测试
-              </md-filled-tonal-button>
-            </div>
-
-            {/* -------------------------------------- 4 液态玻璃底边栏 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="blur_on" />
-              </div>
-              <div slot="headline">液态玻璃底边栏</div>
-              <div slot="supporting-text">
-                {settings.liquidGlass
-                  ? '已开启：玻璃层（模糊 16px + SVG 位移折射 + 高光随手指扫过）'
-                  : '已关闭：使用 Material 3 原生底边栏（surfaceContainer，无玻璃层）'}
-              </div>
-              <div slot="end">
-                <MdSwitch
-                  selected={settings.liquidGlass}
-                  onSelectedChange={(value) =>
-                    updateSettings(
-                      { liquidGlass: value },
-                      { message: value ? '已切换为液态玻璃底边栏' : '已切换为 Material 3 原生底边栏' },
-                    )
-                  }
-                  ariaLabel="液态玻璃底边栏开关"
-                />
-              </div>
-            </md-list-item>
-
-            {/* -------------------------------------- 过渡效果（切换模式可选） */}
-            <md-list-item type="button" className="rounded-middle" onClick={() => setTransitionDialogOpen(true)}>
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="animation" />
-              </div>
-              <div slot="headline">过渡效果</div>
-              <div slot="supporting-text">
-                {settings.transition === 'm3'
-                  ? 'Material 3：标签淡入淡出、前进/返回横向滑移'
-                  : settings.transition === 'fade'
-                    ? '仅淡入淡出（最柔和）'
-                    : settings.transition === 'slide'
-                      ? '一律横向滑移'
-                      : '无动画：瞬时切换（最稳）'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
+            
 
             {/* ------------------------------------------------ 5 API编辑 */}
             <md-list-item
@@ -446,6 +360,8 @@ export default function SettingsScreen() {
           <MdTextField label="数值（0–100）" value={valueDraft} onValueChange={setValueDraft} type="number" />
         </div>
       </MdDialog>
+
+      
 
       <MdDialog
         open={transitionDialogOpen}

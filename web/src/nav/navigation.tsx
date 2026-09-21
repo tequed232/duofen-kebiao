@@ -124,6 +124,9 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
 
   const push = useCallback<NavValue['push']>(
     (route, params = {}, transition = 'slide') => {
+      // 同路由去重：重复点击底边栏标签不再重复入栈（此前"点两下跳到不知道哪里"）
+      const top = stackRef.current[stackRef.current.length - 1];
+      if (top && top.route === route) return;
       const entry: RouteEntry = { key: uid('scr'), route, params, transition };
       const next = [...stackRef.current, entry];
       window.history.pushState({ m3Stack: next }, '');
@@ -134,6 +137,16 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
     },
     [schedule],
   );
+  /** 标签切换（底边栏 / 原生 Dock 共用）：首页回到栈底，搜索与设置各推一页 */
+  const selectTab = useCallback((tab: 'schedule' | 'search' | 'settings') => {
+    if (tab === 'schedule') {
+      while (stackRef.current.length > 1) window.history.back();
+      return;
+    }
+    push(tab === 'search' ? 'scheduleFilter' : 'settings');
+  }, [push]);
+
+
 
   const pop = useCallback(() => {
     if (stackRef.current.length > 1) window.history.back();

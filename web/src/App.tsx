@@ -4,6 +4,7 @@ import { NavHost, useNav, type RouteName } from './nav/navigation';
 import { SnackbarLayer } from './components/overlays';
 import { SplashScreen } from './components/splash';
 import { useAppState } from './state/AppState';
+import { nativeDockActive } from './lib/native';
 import HomeScreen from './screens/HomeScreen';
 import CameraScreen from './screens/CameraScreen';
 import HistoryScreen from './screens/HistoryScreen';
@@ -36,13 +37,30 @@ const SCREENS = {
 const WITH_NAV_BAR: RouteName[] = ['home', 'camera', 'history', 'settings', 'schedule'];
 
 export default function App() {
-  const { current } = useNav();
+  const { current, selectTab } = useNav();
   const { ready, settings } = useAppState();
   const bottom = WITH_NAV_BAR.includes(current.route) ? 96 : 16;
 
   // 开屏：数据就绪后自动进入；进入时主页组件从下向上依次弹出
   const [splash, setSplash] = useState(true);
   const [entering, setEntering] = useState(false);
+
+  // 原生 Dock（APK）：把标签切换能力暴露给宿主，并同步选中项
+  useEffect(() => {
+    (window as unknown as { DuofenDock?: unknown }).DuofenDock = {
+      select: (id: string) => selectTab(id as 'schedule' | 'search' | 'settings'),
+    };
+  }, [selectTab]);
+
+  useEffect(() => {
+    const index = current.route === 'settings' ? 2 : current.route === 'scheduleFilter' ? 1 : 0;
+    nativeDockActive(index);
+  }, [current.route]);
+
+  // 底边栏材质：写到 <html data-glass-material>，由 CSS 决定用玻璃 / 实心 / 半透明
+  useEffect(() => {
+    document.documentElement.dataset.glassMaterial = settings.barMaterial ?? 'solid';
+  }, [settings.barMaterial]);
 
   // 过渡模式：写到 <html data-transition> 上，由 CSS 决定动画（none = 瞬时切换）
   useEffect(() => {

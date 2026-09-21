@@ -128,3 +128,14 @@ export function nativeGlassScroll(impulse: number): void {
     /* 忽略 */
   }
 }
+
+
+/** 同步原生 Dock 的选中项（0=首页 1=搜索 2=设置） */
+export function nativeDockActive(index: number): void {
+  const api = (window as unknown as { DuofenNative?: { dockActive?: (i: number) => void } }).DuofenNative;
+  try {
+    api?.dockActive?.(index);
+  } catch {
+    /* 忽略 */
+  }
+}

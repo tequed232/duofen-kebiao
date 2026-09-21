@@ -74,7 +74,6 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "motion_photos_on": 0xe9c1,
   "navigation": 0xe55d,
   "no_photography": 0xf1a8,
-  "notifications_active": 0xe7f7,
   "open_in_full": 0xf1ce,
   "open_in_new": 0xe895,
   "palette": 0xe3b7,

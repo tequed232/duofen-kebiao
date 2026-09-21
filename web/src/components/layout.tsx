@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useAppState } from '../state/AppState';
-import { GlassNavBar } from './glassnav';
+import { isNativeShell } from '../lib/native';
 
 /* ------------------------------------------------------------- app bar --- */
 
@@ -63,48 +63,25 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 ];
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
-  const ref = useRef<HTMLElement & { activeIndex: number }>(null);
-  const { settings } = useAppState();
-  const activeIndex = Math.max(
-    0,
-    TABS.findIndex((tab) => tab.id === active),
-  );
+  // 甩掉历史包袱：原生宿主里底边栏由 NativeDock（酷安布局）负责，网页不再绘制；
+  // 浏览器里用 Material 3 标准底栏（不做玻璃，不再有叠加层与被遮挡问题）。
+  if (isNativeShell()) return null;
 
-  useEffect(() => {
-    const element = ref.current;
-    if (element && element.activeIndex !== activeIndex) element.activeIndex = activeIndex;
-  }, [activeIndex]);
-
-  const bar = (
-    <md-navigation-bar ref={ref} aria-label="主导航">
-      {TABS.map((tab) => (
-        <md-navigation-tab key={tab.id} label={tab.label} onClick={() => onSelect(tab.id)}>
-          <MdIcon slot="inactive-icon" name={tab.icon} />
-          <MdIcon slot="active-icon" name={tab.icon} filled />
-        </md-navigation-tab>
-      ))}
-    </md-navigation-bar>
-  );
-
-  // 液态玻璃底边栏（默认）：自绘玻璃药丸；关闭时回退 Material 3 原生导航栏
-  if (settings.liquidGlass) {
-    return <GlassNavBar tabs={TABS} active={active} onSelect={onSelect} />;
-  }
+  const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
 
   return (
-    <nav className={['nav-bar', 'm3'].join(' ').trim()}>
-      {/*
-        液态玻璃底边栏。
-        仓库里已安装 liquid-glass-react（GitHub 上的 LiquidGlass 实现），但它的包装层用
-        top/left 50% + translate(-50%,-50%) 给子元素定位，套在全宽 md-navigation-bar 上会把
-        导航条推到屏幕左侧（实测 x = -206）并让标签点不动。因此当前用等价的实现：
-        backdrop 模糊 + SVG 位移折射（base.css 的 .nav-bar.glass），库的接入等排版问题解决后再切换。
-      */}
-      {bar}    </nav>
+    <div className="app-nav-bar">
+      <md-navigation-bar activeIndex={activeIndex} onNavigationBarItemActivated={(event: CustomEvent) => onSelect(TABS[event.detail.index]?.id ?? 'schedule')}>
+        {TABS.map((tab) => (
+          <md-navigation-tab key={tab.id} label={tab.label}>
+            <MdIcon slot="icon" name={tab.icon} />
+            <MdIcon slot="active-icon" name={tab.activeIcon ?? tab.icon} />
+          </md-navigation-tab>
+        ))}
+      </md-navigation-bar>
+    </div>
   );
 }
-
-/* --------------------------------------------------------------- pieces --- */
 
 export function SectionHeader({
   icon,

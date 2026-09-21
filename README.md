@@ -287,7 +287,7 @@ node scripts/visual-parity.mjs   # 同一虚拟设备分别截 APK 内嵌资源�
 <!-- LICENSES:BEGIN -->
 ## 开源相关（Open source）
 
-本项目共引入 **22** 个开源依赖，按用途分门别类列出（与设置里「关于 → 开源相关」一致）。
+本项目共引入 **21** 个开源依赖，按用途分门别类列出（与设置里「关于 → 开源相关」一致）。
 感谢每一位作者与维护者。
 
 > 自动生成：修改依赖后运行 `node scripts/collect-licenses.mjs` 重新整理。
@@ -299,7 +299,6 @@ _界面框架与 Material 3 组件_
 | 名称 | 版本 | 许可 | 版权 / 开发者 |
 | --- | --- | --- | --- |
 | [@material/web](https://github.com/material-components/material-web) | 2.5.0 | Apache-2.0 | 未提供版权方信息 |
-| [liquid-glass-react](https://www.npmjs.com/package/liquid-glass-react) | 1.1.1 | MIT |  |
 | [react](https://react.dev/) | 19.3.0 | MIT | 未提供版权方信息 |
 | [react-dom](https://react.dev/) | 19.3.0 | MIT | 未提供版权方信息 |
 

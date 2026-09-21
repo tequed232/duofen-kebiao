@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var dock: NativeDock? = null
     private var confirmReceiver: android.content.BroadcastReceiver? = null
     private var insetTopPx = 0
     private var insetBottomPx = 0
@@ -79,7 +80,9 @@ class MainActivity : ComponentActivity() {
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
-            settings.cacheMode = WebSettings.LOAD_DEFAULT
+            // 每次启动清缓存 + 不走缓存：否则 WebView 会拿旧的 index.html，
+            // 导致"改了样式但手机上没变化"（本地文件也不会走 HTTP 缓存）
+            settings.cacheMode = WebSettings.LOAD_NO_CACHE
             settings.allowFileAccess = false
             settings.allowContentAccess = true
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
@@ -112,8 +115,22 @@ class MainActivity : ComponentActivity() {
         // 原生 Liquid Glass 底边栏（Android 13+）：叠在 WebView 之上，
         // 每帧 PixelCopy 抓取条带真实画面并用 AGSL 折射 → 与酷安同款的「背景实时掰弯」。
         val root = android.widget.FrameLayout(this)
-        // 原生玻璃层待办：PixelCopy.request(View,…) 需要 API 36 的编译平台，
-        // 当前 compileSdk=35 拿不到该重载（见 docs/v2-refactor.md 偏离项）。
+        // 原生 Dock（酷安布局）：叠在 WebView 之上，网页不再自己画底边栏，
+        // 内容由 --native-dock 预留高度 → 不会有东西被遮挡。
+        val dockHeight = NativeDock.heightPx(this)
+        val dockView = NativeDock(this) { index ->
+            val id = NativeDock.TAB_IDS.getOrNull(index) ?: "schedule"
+            webView.evaluateJavascript("window.DuofenDock && window.DuofenDock.select('$id')", null)
+        }
+        root.addView(
+            dockView,
+            android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                dockHeight,
+                android.view.Gravity.BOTTOM,
+            ),
+        )
+        dock = dockView
         // WebView 背景透明：让下方的原生玻璃层透出来（网页底边栏区域也保持透明）
         webView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         root.addView(
@@ -123,6 +140,7 @@ class MainActivity : ComponentActivity() {
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
+        webView.clearCache(true)
         setContentView(root)
 
         // 通知上的「确认」按钮 → 直接回到网页并触发确认流程（不用打开应用再点一次）
@@ -193,7 +211,9 @@ class MainActivity : ComponentActivity() {
     private fun injectInsets() {
         val density = resources.displayMetrics.density
         val js = "document.documentElement.style.setProperty('--native-inset-top','${insetTopPx / density}px');" +
-            "document.documentElement.style.setProperty('--native-inset-bottom','${insetBottomPx / density}px');"
+            "document.documentElement.style.setProperty('--native-inset-bottom','${insetBottomPx / density}px');" +
+            "document.documentElement.style.setProperty('--native-dock','${NativeDock.heightPx(this) / density}px');" +
+            "document.documentElement.dataset.nativeDock='1';"
         webView.post { webView.evaluateJavascript(js, null) }
     }
 
@@ -281,19 +301,14 @@ class MainActivity : ComponentActivity() {
         fun platform(): String = "android"
 
         /** 网页开启原生玻璃条（仅当用户在设置里选了液态玻璃） */
-        @JavascriptInterface
-        fun glassMode(enabled: Boolean) {
-            // 原生玻璃层未启用：见 docs/v2-refactor.md
-        }
 
         /** 手指位置（归一化 0..1）与按下状态 → shader uniform，实现跟手折射 */
-        @JavascriptInterface
-        fun glassPointer(x: Float, y: Float, pressed: Boolean) {
-        }
 
         /** 页面滚动冲量 → 折射强度与高光亮度 */
+        /** 网页同步当前选中的标签（路由变化时调用） */
         @JavascriptInterface
-        fun glassScroll(impulse: Float) {
+        fun dockActive(index: Int) {
+            runOnUiThread { dock?.activeIndex = index }
         }
     }
 

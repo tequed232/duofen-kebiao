@@ -55,6 +55,8 @@ export interface AppSettings {
   schoolName: string;
   /** 底边栏使用液态玻璃（liquid glass）效果 */
   liquidGlass: boolean;
+  /** 底边栏材质：液态玻璃 / Material 3 实心（默认）/ 半透明 */
+  barMaterial: 'glass' | 'solid' | 'translucent';
   /** 录音时发送实时通知（Android 16 实况通知 / ColorOS 流体云） */
   liveNotify: boolean;
   /** 页面切换的过渡模式：M3 规范 / 仅淡入淡出 / 横向滑移 / 无动画 */
@@ -75,6 +77,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   termStart: '',
   schoolName: '广东财贸职业学院',
   liquidGlass: true,
+  barMaterial: 'solid',
   liveNotify: true,
   transition: 'm3',
 };

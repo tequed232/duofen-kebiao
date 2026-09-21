@@ -33,14 +33,6 @@ export const LICENSE_GROUPS: LicenseGroup[] = [
       },
       {
         "category": "ui",
-        "title": "liquid-glass-react",
-        "version": "1.1.1",
-        "license": "MIT",
-        "holder": "",
-        "url": "https://www.npmjs.com/package/liquid-glass-react"
-      },
-      {
-        "category": "ui",
         "title": "react",
         "version": "19.3.0",
         "license": "MIT",

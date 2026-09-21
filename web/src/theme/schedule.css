@@ -654,3 +654,58 @@ html[data-transition='slide'] .screen.exit-fade,
 html[data-transition='slide'] .screen.exit-zoom {
   animation: m3-shared-axis-out 300ms cubic-bezier(0.3, 0, 0.8, 0.15) both;
 }
+
+
+/* ================= 底边栏材质（html[data-glass-material]） ================= */
+/* 实心（默认）：Material 3 标准表面 —— 干净、不会"花" */
+html[data-glass-material='solid'] .glass-nav-inner {
+  background: var(--md-sys-color-surface-container) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: 0 3px 8px color-mix(in srgb, #000 22%, transparent) !important;
+}
+
+html[data-glass-material='solid'] .glass-tab-indicator {
+  background: var(--md-sys-color-secondary-container) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 半透明：不做模糊，只降低不透明度 */
+html[data-glass-material='translucent'] .glass-nav-inner {
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 72%, transparent) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 45%, transparent) !important;
+}
+
+/* 液态玻璃：保留现有的模糊 + 折射层 */
+html[data-glass-material='glass'] .glass-nav-refraction {
+  display: block !important;
+  opacity: 0.22 !important;
+}
+
+
+/* 原生玻璃模式优先：无论选了哪种材质，底边栏都要透明，否则会盖住原生玻璃层 */
+html[data-glass-material] .glass-nav-inner.native-glass {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+html[data-glass-material] .glass-nav-inner.native-glass .glass-tab.active {
+  color: var(--md-sys-color-on-surface) !important;
+}
+
+
+/* 原生 Dock 预留空间：网页内容在 Dock 之上结束，两者不重叠（不再有遮挡） */
+html[data-native-dock='1'] .screen-content {
+  padding-bottom: calc(var(--native-dock, 74px) + 10px) !important;
+}
+
+html[data-native-dock='1'] .app-nav-bar {
+  display: none !important;
+}
