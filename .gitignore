@@ -28,3 +28,4 @@ build/
 screenshots/
 screenshots-device/
 *.log
+screenshots-live/

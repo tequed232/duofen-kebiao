@@ -405,6 +405,14 @@ export default function HomeScreen() {
 
         <div className="flex-1" style={{ minHeight: 16 }} />
 
+        {/* 历史记录入口：v2 导航重构后 history 路由一度没有入口，这里接回来 */}
+        <div className="row gap-8 mb-12">
+          <md-outlined-button className="appbar-history" onClick={() => nav.push('history', {}, 'slide')}>
+            <MdIcon slot="icon" name="history" />
+            历史记录
+          </md-outlined-button>
+        </div>
+
         <div className="flex-1" style={{ minHeight: 8 }} />
       </div>
 

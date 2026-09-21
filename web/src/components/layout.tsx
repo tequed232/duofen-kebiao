@@ -64,25 +64,40 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
   // 甩掉历史包袱：原生宿主里底边栏由 NativeDock（酷安布局）负责，网页不再绘制；
-  // 浏览器里用 Material 3 标准底栏（不做玻璃，不再有叠加层与被遮挡问题）。
+  // 浏览器里用 Material 3 标准底栏。
+  // 注意：md-navigation-bar 是 Lit 元素，事件必须用 addEventListener 绑定
+  //（React 的 onXxx 属性它不认，之前因此导致"点标签没反应"）。
   if (isNativeShell()) return null;
 
+  const ref = useRef<HTMLElement & { activeIndex: number }>(null);
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    element.activeIndex = activeIndex;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ index: number }>).detail;
+      const tab = TABS[detail?.index ?? 0];
+      if (tab) onSelect(tab.id);
+    };
+    element.addEventListener('navigation-bar-item-activated', handler);
+    return () => element.removeEventListener('navigation-bar-item-activated', handler);
+  }, [activeIndex, onSelect]);
 
   return (
     <div className="app-nav-bar">
-      <md-navigation-bar activeIndex={activeIndex} onNavigationBarItemActivated={(event: CustomEvent) => onSelect(TABS[event.detail.index]?.id ?? 'schedule')}>
+      <md-navigation-bar ref={ref as never}>
         {TABS.map((tab) => (
-          <md-navigation-tab key={tab.id} label={tab.label}>
+          <md-navigation-tab key={tab.id} label={tab.label} onClick={() => onSelect(tab.id)}>
             <MdIcon slot="icon" name={tab.icon} />
-            <MdIcon slot="active-icon" name={tab.activeIcon ?? tab.icon} />
+            {tab.activeIcon ? <MdIcon slot="active-icon" name={tab.activeIcon} /> : null}
           </md-navigation-tab>
         ))}
       </md-navigation-bar>
     </div>
   );
 }
-
 export function SectionHeader({
   icon,
   title,

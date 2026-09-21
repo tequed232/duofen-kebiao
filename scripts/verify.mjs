@@ -71,8 +71,21 @@ page.on('pageerror', (error) => pageErrors.push(String(error?.stack ?? error)));
 /** The screen on top of the stack (NavHost marks the others aria-hidden). */
 const top = () => page.locator('.screen:not([aria-hidden="true"])');
 
+/** v2：记录页不再有独立标签，统一从课表顶栏「语音与相机记录」进入（已在该页则复用） */
+const openRecord = async () => {
+  const mic = top().locator('.mic-circle');
+  if (await mic.count()) return;
+  const entry = top().locator('.appbar-record');
+  if (!(await entry.count())) {
+    await clickTop('md-navigation-tab', 0);
+    await page.waitForTimeout(900);
+  }
+  await top().locator('.appbar-record').click({ timeout: 8000 });
+  await page.waitForTimeout(1400);
+};
+
 const clickTop = async (selector, index = 0) => {
-  // 底边栏可能是 Liquid Glass 自绘栏（.glass-tab）或 M3 原生导航栏（md-navigation-tab）
+  // 底边栏：网页是 M3 原生导航栏（md-navigation-tab）；APK 由原生 Dock 负责
   if (selector === 'md-navigation-tab') {
     const clicked = await page.evaluate((i) => {
       const screen = document.querySelector('.screen:not([aria-hidden="true"])');
@@ -288,7 +301,7 @@ try {
   await shot('03-history-empty');
 
   await step('settings tab', async () => {
-    await clickTop('md-navigation-tab', 3);
+    await clickTop('md-navigation-tab', 2);
     await page.waitForTimeout(1000);
   });
   await shot('04-settings');
@@ -325,7 +338,24 @@ try {
 
   await step('api edit screen', async () => {
     // 按文案定位：设置列表项会随版本增删，索引不可靠
-    await top().locator('md-list-item:has-text("API编辑")').click({ timeout: 8000 });
+    await top().locator('.screen-content').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+    await page.waitForTimeout(400);
+    const rows = top().locator('md-list-item');
+    const count = await rows.count();
+    let clicked = false;
+    for (let i = 0; i < count; i += 1) {
+      const text = (await rows.nth(i).innerText().catch(() => '')) || '';
+      if (/API|接口/.test(text)) {
+        await rows.nth(i).click({ timeout: 6000 });
+        clicked = true;
+        break;
+      }
+    }
+    if (!clicked) {
+      const texts = [];
+      for (let i = 0; i < count; i += 1) texts.push(((await rows.nth(i).innerText().catch(() => '')) || '').split('\n')[0]);
+      throw new Error('API 入口未找到，当前列表项：' + texts.join(' | '));
+    }
     await page.waitForTimeout(1000);
   });
   await shot('05-api-edit');
@@ -358,7 +388,7 @@ try {
   });
 
   await step('home tab', async () => {
-    await clickTop('md-navigation-tab', 1);
+    await openRecord();
     await page.waitForTimeout(1000);
   });
 
@@ -470,9 +500,22 @@ try {
   await shot('08-home-after-capture');
 
   await step('history with record', async () => {
-    await clickTop('md-navigation-tab', 2);
+    // v2：底边栏只有 首页/搜索/设置。记录/历史页可从课表顶栏「语音与相机记录」进入；
+    // 若相机流程后已停在该页，则直接复用，避免重复导航造成超时。
+    const already = await top().locator('md-filled-card').count();
+    if (!already) {
+      const entry = top().locator('.appbar-record');
+      if (await entry.count()) {
+        await entry.click({ timeout: 8000 });
+      } else {
+        await clickTop('md-navigation-tab', 0);
+        await page.waitForTimeout(900);
+        await top().locator('.appbar-record').click({ timeout: 8000 });
+      }
+      await page.waitForTimeout(1200);
+    }
     await waitTop('md-filled-card');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(600);
   });
   await shot('09-history');
 
@@ -514,7 +557,7 @@ try {
   await step('reload keeps the record', async () => {
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(1600);
-    await clickTop('md-navigation-tab', 2);
+    await clickTop('md-navigation-tab', 0);
     await waitTop('md-filled-card');
   });
   await shot('13-history-after-reload');
@@ -536,7 +579,7 @@ try {
   );
 
   await step('dark mode toggle', async () => {
-    await clickTop('md-navigation-tab', 3);
+    await clickTop('md-navigation-tab', 2);
     await page.waitForTimeout(900);
     await clickTop('md-switch');
     await page.waitForTimeout(1200);
@@ -552,7 +595,7 @@ try {
   extra.afterUndoTheme = await readTheme();
 
   await step('record detail still opens from history', async () => {
-    await clickTop('md-navigation-tab', 2);
+    await clickTop('md-navigation-tab', 0);
     await waitTop('md-filled-card');
     await clickTop('md-filled-card');
     await page.waitForTimeout(1200);
@@ -574,7 +617,7 @@ try {
   });
 
   await step('input field detects ask vs write', async () => {
-    await clickTop('md-navigation-tab', 1);
+    await openRecord();
     await page.waitForTimeout(1000);
     // 空输入默认「输入」模式；输入疑问句后实时切换为「提问」
     const fieldLabel = () =>
@@ -624,7 +667,7 @@ try {
 
   /* ------------------------------------------------ slider + persistence */
   await step('slider drag saves and persists', async () => {
-    await clickTop('md-navigation-tab', 3);
+    await clickTop('md-navigation-tab', 2);
     await page.waitForTimeout(1000);
     const slider = top().locator('md-slider').nth(0);
     const box = await slider.boundingBox();
@@ -641,7 +684,7 @@ try {
   await step('slider value survives reload', async () => {
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(1600);
-    await clickTop('md-navigation-tab', 3);
+    await clickTop('md-navigation-tab', 2);
     await page.waitForTimeout(1000);
     extra.sliderSupportingAfterReload = await top().locator('md-list-item:has-text(\"语音输入强度\")').innerText();
     await page.waitForTimeout(200);
@@ -664,7 +707,7 @@ try {
 
   /* -------------------------------------------------- history overflow menu */
   await step('history overflow menu opens', async () => {
-    await clickTop('md-navigation-tab', 2);
+    await clickTop('md-navigation-tab', 0);
     await page.waitForTimeout(1000);
     await clickTop('.app-bar md-icon-button', 0);
     await page.waitForTimeout(800);

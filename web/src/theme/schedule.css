@@ -709,3 +709,44 @@ html[data-native-dock='1'] .screen-content {
 html[data-native-dock='1'] .app-nav-bar {
   display: none !important;
 }
+
+
+/* ==================== 层级规范（z-index 统一，浮层永远在最上层） ====================
+   顺序（从低到高）：
+     10  页面内容
+     30  底边栏 / 原生 Dock 预留区
+     60  可展开面板（sheet）
+     70  图片查看器（viewer）
+     80  对话框（md-dialog）—— 必须高于面板与查看器，否则点不到
+     90  消息条（snackbar）
+   注意：md-dialog 走的是原生 <dialog> 的 top layer，这里再显式给一次，
+   保证它在任何浏览器/WebView 里都压住页面内容。 */
+.app-nav-bar,
+.app-dock {
+  position: relative;
+  z-index: 30;
+}
+
+.sheet-layer {
+  z-index: 60 !important;
+}
+
+.viewer {
+  z-index: 70 !important;
+}
+
+md-dialog {
+  z-index: 80 !important;
+}
+
+md-dialog[open] {
+  z-index: 80 !important;
+}
+
+.snackbar-layer {
+  z-index: 90 !important;
+}
+
+.md-snackbar {
+  z-index: 91 !important;
+}
