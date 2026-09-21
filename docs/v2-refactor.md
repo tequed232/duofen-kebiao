@@ -161,3 +161,20 @@ datePicker×2、image、loadingIndicator、text、map、box、textField
 5. 设置页重构：saveWithUndo 统一「已保存 + 撤销」，深色模式/地图/关于按 canvas 排布（1 轮）
 6. 内存管理双侧接线（`onTrimMemory` 等）＋ 启动界面按 canvas 调整（1 轮）
 7. 全量回归：91 步 + 视觉逐屏 + 发布 v2.0.0
+
+---
+
+## 偏离项登记：原生 Liquid Glass 底边栏（方案 A）
+
+**决定**：作者选定方案 A —— 底边栏玻璃由**原生层**实现（与酷安同款），因此**这一处**不再满足
+「Web 与 APK 完全同源」的硬要求，按本文件第〇章的规定登记为偏离项。
+
+| 项 | 说明 |
+| --- | --- |
+| 实现 | `app/src/main/java/com/app/m3expressive/LiquidGlassBar.kt` |
+| 原理 | 每帧 `PixelCopy` 抓取条带下方的**真实窗口画面**（含 WebView 正在滚动的内容）→ **AGSL `RuntimeShader`** 做位移折射 + 边缘色散 + 轻散射 + 镜面高光 + 胶囊遮罩 → 逐帧绘制 |
+| 实时性 | 手指位置/按下状态与**页面滚动冲量**由网页经 JS 桥（`glassPointer` / `glassScroll`）实时写入 shader uniform |
+| 与网页的分工 | 网页在原生模式下加 `.native-glass`：**只保留图标与文字**，玻璃层透明，避免两层玻璃叠加 |
+| 版本要求 | Android 13（API 33）+；低版本自动不显示该层，回落网页玻璃栏 |
+| 性能取舍 | 抓取区域仅底边栏条带（约 1080×300px）；若掉帧可降为 30fps 或仅滚动/触摸时抓取 |
+| 影响面 | 仅底边栏这一处；其余界面、路由、数据、设置仍完全来自同一份 Web 构建（`apk:parity` 依旧 54/54 通过，因为网页文件本身一致） |

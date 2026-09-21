@@ -1735,3 +1735,34 @@ md-dialog:not([open]) {
 .viewer {
   pointer-events: auto;
 }
+
+/* 实时操控：按下拉伸 + 轻微上浮 + 滚动冲量驱动的折射强度 */
+.glass-nav-inner {
+  transform: scaleX(var(--glass-stretch, 1)) translateY(var(--glass-lift, 0));
+  transform-origin: 50% 100%;
+  transition: transform 120ms linear;
+}
+
+.glass-nav-inner .glass-nav-specular {
+  opacity: calc(0.35 + var(--glass-scroll, 0) * 0.45);
+}
+
+/* 原生玻璃模式（APK + Android 13+）：网页这层只留图标与文字，玻璃交给原生层，
+   避免两层玻璃叠加；原生层的折射结果是透明的，因此文字依然清晰可见。 */
+.glass-nav-inner.native-glass {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.glass-nav-inner.native-glass::before,
+.glass-nav-inner.native-glass::after,
+.glass-nav-inner.native-glass .glass-nav-refraction {
+  display: none;
+}
+
+.glass-nav-inner.native-glass .glass-tab.active {
+  color: var(--md-sys-color-on-surface);
+}

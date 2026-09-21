@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 设置 (Settings)
  *
  * A 6 item list group (M3 Expressive connected list: 3dp gaps, 28dp outer corners,
@@ -203,15 +203,27 @@ export default function SettingsScreen() {
             </div>
 
             {/* -------------------------------------- 4 液态玻璃底边栏 */}
-            <md-list-item type="button" className="rounded-middle" onClick={() => setStyleDialogOpen(true)}>
+            <md-list-item type="text" className="rounded-middle">
               <div slot="start" className="list-icon-badge">
                 <MdIcon name="blur_on" />
               </div>
-              <div slot="headline">底边栏风格（互斥）</div>
+              <div slot="headline">液态玻璃底边栏</div>
               <div slot="supporting-text">
                 {settings.liquidGlass
-                  ? '当前：液态玻璃（模糊 + 折射，关闭 M3 容器底色）'
-                  : '当前：Material 3 原生（surfaceContainer 容器色，无玻璃层）'}
+                  ? '已开启：玻璃层（模糊 16px + SVG 位移折射 + 高光随手指扫过）'
+                  : '已关闭：使用 Material 3 原生底边栏（surfaceContainer，无玻璃层）'}
+              </div>
+              <div slot="end">
+                <MdSwitch
+                  selected={settings.liquidGlass}
+                  onSelectedChange={(value) =>
+                    updateSettings(
+                      { liquidGlass: value },
+                      { message: value ? '已切换为液态玻璃底边栏' : '已切换为 Material 3 原生底边栏' },
+                    )
+                  }
+                  ariaLabel="液态玻璃底边栏开关"
+                />
               </div>
             </md-list-item>
 

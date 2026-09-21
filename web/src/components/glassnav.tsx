@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Liquid Glass 底边栏（实时折射 + 水滴融合）
  *
  * 与 rdev/liquid-glass-react、shuding/liquid-glass 同源的 Web 实现思路：
@@ -13,6 +13,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MdIcon } from './md';
+import { isNativeShell, nativeGlassMode, nativeGlassPointer, nativeGlassScroll } from '../lib/native';
 import type { NavTabId } from './layout';
 
 export interface GlassTab {
@@ -59,7 +60,8 @@ export function GlassNavBar({
 }) {
   const innerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | undefined>(undefined);
-  const targetRef = useRef({ scale: 16, x: 0.5, y: 0.5 });
+  const targetRef = useRef({ scale: 16, x: 0.5, y: 0.5, stretch: 1, lift: 0, scroll: 0 });
+  const dragStart = useRef<number | null>(null);
   const [drops, setDrops] = useState<Drop[]>([]);
   const dropId = useRef(0);
 
@@ -73,6 +75,10 @@ export function GlassNavBar({
     if (element) {
       element.style.setProperty('--glass-x', `${(target.x * 100).toFixed(1)}%`);
       element.style.setProperty('--glass-y', `${(target.y * 100).toFixed(1)}%`);
+      // 实时操控相关：拉伸量 + 竖向位移 + 滚动冲量
+      element.style.setProperty('--glass-stretch', target.stretch.toFixed(3));
+      element.style.setProperty('--glass-lift', `${target.lift.toFixed(2)}px`);
+      element.style.setProperty('--glass-scroll', target.scroll.toFixed(3));
     }
     if (displacement) {
       const current = Number(displacement.getAttribute('scale') ?? '16');
@@ -82,6 +88,14 @@ export function GlassNavBar({
     }
 
     rafRef.current = settled ? undefined : window.requestAnimationFrame(tick);
+  }, []);
+
+  // APK：交给原生层做真·背景折射（网页玻璃层转透明，避免双层）
+  useEffect(() => {
+    if (!isNativeShell()) return;
+    nativeGlassMode(true);
+    innerRef.current?.classList.add('native-glass');
+    return () => nativeGlassMode(false);
   }, []);
 
   const schedule = useCallback(() => {
@@ -95,9 +109,19 @@ export function GlassNavBar({
     const rect = element.getBoundingClientRect();
     const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
     const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    // 按下的瞬间：整条玻璃被"压"出弹性形变（横向拉伸 + 轻微下沉），
+    // 手指移动时形变随距离增长，松手后由 tick() 的阻尼回到 1
+    const pressed = event.buttons > 0 || event.pointerType === 'touch';
+    const dragX = dragStart.current === null ? 0 : Math.abs(event.clientX - dragStart.current);
+    const stretch = pressed ? Math.min(1.08, 1 + dragX / 900) : 1;
+    const lift = pressed ? -1.5 : 0;
+    if (isNativeShell()) nativeGlassPointer(x, y, pressed);
     targetRef.current = {
       x,
       y,
+      stretch,
+      lift,
+      scroll: targetRef.current.scroll,
       // 越靠边缘折射越强，模拟玻璃边缘对背景的压缩
       scale: 10 + Math.abs(x - 0.5) * 46 + Math.abs(y - 0.5) * 24,
     };
@@ -105,10 +129,43 @@ export function GlassNavBar({
   };
 
   const resetPointer = () => {
-    targetRef.current = { scale: 16, x: 0.5, y: 0.5 };
+    dragStart.current = null;
+    targetRef.current = { ...targetRef.current, scale: 16, x: 0.5, y: 0.5, stretch: 1, lift: 0 };
     schedule();
   };
 
+
+  /** 页面滚动 → 玻璃的折射强度与高光位置随之变化（实时操控感的关键） */
+  useEffect(() => {
+    let last = 0;
+    let decay = 0;
+    const onScroll = () => {
+      const now = performance.now();
+      const velocity = Math.min(1, Math.abs(window.scrollY - last) / 120);
+      last = window.scrollY;
+      decay = Math.max(decay, velocity);
+      nativeGlassScroll(decay);
+      targetRef.current = {
+        ...targetRef.current,
+        scroll: decay,
+        scale: 12 + decay * 40,
+        y: 0.5 + Math.min(0.35, (window.scrollY % 200) / 400),
+      };
+      schedule();
+    };
+    const idle = window.setInterval(() => {
+      if (decay > 0.01) {
+        decay *= 0.72;
+        targetRef.current = { ...targetRef.current, scroll: decay, scale: 12 + decay * 40 };
+        schedule();
+      }
+    }, 60);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.clearInterval(idle);
+    };
+  }, [schedule]);
   useEffect(
     () => () => {
       if (rafRef.current !== undefined) window.cancelAnimationFrame(rafRef.current);
@@ -131,7 +188,7 @@ export function GlassNavBar({
         const ids = new Set(created.map((drop) => drop.id));
         setDrops((value) => value.filter((drop) => !ids.has(drop.id)));
       }, 640);
-      targetRef.current = { x: x / 100, y: 0.5, scale: 30 };
+      targetRef.current = { ...targetRef.current, x: x / 100, y: 0.5, scale: 30, stretch: 1.06, lift: -1.5 };
       schedule();
     }
     void tab;
@@ -143,7 +200,10 @@ export function GlassNavBar({
         className="glass-nav-inner"
         ref={innerRef}
         onPointerMove={trackPointer}
-        onPointerDown={trackPointer}
+        onPointerDown={(event) => {
+        dragStart.current = event.clientX;
+        trackPointer(event);
+      }}
         onPointerLeave={resetPointer}
       >
         {/* 实时折射层：backdrop 经 SVG 位移滤镜 → 真实折射背景 */}

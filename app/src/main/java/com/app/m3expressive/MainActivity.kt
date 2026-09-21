@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var confirmReceiver: android.content.BroadcastReceiver? = null
+    private var glassBar: LiquidGlassBar? = null
     private var insetTopPx = 0
     private var insetBottomPx = 0
 
@@ -109,7 +110,35 @@ class MainActivity : ComponentActivity() {
             loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
         }
 
-        setContentView(webView)
+        // 原生 Liquid Glass 底边栏（Android 13+）：叠在 WebView 之上，
+        // 每帧 PixelCopy 抓取条带真实画面并用 AGSL 折射 → 与酷安同款的「背景实时掰弯」。
+        val root = android.widget.FrameLayout(this)
+        root.addView(
+            webView,
+            android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val barHeight = (86 * resources.displayMetrics.density).toInt()
+            val bar = LiquidGlassBar(this)
+            root.addView(
+                bar,
+                android.widget.FrameLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    barHeight,
+                    android.view.Gravity.BOTTOM,
+                ),
+            )
+            bar.isClickable = false
+            bar.isFocusable = false
+            // 触摸穿透到下面的 WebView（玻璃条只负责画，不抢手势）
+            bar.setOnTouchListener { _, _ -> false }
+            bar.visibility = android.view.View.GONE // 由网页开启（glassMode）后再显示
+            glassBar = bar
+        }
+        setContentView(root)
 
         // 通知上的「确认」按钮 → 直接回到网页并触发确认流程（不用打开应用再点一次）
         confirmReceiver = object : android.content.BroadcastReceiver() {
@@ -265,6 +294,29 @@ class MainActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun platform(): String = "android"
+
+        /** 网页开启原生玻璃条（仅当用户在设置里选了液态玻璃） */
+        @JavascriptInterface
+        fun glassMode(enabled: Boolean) {
+            runOnUiThread {
+                glassBar?.let { bar ->
+                    bar.visibility = if (enabled) android.view.View.VISIBLE else android.view.View.GONE
+                    if (enabled) bar.start() else bar.stop()
+                }
+            }
+        }
+
+        /** 手指位置（归一化 0..1）与按下状态 → shader uniform，实现跟手折射 */
+        @JavascriptInterface
+        fun glassPointer(x: Float, y: Float, pressed: Boolean) {
+            glassBar?.setPointer(x, y, pressed)
+        }
+
+        /** 页面滚动冲量 → 折射强度与高光亮度 */
+        @JavascriptInterface
+        fun glassScroll(impulse: Float) {
+            glassBar?.setScroll(impulse)
+        }
     }
 
     override fun onDestroy() {

@@ -81,3 +81,50 @@ export function nativeRequestPermissions(): boolean {
     return false;
   }
 }
+
+/* ---------------------------------------------------- 原生 Liquid Glass --- */
+/* APK（Android 13+）里由原生层做真·背景折射；网页只负责开关与实时参数下发。 */
+
+interface DuofenGlassBridge {
+  glassMode?: (enabled: boolean) => void;
+  glassPointer?: (x: number, y: number, pressed: boolean) => void;
+  glassScroll?: (impulse: number) => void;
+}
+
+function glassBridge(): DuofenGlassBridge | undefined {
+  return (window as unknown as { DuofenNative?: DuofenGlassBridge }).DuofenNative;
+}
+
+/** 开启/关闭原生玻璃条（关闭时网页玻璃栏自己画） */
+export function nativeGlassMode(enabled: boolean): boolean {
+  const api = glassBridge();
+  if (typeof api?.glassMode !== 'function') return false;
+  try {
+    api.glassMode(enabled);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 手指位置（0..1）与按下状态：原生层据此实时折射 */
+export function nativeGlassPointer(x: number, y: number, pressed: boolean): void {
+  const api = glassBridge();
+  if (typeof api?.glassPointer !== 'function') return;
+  try {
+    api.glassPointer(x, y, pressed);
+  } catch {
+    /* 忽略 */
+  }
+}
+
+/** 页面滚动冲量（0..1）：驱动折射强度与高光 */
+export function nativeGlassScroll(impulse: number): void {
+  const api = glassBridge();
+  if (typeof api?.glassScroll !== 'function') return;
+  try {
+    api.glassScroll(impulse);
+  } catch {
+    /* 忽略 */
+  }
+}
