@@ -310,10 +310,10 @@ _配色算法、图标字体与字体裁剪_
 | --- | --- | --- | --- |
 | [@fontsource/roboto](https://fontsource.org/fonts/roboto) | 5.3.0 | OFL-1.1 | Google Inc. |
 | [@material/material-color-utilities](https://github.com/material-foundation/material-color-utilities/tree/main/typescript) | 0.4.0 | Apache-2.0 | Material Eng |
-| [fontkit](https://www.npmjs.com/package/fontkit) | 2.0.4 | MIT | Devon Govett <devongovett@gmail.com> |
+| [fontkit](https://www.npmjs.com/package/fontkit) | 2.0.4 | MIT | Devon Govett |
 | [material-symbols](https://marella.github.io/material-symbols/demo/) | 0.47.4 | Apache-2.0 | 未提供版权方信息 |
 | [Roboto](https://fonts.google.com/specimen/Roboto) | variable | Apache License 2.0 | Google Fonts |
-| [subset-font](https://github.com/papandreou/subset-font) | 2.7.0 | BSD-3-Clause | Andreas Lind <andreaslindpetersen@gmail.com> |
+| [subset-font](https://github.com/papandreou/subset-font) | 2.7.0 | BSD-3-Clause | Andreas Lind |
 
 ### 构建与开发工具
 

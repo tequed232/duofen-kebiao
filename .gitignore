@@ -19,3 +19,12 @@ node_modules/
 # Build output of the web app: keep dist/ (it is the deliverable), ignore caches
 web/node_modules/
 .vite/
+
+# 构建产物与本地验证产物：不进仓库（避免体积膨胀与误报）
+dist/
+app/src/main/assets/www/
+app/build/
+build/
+screenshots/
+screenshots-device/
+*.log

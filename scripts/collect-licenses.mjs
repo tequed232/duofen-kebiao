@@ -165,6 +165,16 @@ const REFERENCES = [
   },
 ];
 
+/** 去掉邮箱与主页链接，只保留人名（隐私要求） */
+function sanitizeHolder(value) {
+  return String(value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, ' ')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const pkg = JSON.parse(await readFile('package.json', 'utf8'));
 const names = Object.keys({ ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) }).sort();
 
@@ -181,9 +191,10 @@ for (const name of names) {
       ? meta.license
       : meta.license?.type ?? (Array.isArray(meta.licenses) ? meta.licenses.map((item) => item.type).join(' / ') : '未提供许可信息');
   const holder =
-    (typeof meta.author === 'string' ? meta.author : meta.author?.name) ??
-    (Array.isArray(meta.contributors) ? meta.contributors[0]?.name : undefined) ??
-    '未提供版权方信息';
+    sanitizeHolder(
+      (typeof meta.author === 'string' ? meta.author : meta.author?.name) ??
+        (Array.isArray(meta.contributors) ? meta.contributors[0]?.name : undefined),
+    ) || '未提供版权方信息';
   const category = CATEGORIES.find((item) => item.match.some((re) => re.test(name)))?.id ?? 'other';
   entries.push({
     category,

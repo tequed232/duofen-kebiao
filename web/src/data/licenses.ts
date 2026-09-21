@@ -75,7 +75,7 @@ export const LICENSE_GROUPS: LicenseGroup[] = [
         "title": "fontkit",
         "version": "2.0.4",
         "license": "MIT",
-        "holder": "Devon Govett <devongovett@gmail.com>",
+        "holder": "Devon Govett",
         "url": "https://www.npmjs.com/package/fontkit"
       },
       {
@@ -99,7 +99,7 @@ export const LICENSE_GROUPS: LicenseGroup[] = [
         "title": "subset-font",
         "version": "2.7.0",
         "license": "BSD-3-Clause",
-        "holder": "Andreas Lind <andreaslindpetersen@gmail.com>",
+        "holder": "Andreas Lind",
         "url": "https://github.com/papandreou/subset-font"
       }
     ]
