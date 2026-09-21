@@ -160,21 +160,11 @@ export default function AboutScreen() {
         </div>
 
         <div className="mt-16">
-          <SectionHeader icon="deployed_code" title="引入的模块（致谢）" />
+          <SectionHeader icon="inventory_2" title="开源相关" />
           <div className="about-note">
             <div className="md-body-small muted">
-              本项目站在这些开源项目之上，特此致谢（均为公开发布的库，未修改其源码）：
-            </div>
-            <div className="col gap-4 mt-8">
-              {MODULES.map((item) => (
-                <div className="row gap-8" key={item.title}>
-                  <MdIcon name="extension" size={16} />
-                  <a className="md-link md-body-small" href={item.url} target="_blank" rel="noopener noreferrer">
-                    {item.title}
-                  </a>
-                  <span className="md-body-small muted flex-1">{item.note}</span>
-                </div>
-              ))}
+              本项目引入的全部开源依赖（名称 / 版本 / 许可 / 版权·开发者）已按用途分类，
+              见 设置 → 开源相关；README 中也有同样的清单。感谢每一位作者与维护者。
             </div>
           </div>
 

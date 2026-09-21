@@ -31,7 +31,8 @@ export type RouteName =
   | 'schedule'
   | 'scheduleFilter'
   | 'about'
-  | 'textbookList';
+  | 'textbookList'
+  | 'licenses';
 
 export interface RouteEntry {
   key: string;

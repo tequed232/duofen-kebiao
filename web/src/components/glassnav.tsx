@@ -93,8 +93,10 @@ export function GlassNavBar({
   // APK：交给原生层做真·背景折射（网页玻璃层转透明，避免双层）
   useEffect(() => {
     if (!isNativeShell()) return;
-    nativeGlassMode(true);
-    innerRef.current?.classList.add('native-glass');
+    // 原生层仍在打磨（取景内容与混色还需调整）：暂用网页玻璃，保证观感
+    // 下一轮修好后再打开 nativeGlassMode(true)。
+    innerRef.current?.classList.remove('native-glass');
+    void nativeGlassMode;
     return () => nativeGlassMode(false);
   }, []);
 
@@ -210,6 +212,15 @@ export function GlassNavBar({
         <span className="glass-nav-refraction" aria-hidden="true" />
         {/* 镜面反射：高光位置跟随指针 */}
         <span className="glass-nav-specular" aria-hidden="true" />
+        {/* 选中指示器：一个会"滑"过去的圆，而不是在新标签上凭空出现 */}
+        <span
+          className="glass-nav-slider"
+          aria-hidden="true"
+          style={{
+            width: `calc((100% - 8px) / ${tabs.length})`,
+            transform: `translateX(calc(${Math.max(0, tabs.findIndex((tab) => tab.id === active))} * 100%))`,
+          }}
+        />
         {/* 水滴融合层：goo 滤镜把多颗水滴连成一体后散开 */}
         <span className="glass-drop-layer" aria-hidden="true">
           {drops.map((drop, index) => (
@@ -233,7 +244,6 @@ export function GlassNavBar({
               onPointerDown={(event) => spawnDrops(tab, event)}
               onClick={() => onSelect(tab.id)}
             >
-              <span className="glass-tab-indicator" aria-hidden="true" />
               <MdIcon name={tab.icon} size={22} filled={selected} />
               <span className="glass-tab-label">{tab.label}</span>
             </button>

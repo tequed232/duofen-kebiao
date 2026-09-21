@@ -57,6 +57,8 @@ export interface AppSettings {
   liquidGlass: boolean;
   /** 录音时发送实时通知（Android 16 实况通知 / ColorOS 流体云） */
   liveNotify: boolean;
+  /** 页面切换的过渡模式：M3 规范 / 仅淡入淡出 / 横向滑移 / 无动画 */
+  transition: 'm3' | 'fade' | 'slide' | 'none';
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -74,6 +76,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   schoolName: '广东财贸职业学院',
   liquidGlass: true,
   liveNotify: true,
+  transition: 'm3',
 };
 
 /** The live capture/draft session shown on the Home screen. */

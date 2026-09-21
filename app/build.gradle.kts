@@ -30,6 +30,8 @@ val (webVersionCode, webVersionName) = webVersion()
 
 /** 把 dist/ 同步进 app/src/main/assets/www（删除旧文件，保证不残留旧 bundle） */
 val syncWebAssets by tasks.registering(Copy::class) {
+    // 永远执行：Gradle 的 up-to-date 判定曾导致新构建没有进 APK（改样式看不到效果）
+    outputs.upToDateWhen { false }
     description = "Copy the web build (dist/) into the APK assets so the app matches the site"
     from(webDistDir)
     into(webAssetsDir)

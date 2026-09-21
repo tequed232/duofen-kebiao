@@ -15,6 +15,7 @@ import ScheduleScreen from './screens/ScheduleScreen';
 import ScheduleFilterScreen from './screens/ScheduleFilterScreen';
 import AboutScreen from './screens/AboutScreen';
 import TextbooksScreen from './screens/TextbooksScreen';
+import LicensesScreen from './screens/LicensesScreen';
 
 const SCREENS = {
   home: HomeScreen,
@@ -28,6 +29,7 @@ const SCREENS = {
   scheduleFilter: ScheduleFilterScreen,
   about: AboutScreen,
   textbookList: TextbooksScreen,
+  licenses: LicensesScreen,
 };
 
 /** Screens that own a bottom navigation bar keep the snackbar 16dp above it. */
@@ -35,12 +37,17 @@ const WITH_NAV_BAR: RouteName[] = ['home', 'camera', 'history', 'settings', 'sch
 
 export default function App() {
   const { current } = useNav();
-  const { ready } = useAppState();
+  const { ready, settings } = useAppState();
   const bottom = WITH_NAV_BAR.includes(current.route) ? 96 : 16;
 
   // 开屏：数据就绪后自动进入；进入时主页组件从下向上依次弹出
   const [splash, setSplash] = useState(true);
   const [entering, setEntering] = useState(false);
+
+  // 过渡模式：写到 <html data-transition> 上，由 CSS 决定动画（none = 瞬时切换）
+  useEffect(() => {
+    document.documentElement.dataset.transition = settings.transition;
+  }, [settings.transition]);
 
   useEffect(() => {
     if (splash) return undefined;

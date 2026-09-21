@@ -1,4 +1,4 @@
-/* ============================================================================
+﻿/* ============================================================================
    Component styles for the Material 3 Expressive app.
    Material Web components are themed through their documented CSS custom
    properties; everything else is a small amount of glue styling. Every color
@@ -1353,48 +1353,33 @@ md-filled-text-field {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  height: 68px;
-  padding: 6px;
-  border-radius: 34px;
+  /* 按酷安 16.6.2 实拍：高 ≈47dp、整条大胶囊、深色半透明 + 真实模糊 + 一圈细亮边 */
+  height: 62px;
+  padding: 4px;
+  border-radius: 999px;
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--md-sys-color-surface-container-high) 78%, transparent),
-      color-mix(in srgb, var(--md-sys-color-surface-container) 62%, transparent)
-    );
-  backdrop-filter: blur(22px) saturate(1.7);
-  -webkit-backdrop-filter: blur(22px) saturate(1.7);
-  border: 1px solid color-mix(in srgb, #ffffff 55%, transparent);
-  box-shadow:
-    0 10px 24px color-mix(in srgb, var(--md-sys-color-shadow) 26%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #ffffff 70%, transparent),
-    inset 0 -10px 18px color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 66%, transparent);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, #ffffff 16%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 34%, transparent);
 }
 
-/* 顶部反光条（玻璃质感的关键高光） */
+/* 顶部反光条：酷安的玻璃很"安静"，只留一条极淡的顶部反光 */
 .glass-nav-inner::before {
   content: '';
   position: absolute;
-  inset: 2px 8px auto 8px;
-  height: 42%;
-  border-radius: 28px;
-  background: linear-gradient(to bottom, color-mix(in srgb, #ffffff 46%, transparent), transparent);
+  inset: 1px 10px auto 10px;
+  height: 38%;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, color-mix(in srgb, #ffffff 12%, transparent), transparent);
   pointer-events: none;
 }
 
 /* 冰彩染色：呼应图标里的绿/紫/红玻璃药丸 */
 .glass-nav-inner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.5;
-  background:
-    radial-gradient(60% 90% at 12% 110%, color-mix(in srgb, var(--md-sys-color-primary) 26%, transparent), transparent 70%),
-    radial-gradient(55% 85% at 52% 115%, color-mix(in srgb, var(--md-sys-color-tertiary) 22%, transparent), transparent 72%),
-    radial-gradient(55% 85% at 92% 110%, color-mix(in srgb, var(--md-sys-color-error) 18%, transparent), transparent 72%);
+  display: none; /* 酷安是安静的玻璃：不要色斑 */
 }
 
 .glass-tab {
@@ -1423,30 +1408,30 @@ md-filled-text-field {
 }
 
 .glass-tab.active {
-  color: var(--md-sys-color-on-primary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
-/* 选中项的玻璃胶囊指示器 */
+/* 选中指示器：酷安是**圆形**（包住图标与文字），不是整块胶囊 */
 .glass-tab-indicator {
   position: absolute;
-  inset: 2px 4px;
-  border-radius: 26px;
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%) scale(0.86);
+  border-radius: 999px;
   opacity: 0;
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--md-sys-color-primary-container) 92%, #ffffff 8%),
-    color-mix(in srgb, var(--md-sys-color-primary-container) 70%, transparent)
-  );
-  border: 1px solid color-mix(in srgb, #ffffff 60%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #ffffff 80%, transparent),
-    0 4px 10px color-mix(in srgb, var(--md-sys-color-shadow) 18%, transparent);
-  transition: opacity 220ms linear, transform 260ms var(--md-sys-motion-spring-spatial-default, ease-out);
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 96%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 20%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 24%, transparent);
+  transition: opacity 200ms linear, transform 260ms var(--md-sys-motion-spring-spatial-default, ease-out);
   pointer-events: none;
 }
 
 .glass-tab.active .glass-tab-indicator {
   opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .glass-tab-label {
@@ -1765,4 +1750,190 @@ md-dialog:not([open]) {
 
 .glass-nav-inner.native-glass .glass-tab.active {
   color: var(--md-sys-color-on-surface);
+}
+
+/* 按酷安 16.6.2 实拍对齐底边栏（截图：1280×520 底栏裁切）
+   —— 胶囊整体：高≈47dp、左右留白≈15dp、深色半透明 + 真实模糊 + 细亮边；
+   —— 选中项：**圆形**指示器（酷安是圆不是胶囊），而非整块胶囊。 */
+.glass-nav {
+  padding: 8px 15px 10px;
+}
+
+.glass-nav-inner {
+  height: 62px;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 66%, transparent);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid color-mix(in srgb, #ffffff 16%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 34%, transparent);
+}
+
+/* 收敛此前的强折射/高光层：酷安是"安静"的玻璃，不需要夸张光带 */
+.glass-nav-refraction {
+  opacity: 0.28;
+}
+
+.glass-nav-specular {
+  opacity: 0.18;
+}
+
+/* 选中指示器改成圆形（酷安同款），包住图标与文字 */
+.glass-tab-indicator {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 92%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 22%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 26%, transparent);
+}
+
+.glass-tab {
+  height: 54px;
+  font-size: 11px;
+  line-height: 13px;
+  gap: 1px;
+}
+
+.glass-tab.active {
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* 最终修正（本文件末尾，优先级最高）：
+   酷安的玻璃是"安静"的玻璃——不要冰彩染色、不要可见色斑。
+   之前那块看起来像"橙色胶囊"的东西其实是 ::after 的染色层（暗色模式下 primary 是蜜桃色）。 */
+.glass-nav-inner::after {
+  display: none !important;
+}
+
+.glass-nav-refraction {
+  display: none !important;
+}
+
+.glass-nav-specular {
+  display: none !important;
+}
+
+.glass-nav-inner {
+  height: 62px !important;
+  padding: 4px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 68%, transparent) !important;
+  backdrop-filter: blur(20px) saturate(1.3) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
+  border: 1px solid color-mix(in srgb, #ffffff 16%, transparent) !important;
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 32%, transparent) !important;
+}
+
+.glass-tab-indicator {
+  inset: auto !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 54px !important;
+  height: 54px !important;
+  transform: translate(-50%, -50%) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 94%, transparent) !important;
+  border: 1px solid color-mix(in srgb, #ffffff 20%, transparent) !important;
+}
+
+.glass-tab.active .glass-tab-indicator {
+  transform: translate(-50%, -50%) scale(1) !important;
+}
+
+
+/* ==================== 底边栏最终版（对齐酷安 16.6.2 实拍） ==================== */
+.glass-nav-inner {
+  height: 62px !important;
+  padding: 4px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 68%, transparent) !important;
+  backdrop-filter: blur(20px) saturate(1.3) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
+  border: 1px solid color-mix(in srgb, #ffffff 16%, transparent) !important;
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 32%, transparent) !important;
+}
+
+.glass-nav-inner::after,
+.glass-nav-refraction,
+.glass-nav-specular {
+  display: none !important;
+}
+
+.glass-tab-indicator {
+  inset: auto !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 54px !important;
+  height: 54px !important;
+  transform: translate(-50%, -50%) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 94%, transparent) !important;
+  border: 1px solid color-mix(in srgb, #ffffff 20%, transparent) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent) !important;
+}
+
+.glass-tab.active .glass-tab-indicator {
+  transform: translate(-50%, -50%) scale(1) !important;
+}
+
+.glass-tab {
+  height: 54px !important;
+  font-size: 11px !important;
+  line-height: 13px !important;
+  gap: 1px !important;
+}
+
+.glass-tab.active {
+  color: var(--md-sys-color-on-secondary-container) !important;
+}
+
+
+/* 滑动式选中指示器（M3 一阶弹簧，平滑过渡而非跳变） */
+.glass-nav-slider {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 94%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 20%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 22%, transparent);
+  transition: transform 320ms cubic-bezier(0.05, 0.7, 0.1, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-tab-indicator {
+  display: none;
+}
+
+/* 开源相关列表（对齐酷安《开源相关》条目样式） */
+.license-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.license-link {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+}
+
+.license-link:hover {
+  background: var(--md-sys-color-surface-container-highest);
 }

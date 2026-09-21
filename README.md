@@ -281,3 +281,97 @@ node scripts/visual-parity.mjs   # 同一虚拟设备分别截 APK 内嵌资源�
 
 版本号也只有一个来源：`web/src/lib/meta.ts` 的 `APP_VERSION`（APK 的 versionName/versionCode 由它推导）。
 以前那套自绘的 Compose 课表页 / RTF 解析器 / 教材数据已经删除，避免出现第二套会漂移的实现。
+
+---
+
+<!-- LICENSES:BEGIN -->
+## 开源相关（Open source）
+
+本项目共引入 **22** 个开源依赖，按用途分门别类列出（与设置里「关于 → 开源相关」一致）。
+感谢每一位作者与维护者。
+
+> 自动生成：修改依赖后运行 `node scripts/collect-licenses.mjs` 重新整理。
+
+### 界面与组件
+
+_界面框架与 Material 3 组件_
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 |
+| --- | --- | --- | --- |
+| [@material/web](https://github.com/material-components/material-web) | 2.5.0 | Apache-2.0 | 未提供版权方信息 |
+| [liquid-glass-react](https://www.npmjs.com/package/liquid-glass-react) | 1.1.1 | MIT |  |
+| [react](https://react.dev/) | 19.3.0 | MIT | 未提供版权方信息 |
+| [react-dom](https://react.dev/) | 19.3.0 | MIT | 未提供版权方信息 |
+
+### 设计系统 · 图标 · 字体
+
+_配色算法、图标字体与字体裁剪_
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 |
+| --- | --- | --- | --- |
+| [@fontsource/roboto](https://fontsource.org/fonts/roboto) | 5.3.0 | OFL-1.1 | Google Inc. |
+| [@material/material-color-utilities](https://github.com/material-foundation/material-color-utilities/tree/main/typescript) | 0.4.0 | Apache-2.0 | Material Eng |
+| [fontkit](https://www.npmjs.com/package/fontkit) | 2.0.4 | MIT | Devon Govett <devongovett@gmail.com> |
+| [material-symbols](https://marella.github.io/material-symbols/demo/) | 0.47.4 | Apache-2.0 | 未提供版权方信息 |
+| [Roboto](https://fonts.google.com/specimen/Roboto) | variable | Apache License 2.0 | Google Fonts |
+| [subset-font](https://github.com/papandreou/subset-font) | 2.7.0 | BSD-3-Clause | Andreas Lind <andreaslindpetersen@gmail.com> |
+
+### 构建与开发工具
+
+_打包、类型与样式处理_
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 |
+| --- | --- | --- | --- |
+| [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react) | 5.2.0 | MIT | Evan You |
+| [typescript](https://www.typescriptlang.org/) | 5.9.3 | Apache-2.0 | Microsoft Corp. |
+| [vite](https://vite.dev) | 7.3.6 | MIT | Evan You |
+
+### 测试与验证
+
+_自动化验收（91 步）与逐屏视觉校验_
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 |
+| --- | --- | --- | --- |
+| [playwright](https://playwright.dev) | 1.63.0 | Apache-2.0 | Microsoft Corporation |
+
+### Android 运行时
+
+_APK（WebView 宿主）用到的库_
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 |
+| --- | --- | --- | --- |
+| [androidx.activity:activity-ktx](https://developer.android.com/jetpack/androidx/releases/activity) | 1.10.0 | Apache License 2.0 | The Android Open Source Project |
+| [androidx.core:core-ktx](https://developer.android.com/jetpack/androidx) | 1.15.0 | Apache License 2.0 | The Android Open Source Project |
+| [androidx.webkit:webkit](https://developer.android.com/jetpack/androidx/releases/webkit) | 1.12.1 | Apache License 2.0 | The Android Open Source Project |
+| [Kotlin Standard Library](https://kotlinlang.org) | 2.0.x | Apache License 2.0 | JetBrains |
+
+### 部署与安全
+
+_反爬、CDN 与持续监控_
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 |
+| --- | --- | --- | --- |
+| [Anubis](https://github.com/TecharoHQ/anubis) | v1.27.0（deploy/anubis 锁定） | MIT License | TecharoHQ |
+| [Cloudflare CDN / Pages](https://www.cloudflare.com) | — | 商业服务（配置见 deploy/cloudflare） | Cloudflare, Inc. |
+
+### 其他
+
+_未归类的依赖_
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 |
+| --- | --- | --- | --- |
+| [@types/react](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react) | 19.3.0 | MIT | Asana |
+| [@types/react-dom](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) | 19.3.0 | MIT | Asana |
+
+### 参考实现（未引入代码）
+
+| 名称 | 版本 | 许可 | 版权 / 开发者 | 说明 |
+| --- | --- | --- | --- | --- |
+| [AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass) | — | Apache License 2.0 | Kyant0 | 酷安底边栏液体玻璃的实现（本项目仅参考其思路：背景采样 + 色调 + 边缘渐隐 + 触摸光斑） |
+| [Shapes](https://github.com/Kyant0/AndroidLiquidGlass) | — | Apache License 2.0 | Kyant | 酷安使用的形状库（胶囊/圆角） |
+| [free_reflection](https://github.com/tiann/FreeReflection) | 2.0.0 | 未提供许可信息 | weishu | 酷安用于反射调用隐藏 API |
+| [liquid-glass-react](https://github.com/rdev/liquid-glass-react) | 1.1.1 | MIT License | rdev | Apple 风格 Liquid Glass 的 React 实现（已装依赖，当前底边栏为自绘） |
+| [liquid-dom](https://github.com/AndrewPrifer/liquid-dom) | — | MIT License | Andrew Prifer | Web 端玻璃透镜折射参考 |
+| [shuding/liquid-glass](https://github.com/shuding/liquid-glass) | — | MIT License | Shu Ding | SVG + Canvas 玻璃着色器参考 |
+
+<!-- LICENSES:END -->

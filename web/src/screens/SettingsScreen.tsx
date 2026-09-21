@@ -25,6 +25,7 @@ export default function SettingsScreen() {
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   /** 点数字直接输入精确值 */
   const [styleDialogOpen, setStyleDialogOpen] = useState(false);
+  const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [valueDialog, setValueDialog] = useState<'speech' | 'camera' | null>(null);
   const [valueDraft, setValueDraft] = useState('');
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
@@ -227,6 +228,24 @@ export default function SettingsScreen() {
               </div>
             </md-list-item>
 
+            {/* -------------------------------------- 过渡效果（切换模式可选） */}
+            <md-list-item type="button" className="rounded-middle" onClick={() => setTransitionDialogOpen(true)}>
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="animation" />
+              </div>
+              <div slot="headline">过渡效果</div>
+              <div slot="supporting-text">
+                {settings.transition === 'm3'
+                  ? 'Material 3：标签淡入淡出、前进/返回横向滑移'
+                  : settings.transition === 'fade'
+                    ? '仅淡入淡出（最柔和）'
+                    : settings.transition === 'slide'
+                      ? '一律横向滑移'
+                      : '无动画：瞬时切换（最稳）'}
+              </div>
+              <MdIcon slot="end" name="chevron_right" />
+            </md-list-item>
+
             {/* ------------------------------------------------ 5 API编辑 */}
             <md-list-item
               type="button"
@@ -335,6 +354,16 @@ export default function SettingsScreen() {
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
 
+            {/* -------------------------------------- 开源相关（分类清单） */}
+            <md-list-item type="button" className="rounded-outer-bottom" onClick={() => nav.push('licenses', {}, 'slide')}>
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="inventory_2" />
+              </div>
+              <div slot="headline">开源相关</div>
+              <div slot="supporting-text">本项目引入的全部开源依赖（按用途分类）与参考实现</div>
+              <MdIcon slot="end" name="chevron_right" />
+            </md-list-item>
+
 
 
 
@@ -415,6 +444,37 @@ export default function SettingsScreen() {
         输入 0–100 的整数；0/25/50/75/100 是滑块上的卡扣位置。
         <div className="mt-12">
           <MdTextField label="数值（0–100）" value={valueDraft} onValueChange={setValueDraft} type="number" />
+        </div>
+      </MdDialog>
+
+      <MdDialog
+        open={transitionDialogOpen}
+        headline="过渡效果"
+        onClosed={() => setTransitionDialogOpen(false)}
+        actions={<md-text-button onClick={() => setTransitionDialogOpen(false)}>取消</md-text-button>}
+      >
+        选择页面切换的动画方式（立即生效并保存）：
+        <div className="col gap-8 mt-12">
+          {([
+            ['m3', 'Material 3 规范（推荐）：标签淡入淡出，前进/返回横向滑移'],
+            ['fade', '仅淡入淡出：最柔和，无位移'],
+            ['slide', '一律横向滑移'],
+            ['none', '无动画：瞬时切换（设备吃力时最稳）'],
+          ] as const).map(([value, label]) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setTransitionDialogOpen(false);
+                updateSettings(
+                  { transition: value },
+                  { message: `已切换过渡效果：${label.split('：')[0]}` },
+                );
+              }}
+            >
+              {settings.transition === value ? '✓ ' : ''}
+              {label}
+            </md-outlined-button>
+          ))}
         </div>
       </MdDialog>
 

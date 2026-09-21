@@ -116,44 +116,106 @@ body {
     opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
 }
 
-/* ------------------------------------------------------- screen transitions */
-/* ------------------------------------------------------- screen transitions */
-/* 统一为「浮动」过渡：新页面从下方轻微浮起并淡入，返回时反向浮下（同一套弹簧） */
-@keyframes float-in {
+/* ==================================================== 页面过渡（M3 规范） ==
+   替换此前"浮动弹入"的做法：按 M3 的 Fade through 与 Shared axis X 实现，
+   位移更小、无弹跳，视觉上是平滑转换而不是跳入。 */
+
+/* 标签切换：Fade through（无位移） */
+@keyframes m3-fade-through-in {
   from {
-    transform: translate3d(0, 26px, 0) scale(0.94);
     opacity: 0;
+    transform: scale(0.92);
   }
   to {
-    transform: translate3d(0, 0, 0) scale(1);
     opacity: 1;
+    transform: scale(1);
   }
 }
 
-@keyframes float-out {
+@keyframes m3-fade-through-out {
   from {
-    transform: translate3d(0, 0, 0) scale(1);
     opacity: 1;
+    transform: scale(1);
   }
   to {
-    transform: translate3d(0, 18px, 0) scale(0.96);
     opacity: 0;
+    transform: scale(0.92);
   }
 }
 
-.screen.enter-slide,
+/* 前进 / 返回：Shared axis X（30dp 横向滑移 + 淡入淡出） */
+@keyframes m3-shared-axis-in {
+  from {
+    opacity: 0;
+    transform: translate3d(30px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m3-shared-axis-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-30px, 0, 0);
+  }
+}
+
+@keyframes m3-shared-axis-back-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-30px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes m3-shared-axis-back-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(30px, 0, 0);
+  }
+}
+
+/* M3 标准时长：入场 210ms（emphasized decelerate），出场 90ms（emphasized accelerate） */
 .screen.enter-fade,
 .screen.enter-zoom {
-  animation: float-in var(--md-sys-motion-spring-spatial-default-duration, 500ms)
-    var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)) both;
+  animation: m3-fade-through-in 210ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
 }
 
-.screen.exit-slide,
 .screen.exit-fade,
 .screen.exit-zoom {
-  animation: float-out var(--md-sys-motion-spring-spatial-fast-duration, 350ms)
-    var(--md-sys-motion-spring-spatial-fast, cubic-bezier(0.4, 0, 0.6, 1)) both;
+  animation: m3-fade-through-out 90ms cubic-bezier(0.3, 0, 0.8, 0.15) both;
   pointer-events: none;
+}
+
+.screen.enter-slide {
+  animation: m3-shared-axis-in 300ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+.screen.exit-slide {
+  animation: m3-shared-axis-out 300ms cubic-bezier(0.3, 0, 0.8, 0.15) both;
+  pointer-events: none;
+}
+
+/* 返回（pop）时反向：页面从左侧滑回、当前页向右退出 */
+.screen.enter-slide.back {
+  animation-name: m3-shared-axis-back-in;
+}
+
+.screen.exit-slide.back {
+  animation-name: m3-shared-axis-back-out;
 }
 /* ------------------------------------------------------------------ utils */
 .row {
@@ -497,4 +559,24 @@ html.native-shell .phone {
   .course-chip {
     font-size: 11px;
   }
+}
+/* 兜底：低性能设备或用户关闭动效时，标签切换直接瞬时切换（不做任何过渡动画），
+   避免"跳入"观感；由 perf.ts 写入 html[data-perf=low]。 */
+html[data-perf='low'] .screen.enter-fade,
+html[data-perf='low'] .screen.exit-fade,
+html[data-perf='low'] .screen.enter-zoom,
+html[data-perf='low'] .screen.exit-zoom,
+html[data-perf='low'] .screen.enter-slide,
+html[data-perf='low'] .screen.exit-slide {
+  animation: none !important;
+}
+
+html[data-perf='low'] .glass-nav-slider {
+  transition: none !important;
+}
+
+
+/* 非活动屏幕（栈中其余页面）绝不能接收点击：避免两个底边栏叠加造成双击跳转 */
+.screen[aria-hidden='true'] {
+  pointer-events: none !important;
 }
