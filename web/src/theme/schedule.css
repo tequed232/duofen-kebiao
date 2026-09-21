@@ -19,15 +19,16 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: -30%;
-  height: 165%;
+  top: -18px;
+  height: 132px;
   background-image: url('/art/cc0-header.jpg');
   background-size: cover;
-  background-position: 50% 20%;
-  opacity: 0.10;
+  background-size: 190%;
+  background-position: 50% 16%;
+  opacity: 0.14;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.22) 55%, transparent 88%);
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.22) 55%, transparent 88%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 82%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 82%);
 }
 
 .schedule-head > * {

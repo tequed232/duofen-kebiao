@@ -42,6 +42,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var confirmReceiver: android.content.BroadcastReceiver? = null
+    private var insetTopPx = 0
+    private var insetBottomPx = 0
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -83,6 +85,12 @@ class MainActivity : ComponentActivity() {
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             webChromeClient = chromeClient()
             webViewClient = object : WebViewClient() {
+                /** 页面每次加载完成后重新注入一次 insets（首次注入会被页面加载冲掉） */
+                override fun onPageFinished(view: WebView, url: String) {
+                    super.onPageFinished(view, url)
+                    injectInsets()
+                    view.postDelayed({ injectInsets() }, 600)
+                }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                     assetLoader.shouldInterceptRequest(request.url)
 
@@ -141,13 +149,11 @@ class MainActivity : ComponentActivity() {
             val cutout = insets.getInsets(WindowInsetsCompat.Type.displayCutout())
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.updatePadding(left = cutout.left, right = cutout.right)
-            view.post {
-                webView.evaluateJavascript(
-                    "document.documentElement.style.setProperty('--native-inset-top','${bars.top / resources.displayMetrics.density}px');" +
-                        "document.documentElement.style.setProperty('--native-inset-bottom','${bars.bottom / resources.displayMetrics.density}px');",
-                    null,
-                )
-            }
+            // 记录 insets：网页加载完成后再注入一次（首次注入常常发生在页面加载前而被冲掉，
+            // 这正是「安全区没生效」的原因）
+            insetTopPx = bars.top
+            insetBottomPx = bars.bottom
+            injectInsets()
             insets
         }
         ViewCompat.requestApplyInsets(webView)
@@ -167,6 +173,14 @@ class MainActivity : ComponentActivity() {
                 }
             },
         )
+    }
+
+    /** 把系统栏高度写进 CSS 变量（dp，除以 density；网页据此给顶栏留白） */
+    private fun injectInsets() {
+        val density = resources.displayMetrics.density
+        val js = "document.documentElement.style.setProperty('--native-inset-top','${insetTopPx / density}px');" +
+            "document.documentElement.style.setProperty('--native-inset-bottom','${insetBottomPx / density}px');"
+        webView.post { webView.evaluateJavascript(js, null) }
     }
 
     private fun chromeClient() = object : WebChromeClient() {
