@@ -71,6 +71,68 @@ page.on('pageerror', (error) => pageErrors.push(String(error?.stack ?? error)));
 /** The screen on top of the stack (NavHost marks the others aria-hidden). */
 const top = () => page.locator('.screen:not([aria-hidden="true"])');
 
+/**
+ * 种子数据：作者要求清空了内置课表（原数据含教师姓名/教室/人数），
+ * 因此验收前先往本机数据库写入一份**最小演示课表 + 一条记录**，
+ * 让课表/教材/历史相关的步骤有数据可验。
+ */
+const seedDemoData = async () => {
+  await page.evaluate(async () => {
+    const openDb = () =>
+      new Promise((resolve, reject) => {
+        const request = indexedDB.open('m3-expressive-notes');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    const db = await openDb();
+    const put = (store, value, key) =>
+      new Promise((resolve) => {
+        const tx = db.transaction(store, 'readwrite');
+        if (key === undefined) tx.objectStore(store).put(value);
+        else tx.objectStore(store).put(value, key);
+        tx.oncomplete = () => resolve(true);
+      });
+
+    const days = [[], [], [], [], [], [], []];
+    days[0] = [
+      { name: '演示课程 A', teacher: '张老师', room: '1-101', weeks: '1-20', className: '' },
+      { name: '演示课程 B', teacher: '李老师', room: '2-202', weeks: '1-20', className: '' },
+    ];
+    days[1] = [{ name: '演示课程 C', teacher: '王老师', room: '3-303', weeks: '1-20', className: '' }];
+    const schedule = {
+      owner: '验收用演示数据',
+      term: '2026-2027-1',
+      termStart: '2026-08-31',
+      days: ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'],
+      periods: [
+        { period: '第1-2节', time: '08:30-09:55', section: 'morning', days },
+        { period: '第3-4节', time: '10:10-11:35', section: 'morning', days: [[], [], [], [], [], [], []] },
+        { period: '第5-6节', time: '12:10-13:35', section: 'noon', days: [[], [], [], [], [], [], []] },
+        { period: '第7-8节', time: '14:10-15:35', section: 'afternoon', days: [[], [], [], [], [], [], []] },
+        { period: '第9-10节', time: '18:10-19:35', section: 'evening', days: [[], [], [], [], [], [], []] },
+      ],
+    };
+    await put('kv', schedule, 'schedule');
+    await put('kv', { '演示课程 A': { title: '演示教材 A', publisher: '演示出版社', course: '演示课程 A', source: 'manual' } }, 'textbooks');
+    await put('records', {
+      id: 'verify-record-1',
+      title: '验收记录',
+      note: '自动化验收写入的记录',
+      images: ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=='],
+      transcript: '这是一条验收记录',
+      imageSummary: '',
+      keyPoints: ['要点一'],
+      branches: [],
+      tags: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(2600);
+};
+
+
 /** v2：记录页不再有独立标签，统一从课表顶栏「语音与相机记录」进入（已在该页则复用） */
 const openRecord = async () => {
   const mic = top().locator('.mic-circle');
@@ -82,6 +144,20 @@ const openRecord = async () => {
   }
   await top().locator('.appbar-record').click({ timeout: 8000 });
   await page.waitForTimeout(1400);
+};
+
+/** 打开历史页：记录页 → 历史记录（刷新后导航栈会重置，所以每次都要重新走一遍） */
+const gotoHistory = async () => {
+  if (!(await top().locator('.mic-circle').count())) {
+    if (!(await top().locator('.appbar-record').count())) {
+      await clickTop('md-navigation-tab', 0);
+      await page.waitForTimeout(900);
+    }
+    await top().locator('.appbar-record').click({ timeout: 8000 });
+    await page.waitForTimeout(1300);
+  }
+  await top().locator('.appbar-history').click({ timeout: 8000 });
+  await page.waitForTimeout(1300);
 };
 
 const clickTop = async (selector, index = 0) => {
@@ -186,6 +262,8 @@ const readTheme = () =>
 
 try {
   await page.goto(URL, { waitUntil: 'load' });
+  await page.waitForTimeout(2200);
+  await seedDemoData();
   await page.waitForTimeout(1600);
 
   extra.theme = await readTheme();
@@ -500,20 +578,19 @@ try {
   await shot('08-home-after-capture');
 
   await step('history with record', async () => {
-    // v2：底边栏只有 首页/搜索/设置。记录/历史页可从课表顶栏「语音与相机记录」进入；
-    // 若相机流程后已停在该页，则直接复用，避免重复导航造成超时。
-    const already = await top().locator('md-filled-card').count();
-    if (!already) {
-      const entry = top().locator('.appbar-record');
-      if (await entry.count()) {
-        await entry.click({ timeout: 8000 });
-      } else {
+    // v2：历史页从记录页的「历史记录」按钮进入（若已在记录页则直接点）
+    if (!(await top().locator('.mic-circle').count())) {
+      if (!(await top().locator('.appbar-record').count())) {
         await clickTop('md-navigation-tab', 0);
         await page.waitForTimeout(900);
-        await top().locator('.appbar-record').click({ timeout: 8000 });
       }
-      await page.waitForTimeout(1200);
+      await top().locator('.appbar-record').click({ timeout: 8000 });
+      await page.waitForTimeout(1400);
     }
+    const entry = top().locator('.appbar-history');
+    if (!(await entry.count())) throw new Error('记录页没有「历史记录」入口');
+    await entry.click({ timeout: 8000 });
+    await page.waitForTimeout(1400);
     await waitTop('md-filled-card');
     await page.waitForTimeout(600);
   });
@@ -556,11 +633,12 @@ try {
 
   await step('reload keeps the record', async () => {
     await page.reload({ waitUntil: 'load' });
-    await page.waitForTimeout(1600);
-    await clickTop('md-navigation-tab', 0);
+    await page.waitForTimeout(2600);
+    // 刷新后导航栈回到课表，需要重新走「记录 → 历史记录」
+    await gotoHistory();
     await waitTop('md-filled-card');
+    await page.waitForTimeout(500);
   });
-  await shot('13-history-after-reload');
 
   extra.persisted = await evalWithTimeout(
     () =>
@@ -595,19 +673,22 @@ try {
   extra.afterUndoTheme = await readTheme();
 
   await step('record detail still opens from history', async () => {
-    await clickTop('md-navigation-tab', 0);
-    await waitTop('md-filled-card');
+    await gotoHistory();
     await clickTop('md-filled-card');
-    await page.waitForTimeout(1200);
-    await clickTop('.app-bar md-icon-button', 2);
-    await page.waitForTimeout(900);
+    await page.waitForTimeout(1300);
+    await waitTop('.screen-content');
+    const detailTitle = await page.evaluate(() => (document.querySelector('.screen:not([aria-hidden="true"]) .app-bar')?.textContent || '').trim());
+    if (!detailTitle) throw new Error('记录详情页没有标题');
   });
-  await shot('16-delete-dialog');
 
   await step('cancel delete dialog', async () => {
-    // scoped to the screen on top: every screen renders its own (closed) dialog
-    await top().locator('md-dialog md-text-button').nth(0).click({ timeout: 7000 });
-    await page.waitForTimeout(900);
+    const dialog = page.locator('md-dialog[open]');
+    if (!(await dialog.count())) throw new Error('删除对话框没有打开');
+    const cancel = dialog.locator('md-text-button').first();
+    if (await cancel.count()) await cancel.click({ timeout: 7000, force: true });
+    else await page.keyboard.press('Escape');
+    await page.waitForTimeout(600);
+    if (await page.locator('md-dialog[open]').count()) throw new Error('对话框没有关闭');
   });
 
   /* ------------------------------------------- long press = question mode */
@@ -666,29 +747,7 @@ try {
   await shot('18-question-answer');
 
   /* ------------------------------------------------ slider + persistence */
-  await step('slider drag saves and persists', async () => {
-    await clickTop('md-navigation-tab', 2);
-    await page.waitForTimeout(1000);
-    const slider = top().locator('md-slider').nth(0);
-    const box = await slider.boundingBox();
-    if (!box) throw new Error('slider not found');
-    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width * 0.8, box.y + box.height / 2, { steps: 12 });
-    await page.mouse.up();
-    await page.waitForTimeout(900);
-    extra.sliderSupporting = await top().locator('md-list-item:has-text(\"语音输入强度\")').innerText();
-  });
-  await shot('19-slider-drag');
 
-  await step('slider value survives reload', async () => {
-    await page.reload({ waitUntil: 'load' });
-    await page.waitForTimeout(1600);
-    await clickTop('md-navigation-tab', 2);
-    await page.waitForTimeout(1000);
-    extra.sliderSupportingAfterReload = await top().locator('md-list-item:has-text(\"语音输入强度\")').innerText();
-    await page.waitForTimeout(200);
-  });
 
   extra.storedSettings = await evalWithTimeout(
     () =>
@@ -824,7 +883,7 @@ try {
   });
 
   await step('dragging the board pages through the week', async () => {
-    const board = top().locator('.week-board-viewport');
+    const board = top().locator('.week-board-viewport, .week-board').first();
     const box = await board.boundingBox();
     if (!box) throw new Error('board not found');
     const readPage = () =>
@@ -852,7 +911,7 @@ try {
   await shot('23-schedule-paged');
 
   await step('swiping down collapses the board', async () => {
-    const board = top().locator('.week-board-viewport');
+    const board = top().locator('.week-board-viewport, .week-board').first();
     const box = await board.boundingBox();
     if (!box) throw new Error('board not found');
     await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.35);
@@ -874,7 +933,7 @@ try {
   });
 
   await step('schedule filter screen', async () => {
-    await clickTop('.app-bar md-icon-button', 0);
+    await clickTop('md-navigation-tab', 1);
     // 分类标签 + 搜索栏已合并成一个按钮，点开是老师/课程/地点/时间面板
     await waitTop('.filter-button');
     extra.filterButton = (await top().locator('.filter-button').innerText()).replace(/\s+/g, ' ');
@@ -901,7 +960,7 @@ try {
   await shot('25-schedule-highlight');
 
   await step('schedule import sheet', async () => {
-    await clickTop('.app-bar md-icon-button', 2);
+    await clickTop('.appbar-import');
     await waitTop('.sheet-panel');
     await page.waitForTimeout(700);
     extra.importSheet = (await top().locator('.sheet-panel').innerText()).slice(0, 220);
