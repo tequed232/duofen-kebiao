@@ -1,4 +1,4 @@
-﻿/* ============================================================================
+/* ============================================================================
    课表 (course schedule) screen styles: the four-day table with its 早/中/晚 time
    axis, the selected day timeline, the course detail sheet and the map chooser.
    ========================================================================= */
@@ -8,27 +8,18 @@
   padding: 0 16px 8px;
 }
 
-/* 课表页头图：作者提供的 CC0 素材（见 docs/asset-permissions.md）。
-   压到 16% 不透明度并向下渐隐 —— 只看得到氛围，不会盖住文字、也不刺眼。 */
-.schedule-head {
-  position: relative;
-  overflow: hidden;
-}
-
+/* 课表页头图：权利人提供的原图（见 docs/asset-permissions.md）。
+   **整张显示、不裁切、不重编码**（权利人要求，也避免任何 AI 修改）：
+   用 contain + 居中，不再 cover / 放大 / 渐隐；图片在标题下独立成块，不压文字。 */
 .schedule-hero {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: -18px;
-  height: 132px;
-  background-image: url('/art/cc0-header.jpg');
-  background-size: cover;
-  background-size: 190%;
-  background-position: 50% 16%;
-  opacity: 0.14;
+  position: relative;
+  height: 176px;
+  margin: 0 auto;
+  background-image: url('/art/schedule-hero.jpg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center top;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 82%);
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.5) 35%, transparent 82%);
 }
 
 .schedule-head > * {

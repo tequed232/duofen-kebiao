@@ -62,7 +62,7 @@ miratsu 老师您好，
 
 | 素材 | 来源 | 授权 | 用途 | 状态 |
 | --- | --- | --- | --- | --- |
-| `web/public/art/cc0-header.jpg` | 项目作者提供：由 Gemini 基于 **CC0** 素材生成（作者付费生成） | CC0（公有领域，无需署名，仍致谢） | 课表页头图（16% 不透明度、向下渐隐，不影响可读性） | ✅ approved |
+| `web/public/art/schedule-hero.jpg` | 项目作者 2026-09-23 在会话内直接提供（权利人 / 署名口径待确认） | 按权利人给出的许可使用；**原图直出：不裁切、不缩放、不重编码**（与「不允许任何形式的 AI 修改」一致） | 课表页头图：整张 `contain` 居中显示，独立成块、不压文字 | ✅ approved |
 | `web/src/assets/avatars/*.jpg`、`*.webp`（4 张 GitHub + 2 张 B 站 + 2 张备用） | 各贡献者本人的平台公开头像：GitHub `github.com/<user>.png?size=240`；B 站 `api.bilibili.com/x/web-interface/card` 的 `face` + `@240w_240h_1c.webp` | 各人本人的公开头像，非商业致谢用途；项目作者（tequed232）确认可抓取 | 「关于 → 致谢 · 名片墙」的圆形头像（40dp / 52dp），加载失败自动退回姓名首字 | ✅ approved |
 | `web/src/assets/avatars/luo-bili.webp`、`binggan-bili.webp` | 同上（B 站头像） | 备用文件：把作者本人 / 饼干的名片头像从 GitHub 换回 B 站时使用 | 同上 | ⏸ 备用，当前未被引用 |
 
@@ -89,4 +89,5 @@ miratsu 老师您好，
    因此米达达的作品**不要打包进构建产物**（当前只署名 + 链接，未打包任何作品本身，是安全的）；
    真要引入其作品，需要单独确认许可范围。
 
-> 该素材由作者本人提供并声明为 CC0，登记后使用；「关于 → 致谢」中同样列出。
+> 「关于 → 致谢 · 名片墙」中同样列出；`web/public/art/schedule-hero.jpg` 为课表页头图，**保持原图不裁切**，
+> 任何替换都必须整张显示（替换文件即可，不要做裁剪 / 压缩重编码）。
