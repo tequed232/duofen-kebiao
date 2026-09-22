@@ -614,7 +614,9 @@ md-primary-tab {
 
 
 /* ================ 过渡效果：按设置分流（html[data-transition]） ============== */
-/* none：瞬时切换，不做任何动画（"最稳"的切换模式） */
+/* 屏幕切换已统一为「中间弹出」（见 base.css 的 m3-pop-in / m3-pop-out）：
+   这里只保留「无动画」这一档 —— 低性能设备或用户明确关掉动效时用。
+   旧设置里保存的 m3 / fade / slide 值一律走中间弹出，不再区分方向。 */
 html[data-transition='none'] .screen.enter-fade,
 html[data-transition='none'] .screen.exit-fade,
 html[data-transition='none'] .screen.enter-zoom,
@@ -622,28 +624,6 @@ html[data-transition='none'] .screen.exit-zoom,
 html[data-transition='none'] .screen.enter-slide,
 html[data-transition='none'] .screen.exit-slide {
   animation: none !important;
-}
-
-/* fade：一律淡入淡出（无位移） */
-html[data-transition='fade'] .screen.enter-slide,
-html[data-transition='fade'] .screen.enter-zoom {
-  animation: m3-fade-through-in 210ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
-}
-
-html[data-transition='fade'] .screen.exit-slide,
-html[data-transition='fade'] .screen.exit-zoom {
-  animation: m3-fade-through-out 90ms cubic-bezier(0.3, 0, 0.8, 0.15) both;
-}
-
-/* slide：一律横向滑移 */
-html[data-transition='slide'] .screen.enter-fade,
-html[data-transition='slide'] .screen.enter-zoom {
-  animation: m3-shared-axis-in 300ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
-}
-
-html[data-transition='slide'] .screen.exit-fade,
-html[data-transition='slide'] .screen.exit-zoom {
-  animation: m3-shared-axis-out 300ms cubic-bezier(0.3, 0, 0.8, 0.15) both;
 }
 
 
@@ -802,55 +782,8 @@ html[data-ui-scale='large'] .stage {
 
 /* ==================== 过渡动画：纯左右平移（作者要求，非卡片式） ====================
    全部导航只做水平位移，不做缩放/淡入位移混合：
-     forward（前进）：新页从右侧 100% 滑入，旧页向左 100% 滑出
-     back（返回）  ：新页从左侧 100% 滑入，旧页向右 100% 滑出
-   关闭动效时（data-transition=none / 低性能设备）不做任何动画。 */
-@keyframes pure-slide-in-right {
-  from { transform: translate3d(100%, 0, 0); }
-  to { transform: translate3d(0, 0, 0); }
-}
-
-@keyframes pure-slide-out-left {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(-100%, 0, 0); }
-}
-
-@keyframes pure-slide-in-left {
-  from { transform: translate3d(-100%, 0, 0); }
-  to { transform: translate3d(0, 0, 0); }
-}
-
-@keyframes pure-slide-out-right {
-  from { transform: translate3d(0, 0, 0); }
-  to { transform: translate3d(100%, 0, 0); }
-}
-
-/* 入场 / 出场：三种 transition 名称统一走纯平移（fade/zoom 也平移，避免卡片感） */
-.screen.enter-slide,
-.screen.enter-fade,
-.screen.enter-zoom {
-  animation: pure-slide-in-right 320ms cubic-bezier(0.2, 0, 0, 1) both;
-}
-
-.screen.exit-slide,
-.screen.exit-fade,
-.screen.exit-zoom {
-  animation: pure-slide-out-left 320ms cubic-bezier(0.2, 0, 0, 1) both;
-}
-
-.screen.dir-back.enter-slide,
-.screen.dir-back.enter-fade,
-.screen.dir-back.enter-zoom {
-  animation-name: pure-slide-in-left;
-}
-
-.screen.dir-back.exit-slide,
-.screen.dir-back.exit-fade,
-.screen.dir-back.exit-zoom {
-  animation-name: pure-slide-out-right;
-}
-
-/* 关闭动效：瞬时切换 */
+/* 屏幕切换统一为「中间弹出」：动画定义在 base.css（m3-pop-in / m3-pop-out），
+   这里只负责「关闭动效」这一档 —— 低性能设备或用户选了「无动画」时瞬时切换。 */
 html[data-transition='none'] .screen,
 html[data-perf='low'] .screen {
   animation: none !important;

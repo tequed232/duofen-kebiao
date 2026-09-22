@@ -29,7 +29,7 @@ export interface AppSettings {
   insetBottom: number;
   /** 提前多少分钟提醒（可调） */
   classReminderLead: number;
-  /** 页面切换的过渡模式：M3 规范 / 仅淡入淡出 / 横向滑移 / 无动画 */
+  /** 页面切换：m3 = 中间弹出（默认，唯一动效）；none = 无动画（兼容旧的 fade / slide 值） */
   transition: 'm3' | 'fade' | 'slide' | 'none';
 }
 

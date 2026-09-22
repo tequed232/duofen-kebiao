@@ -16,6 +16,9 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.window.BackEvent
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
@@ -189,21 +192,60 @@ class MainActivity : ComponentActivity() {
         }
         ViewCompat.requestApplyInsets(webView)
 
-        // 可预测式返回：先走网页自己的历史栈，退无可退再退出应用
-        onBackPressedDispatcher.addCallback(
-            this,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
-                    if (webView.canGoBack()) {
-                        webView.goBack()
-                    } else {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
-                        isEnabled = true
+        // 返回：优先走网页自己的历史栈，退无可退再退出应用。
+        // Android 14+（API 34）走**可预测式返回**：把手势的 开始 / 进度 / 取消 / 触发 四相
+        // 通过 JS 转发给网页，网页据此把「上一屏」按手势进度从画面中间放大弹出（与统一转场同一套缩放），
+        // 手势取消就退回原状；旧系统回落到普通的 OnBackPressedCallback。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                object : OnBackInvokedCallback {
+                    override fun onBackStarted(backEvent: BackEvent) {
+                        notifyWebBack("start", 0f)
                     }
-                }
-            },
-        )
+
+                    override fun onBackProgressed(backEvent: BackEvent) {
+                        notifyWebBack("progress", backEvent.progress)
+                    }
+
+                    override fun onBackCancelled() {
+                        notifyWebBack("cancel", 0f)
+                    }
+
+                    override fun onBackInvoked() {
+                        performBack()
+                    }
+                },
+            )
+        } else {
+            onBackPressedDispatcher.addCallback(
+                this,
+                object : OnBackPressedCallback(true) {
+                    override fun handleOnBackPressed() {
+                        performBack()
+                    }
+                },
+            )
+        }
+    }
+
+    /** 网页侧的历史栈优先；栈空了才真的退出应用 */
+    private fun performBack() {
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            finish()
+        }
+    }
+
+    /** 把返回手势的相位与进度同步给网页（仅 Android 14+ 的预测式返回会用到） */
+    private fun notifyWebBack(phase: String, progress: Float) {
+        val call = if (phase == "progress") {
+            "window.DuofenBack&&window.DuofenBack.progress($progress);"
+        } else {
+            "window.DuofenBack&&window.DuofenBack.$phase();"
+        }
+        webView.post { webView.evaluateJavascript(call, null) }
     }
 
     /** 把系统栏高度写进 CSS 变量（dp，除以 density；网页据此给顶栏留白） */

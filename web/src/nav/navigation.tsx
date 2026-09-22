@@ -16,7 +16,6 @@ import {
   type ComponentType,
   type ReactNode,
 } from 'react';
-import { MOTION } from '../theme/motion';
 import { uid } from '../lib/utils';
 
 export type TransitionKind = 'slide' | 'fade' | 'zoom';
@@ -39,10 +38,13 @@ export interface RouteEntry {
   direction: 'forward' | 'back';
 }
 
+/** 屏幕切换统一为「中间弹出」（base.css 的 m3-pop-in / m3-pop-out），清理定时器用同一时长 */
+const POP_DURATION = 320;
+
 const DURATION: Record<TransitionKind, number> = {
-  slide: MOTION.spatial.default.duration * 1000,
-  fade: MOTION.effects.default.duration * 1000,
-  zoom: MOTION.zoom.duration * 1000,
+  slide: POP_DURATION,
+  fade: POP_DURATION,
+  zoom: POP_DURATION,
 };
 
 interface NavValue {
@@ -88,6 +90,52 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
 
+  /**
+   * 可预测式返回（Android 14+ / 手势返回）：
+   * 原生把 开始 / 进度 / 取消 三相转成 JS 调用，网页据此把**上一屏**按手势进度
+   * 从画面中间放大弹出（与统一转场同一套缩放），松手前的预览完全跟手；
+   * 手势取消退回原状，真正触发时交给 `history.back()` → popstate 走正常弹出。
+   * 浏览器里这套 API 不存在，整段逻辑不参与。
+   */
+  const [peeking, setPeeking] = useState<RouteEntry | null>(null);
+
+  useEffect(() => {
+    const phone = () => document.querySelector('.phone') as HTMLElement | null;
+    const clear = () => {
+      const el = phone();
+      el?.classList.remove('predictive', 'predictive-cancel');
+      el?.style.setProperty('--predictive', '0');
+      setPeeking(null);
+    };
+    const api = {
+      start: () => {
+        const current = stackRef.current;
+        if (current.length < 2) return;
+        phone()?.classList.add('predictive');
+        phone()?.style.setProperty('--predictive', '0');
+        setPeeking(current[current.length - 2]);
+      },
+      progress: (value: number) => {
+        const clamped = Math.min(1, Math.max(0, Number(value) || 0));
+        phone()?.style.setProperty('--predictive', clamped.toFixed(3));
+      },
+      cancel: () => {
+        const el = phone();
+        el?.classList.add('predictive-cancel');
+        el?.style.setProperty('--predictive', '0');
+        window.setTimeout(clear, 200);
+      },
+      commit: () => {
+        /* 真正的前进由原生调用 webView.goBack() → popstate 完成，这里只留预览 */
+      },
+    };
+    (window as unknown as { DuofenBack?: unknown }).DuofenBack = api;
+    return () => {
+      delete (window as unknown as { DuofenBack?: unknown }).DuofenBack;
+      clear();
+    };
+  }, []);
+
   useEffect(() => {
     // 自己管理滚动位置：返回时不要浏览器强行恢复，避免动画中跳位（可预测式返回更顺滑）
     if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
@@ -108,6 +156,11 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
         setEnteringKey(null);
         setExiting(removed);
         setStack(next);
+        // 预测式返回的预览到此结束：清掉手势态，交给正常弹出动画收尾
+        const phone = document.querySelector('.phone') as HTMLElement | null;
+        phone?.classList.remove('predictive', 'predictive-cancel');
+        phone?.style.setProperty('--predictive', '0');
+        setPeeking(null);
         schedule(() => setExiting(null), DURATION[removed.transition] + 100);
         return;
       }
@@ -241,26 +294,40 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   return (
     <NavContext.Provider value={value}>
-      <NavRenderContext.Provider value={{ enteringKey, exiting }}>{children}</NavRenderContext.Provider>
+      <NavRenderContext.Provider value={{ enteringKey, exiting, peeking }}>{children}</NavRenderContext.Provider>
     </NavContext.Provider>
   );
 }
 
-const NavRenderContext = createContext<{ enteringKey: string | null; exiting: RouteEntry | null }>({
+const NavRenderContext = createContext<{
+  enteringKey: string | null;
+  exiting: RouteEntry | null;
+  peeking: RouteEntry | null;
+}>({
   enteringKey: null,
   exiting: null,
+  peeking: null,
 });
 
 /** Renders every screen of the stack as a layer inside the phone frame. */
 export function NavHost({ screens }: { screens: Record<RouteName, ComponentType> }) {
   const { stack } = useNav();
-  const { enteringKey, exiting } = useContext(NavRenderContext);
-  // The exiting entry keeps its React key so the component instance (camera
-  // stream, scroll position, ...) is preserved while it animates away.
+  const { enteringKey, exiting, peeking } = useContext(NavRenderContext);
+  // The exiting entry keeps its React key so the component instance (scroll
+  // position, ...) is preserved while it animates away.
   const layers = exiting ? [...stack, exiting] : stack;
 
   return (
     <>
+      {/* 可预测式返回的预览层：上一屏垫在当前屏下面，按手势进度从中间放大 */}
+      {peeking ? (
+        <div key={`peek-${peeking.key}`} className="screen peek" aria-hidden="true" style={{ pointerEvents: 'none' }}>
+          {(() => {
+            const Peek = screens[peeking.route];
+            return <Peek />;
+          })()}
+        </div>
+      ) : null}
       {layers.map((entry) => {
         const Screen = screens[entry.route];
         const isTop = entry.key === stack[stack.length - 1].key;

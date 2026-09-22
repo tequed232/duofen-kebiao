@@ -457,12 +457,10 @@ export default function SettingsScreen() {
         onClosed={() => setTransitionDialogOpen(false)}
         actions={<md-text-button onClick={() => setTransitionDialogOpen(false)}>取消</md-text-button>}
       >
-        选择页面切换的动画方式（立即生效并保存）：
+        屏幕切换统一为「中间弹出」（从画面正中放大弹出）。只有在设备吃力或你想关掉动效时才选「无动画」：
         <div className="col gap-8 mt-12">
           {([
-            ['m3', 'Material 3 规范（推荐）：标签淡入淡出，前进/返回横向滑移'],
-            ['fade', '仅淡入淡出：最柔和，无位移'],
-            ['slide', '一律横向滑移'],
+            ['m3', '中间弹出（推荐）：新页从正中放大弹出，旧页放大淡出'],
             ['none', '无动画：瞬时切换（设备吃力时最稳）'],
           ] as const).map(([value, label]) => (
             <md-outlined-button
