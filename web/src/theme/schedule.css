@@ -982,10 +982,10 @@ html[data-perf='low'] .m3e-dock-slider {
       transparent 55%
     ),
     color-mix(in srgb, var(--md-sys-color-surface-container) var(--dock-tint-a), transparent);
-  /* 毛玻璃：只留很轻的一层 2px 磨砂 —— 有玻璃质感，列表文字照样认得出来。
-     实测 9px 就完全认不出内容、3px 在 1× 下也偏糊；想更磨砂就往上调，但穿透会变差。 */
-  backdrop-filter: blur(2px) saturate(1.55);
-  -webkit-backdrop-filter: blur(2px) saturate(1.55);
+  /* 玻璃链：透镜（把背后**真实内容**在边缘掰弯，Apple 那套的核心）+ 轻磨砂 + 提饱和。
+     没挂上透镜时回落到纯磨砂。 */
+  backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
+  -webkit-backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
   /* 玻璃边缘散射：外圈一层柔光晕（借主题色）+ 内圈扩散的白，让边缘"化"开而不是硬边 */
   box-shadow:
     0 8px 24px color-mix(in srgb, #000 26%, transparent),
@@ -1273,8 +1273,8 @@ html[data-perf='low'] .screen {
 
 /* 高性能档：与基础规则一致（毛玻璃 + 边缘散射在上面那条 .m3e-dock 里） */
 html[data-perf='high'] .m3e-dock {
-  backdrop-filter: blur(2px) saturate(1.55);
-  -webkit-backdrop-filter: blur(2px) saturate(1.55);
+  backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
+  -webkit-backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
 }
 
 

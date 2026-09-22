@@ -20,6 +20,9 @@ interface LensHost {
   blur: SVGFEGaussianBlurElement;
   image: SVGFEImageElement;
   disp: SVGFEDisplacementMapElement;
+  /** 同一张贴图、更小的位移量：给 backdrop-filter 用（对真实内容做透镜） */
+  backdropFilter: SVGFilterElement;
+  backdropDisp: SVGFEDisplacementMapElement;
   key: string;
 }
 
@@ -60,11 +63,34 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     disp.setAttribute('yChannelSelector', 'G');
     filter.append(blur, image, disp);
     svg.appendChild(filter);
+
+    /* 第二份滤镜：吃同一张贴图，但位移小得多 —— 这份给 backdrop-filter 用，
+       直接作用在**真实背景**上（内容在玻璃边缘被掰弯，也就是 Apple 那套透镜）。
+       位移量必须比浮层那份小：浮层是自己的渐变，弯一点无妨；真实内容弯过头会撕裂。 */
+    const backdropFilter = document.createElementNS(SVG_NS, 'filter');
+    backdropFilter.setAttribute('filterUnits', 'userSpaceOnUse');
+    backdropFilter.setAttribute('color-interpolation-filters', 'sRGB');
+    backdropFilter.setAttribute('x', '0');
+    backdropFilter.setAttribute('y', '0');
+    const backdropId = `${id}-bd`;
+    backdropFilter.setAttribute('id', backdropId);
+    const backdropImage = document.createElementNS(SVG_NS, 'feImage');
+    backdropImage.setAttribute('result', 'map');
+    backdropImage.setAttribute('preserveAspectRatio', 'none');
+    const backdropDisp = document.createElementNS(SVG_NS, 'feDisplacementMap');
+    backdropDisp.setAttribute('in', 'SourceGraphic');
+    backdropDisp.setAttribute('in2', 'map');
+    backdropDisp.setAttribute('xChannelSelector', 'R');
+    backdropDisp.setAttribute('yChannelSelector', 'G');
+    backdropFilter.append(backdropImage, backdropDisp);
+    svg.appendChild(backdropFilter);
     document.body.appendChild(svg);
 
-    const host: LensHost = { filter, blur, image, disp, key: '' };
+    const host: LensHost = { filter, blur, image, disp, backdropFilter, backdropDisp, key: '' };
     hostRef.current = host;
     element.style.setProperty('--lg-map-url', `url(#${id})`);
+    /* --lg-backdrop 是给 CSS 的「玻璃链」：透镜 + 轻磨砂，直接贴到 backdrop-filter 上 */
+    element.style.setProperty('--lg-backdrop', `url(#${backdropId}) blur(4px) saturate(1.6)`);
 
     const update = () => {
       if (lowPerf() || !element.isConnected) return;
@@ -84,6 +110,14 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       image.setAttribute('href', map.mapUrl);
       disp.setAttribute('scale', map.scale.toFixed(2));
       blur.setAttribute('stdDeviation', String(Math.max(0.6, params.strength)));
+      /* backdrop 那份：贴图相同、位移收窄到 30% 且封顶 14px ——
+         这是「内容被玻璃边缘掰弯」的可见量级；再大就会出现撕裂感而不是透镜感。 */
+      backdropFilter.setAttribute('width', String(width));
+      backdropFilter.setAttribute('height', String(height));
+      backdropImage.setAttribute('width', String(width));
+      backdropImage.setAttribute('height', String(height));
+      backdropImage.setAttribute('href', map.mapUrl);
+      backdropDisp.setAttribute('scale', Math.min(14, map.scale * 0.3).toFixed(2));
       element.style.setProperty('--lg-edge-url', `url("${map.edgeUrl}")`);
       element.dataset.lens = 'ready';
     };
