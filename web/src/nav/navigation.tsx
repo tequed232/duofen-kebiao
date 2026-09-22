@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Screen stack navigation with Material 3 Expressive transitions.
  *
  * The stack is mirrored into `history.state` so the browser back gesture / back
@@ -53,6 +53,8 @@ interface NavValue {
   push: (route: RouteName, params?: Record<string, string>, transition?: TransitionKind) => void;
   pop: () => void;
   popTo: (route: RouteName) => void;
+  /** 标签切换的唯一实现（底边栏用）：规范化重置栈，幂等，不堆历史 */
+  selectTab: (tab: 'schedule' | 'search' | 'settings') => void;
   replace: (route: RouteName, params?: Record<string, string>) => void;
 }
 
@@ -137,16 +139,6 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
     },
     [schedule],
   );
-  /** 标签切换（底边栏 / 原生 Dock 共用）：首页回到栈底，搜索与设置各推一页 */
-  const selectTab = useCallback((tab: 'schedule' | 'search' | 'settings') => {
-    if (tab === 'schedule') {
-      while (stackRef.current.length > 1) window.history.back();
-      return;
-    }
-    push(tab === 'search' ? 'scheduleFilter' : 'settings');
-  }, [push]);
-
-
 
   const pop = useCallback(() => {
     if (stackRef.current.length > 1) window.history.back();
@@ -171,6 +163,45 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
     [push],
   );
 
+  /**
+   * 标签切换（底边栏唯一入口）——**规范化重写**，解决"点设置乱跳转"。
+   *
+   * 规则：
+   *  1. 标签栈只有一种规范形态：首页 = [课表]，搜索 = [课表, 筛选]，设置 = [课表, 设置]。
+   *     无论当前在哪个屏幕（详情页、教材页、关于页…）点标签，都重置成规范形态，
+   *     而不是把新页面压在当前详情页之上（那正是"乱跳转"的来源）。
+   *  2. 幂等：已经在规范形态的目标标签上再点一次，什么都不做。
+   *  3. 一律使用路由自己的原语（popTo / push），**不用 replaceState 手改历史** ——
+   *     否则 popTo 依赖的 history.go() 会算错栈，出现"点首页白屏"。
+   */
+  const selectTab = useCallback(
+    (tab: 'schedule' | 'search' | 'settings') => {
+      const current = stackRef.current[stackRef.current.length - 1];
+      const target = tab === 'schedule' ? null : tab === 'search' ? 'scheduleFilter' : 'settings';
+
+      // 首页：回到栈底
+      if (target === null) {
+        if (stackRef.current.length === 1) return; // 幂等
+        popTo('schedule');
+        return;
+      }
+
+      // 已在规范形态 → 幂等返回
+      if (current.route === target && stackRef.current.length === 2) return;
+
+      // 先回到栈底，等 history.go 生效后再 push 目标页（延迟与路由自身的动画时长对齐）
+      popTo('schedule');
+      schedule(() => {
+        const top = stackRef.current[stackRef.current.length - 1];
+        if (top?.route === target) return;
+        push(target, {}, 'slide');
+      }, 300);
+    },
+    [popTo, push, schedule],
+  );
+
+
+
   const replace = useCallback<NavValue['replace']>((route, params = {}) => {
     const current = stackRef.current;
     const entry: RouteEntry = { key: uid('scr'), route, params, transition: 'fade' };
@@ -180,8 +211,8 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
   }, []);
 
   const value = useMemo<NavValue>(
-    () => ({ stack, current: stack[stack.length - 1], push, pop, popTo, replace }),
-    [stack, push, pop, popTo, replace],
+    () => ({ stack, current: stack[stack.length - 1], push, pop, popTo, replace, selectTab }),
+    [stack, push, pop, popTo, replace, selectTab],
   );
 
   return (

@@ -151,14 +151,8 @@ export default function CameraScreen() {
     }
   };
 
-  const selectTab = (tab: 'schedule' | 'search' | 'settings') => {
-    // v2：底边栏三项 —— 首页=课表（栈底）、搜索=筛选页、设置
-    if (tab === 'schedule') {
-      nav.popTo('schedule');
-      return;
-    }
-    nav.push(tab === 'search' ? 'scheduleFilter' : 'settings', {}, 'slide');
-  };
+  // 统一走导航模块的规范化实现（标签栈只有一种形态，避免详情页叠加导致的乱跳转）
+  const selectTab = (tab: 'schedule' | 'search' | 'settings') => nav.selectTab(tab);
 
   return (
     <>
