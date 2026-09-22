@@ -380,6 +380,11 @@ try {
   });
 
   await step('transcript panel expands', async () => {
+    // 前置：应用启动在课表页，先进入记录页（底板容器在这里）
+    if (!(await top().locator('.mic-circle').count())) {
+      await top().locator('.appbar-record').click({ timeout: 8000 });
+      await page.waitForTimeout(1400);
+    }
     await clickTop('.container-box.surface-high .row', 0);
     await waitTop('.sheet-panel');
     await page.waitForTimeout(800);

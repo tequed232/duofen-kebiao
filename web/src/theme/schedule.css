@@ -821,7 +821,7 @@ html[data-ui-scale='large'] .stage {
 }
 
 .m3e-dock-tab {
-  position: relative;
+  position: relative; /* 胶囊以本标签为参照，居中在图标+文字后面 */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -865,7 +865,7 @@ html[data-ui-scale='large'] .stage {
   transform: translate(-50%, -50%) scale(1);
 }
 
-.m3e-dock-tab > * {
+.m3e-dock-tab > :not(.m3e-dock-pill) {
   position: relative;
   z-index: 1;
 }
