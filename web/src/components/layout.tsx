@@ -4,6 +4,8 @@ import { MdIcon, MdIconButton } from './md';
 import { useNav } from '../nav/navigation';
 import { useAppState } from '../state/AppState';
 import { isNativeShell } from '../lib/native';
+import { LENS_PLAYER } from '../lib/lens';
+import { useLens } from '../lib/useLens';
 
 /* ------------------------------------------------------------- app bar --- */
 
@@ -77,6 +79,8 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const navSelectTab = useNav().selectTab;
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
+  /* 液态玻璃透镜：按 dock 实际尺寸生成位移贴图（BEZEL / STRENGTH / ZOOM 见 lens.ts） */
+  useLens(dockRef, LENS_PLAYER);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);

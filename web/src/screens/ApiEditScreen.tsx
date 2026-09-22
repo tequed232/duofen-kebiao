@@ -1,8 +1,8 @@
 /**
- * 教材识别接口 —— 原「API 编辑」的裁剪版。
+ * 接口配置 —— 全应用**唯一**的一个通用外部接口配置（原「API 编辑」的裁剪版）。
  *
- * 只保留教材封面识别用的视觉接口（`analyzeImage`）：填地址 + 密钥，可选一张图试跑。
- * 语音转文字 / 问答接口随语音功能一并删除（v2.6 之后）。
+ * 目前只有一处用途：教材封面识别（`analyzeImage`）。语音转文字 / 问答接口随语音功能一并删除。
+ * 地址与密钥只存本机 IndexedDB，不随构建产物分发。
  */
 import { useState } from 'react';
 import { SectionHeader, TopAppBar } from '../components/layout';
@@ -62,7 +62,7 @@ export default function ApiEditScreen() {
 
   return (
     <div className="screen-inner">
-      <TopAppBar title="教材识别接口" onBack={() => nav.pop()} backLabel="返回设置" />
+      <TopAppBar title="接口配置" onBack={() => nav.pop()} backLabel="返回设置" />
 
       <div className="screen-content">
         <SectionHeader icon="menu_book" title="教材封面识别" />

@@ -262,9 +262,9 @@ export default function SettingsScreen() {
               <div slot="start" className="list-icon-badge">
                 <MdIcon name="menu_book" />
               </div>
-              <div slot="headline">教材识别接口</div>
+              <div slot="headline">接口配置</div>
               <div slot="supporting-text">
-                {apiConfigured ? '已配置，点击可修改' : '未配置，点击填写图片识别接口'}
+                {apiConfigured ? '已配置，点击可修改' : '唯一的通用接口配置：图片识别（教材封面用）'}
               </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>

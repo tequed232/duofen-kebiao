@@ -22,6 +22,8 @@ import {
 } from '../components/schedule';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
+import { LENS_PLAYER } from '../lib/lens';
+import { useLens } from '../lib/useLens';
 import {
   WEEKDAY_LONG,
   WEEKDAY_SHORT,
@@ -87,6 +89,11 @@ export default function ScheduleScreen() {
   const [collapsed, setCollapsed] = useState(false);
   const [mapChooser, setMapChooser] = useState<{ address: string; course: ScheduleCourse } | null>(null);
   const { ref: scrollRef, scrolled } = useScrolled<HTMLDivElement>();
+  /* 顶部两个小组件也用液态玻璃透镜（参数与底栏同一套） */
+  const dateLensRef = useRef<HTMLButtonElement>(null);
+  const weekLensRef = useRef<HTMLDivElement>(null);
+  useLens(dateLensRef, LENS_PLAYER);
+  useLens(weekLensRef, LENS_PLAYER);
 
   const week = weekNumberFor(selectedDate, termStart);
   const dayIndex = weekdayIndex(selectedDate);
@@ -188,7 +195,7 @@ export default function ScheduleScreen() {
             </div>
 
             <div className="row gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
-              <button type="button" className="schedule-datebutton liquid-glass" onClick={() => setDateOpen(true)}>
+              <button type="button" className="schedule-datebutton liquid-glass" ref={dateLensRef} onClick={() => setDateOpen(true)}>
                 <MdIcon name="event" size={16} />
                 {monthLabel} · {formatMonthDayWeekday(selectedDate)}
                 <MdIcon name="expand_more" size={16} />
@@ -198,7 +205,7 @@ export default function ScheduleScreen() {
               </span>
             </div>
 
-            <div className="week-stepper liquid-glass">
+            <div className="week-stepper liquid-glass" ref={weekLensRef}>
               <MdIconButton icon="chevron_left" label="上一周" onClick={() => shiftWeek(-1)} />
               <span className="week-label md-title-small-emphasized">
                 第 {week} 周 · {formatMonthDay(addDays(startOfWeek(selectedDate), 6))} 止

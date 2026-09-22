@@ -864,7 +864,11 @@ html[data-perf='low'] .screen {
   pointer-events: none;
   z-index: 0;
   opacity: calc(0.35 + var(--dock-scroll, 0) * 0.35);
-  filter: url(#m3e-dock-refraction);
+  /* 透镜位移贴图由 useLens 生成（BEZEL / STRENGTH / ZOOM）；没挂上时回落到噪声滤镜 */
+  filter: var(--lg-map-url, url(#m3e-dock-refraction));
+  /* 折射集中在一圈弧面上（参考实现的 edge map），没有贴图时不遮罩 */
+  -webkit-mask-image: var(--lg-edge-url, none);
+  mask-image: var(--lg-edge-url, none);
   background: linear-gradient(
     115deg,
     transparent 12%,

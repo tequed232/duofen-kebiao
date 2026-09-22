@@ -801,7 +801,8 @@ md-switch {
   opacity: calc(0.6 + var(--lg-strength) * 0.2);
 }
 
-/* 折射叠层：与底边栏共用 App.tsx 里的 liquid-glass-refraction 滤镜 */
+/* 折射叠层：透镜位移贴图由 useLens 按实际尺寸生成（与底边栏同一套参数）；
+   贴图没挂上时回落到 App.tsx 里的噪声滤镜 */
 .liquid-glass::before {
   content: '';
   position: absolute;
@@ -813,7 +814,10 @@ md-switch {
     color-mix(in srgb, #ffffff 22%, transparent),
     transparent 55%
   );
-  filter: url(#liquid-glass-refraction);
+  filter: var(--lg-map-url, url(#liquid-glass-refraction));
+  /* 折射只落在一圈弧面上（参考实现的 edge map）；没有贴图时不遮罩 */
+  -webkit-mask-image: var(--lg-edge-url, none);
+  mask-image: var(--lg-edge-url, none);
   opacity: calc(var(--lg-zoom) * 6 + var(--lg-edge) * 0.5);
   mix-blend-mode: screen;
 }
