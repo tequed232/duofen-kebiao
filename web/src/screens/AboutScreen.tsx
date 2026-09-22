@@ -202,7 +202,9 @@ export default function AboutScreen() {
                       <span className={person.lead ? 'md-title-medium-emphasized' : 'md-title-small-emphasized'}>
                         {person.displayName}
                       </span>
-                      {person.lead ? <span className="credit-badge">项目作者</span> : null}
+                      {person.badge ? (
+                        <span className={person.lead ? 'credit-badge' : 'credit-badge soft'}>{person.badge}</span>
+                      ) : null}
                     </span>
                     <span className="md-body-small muted">{person.role}</span>
                   </span>
@@ -231,7 +233,7 @@ export default function AboutScreen() {
             ))}
           </div>
           <div className="md-body-small muted mt-8">
-            名片按「作者 + 特别感谢的六位」排列；头像取自各人在 GitHub / B 站等平台的公开头像（已登记授权台账），
+            名片按「作者 + 特别感谢的朋友们」排列；头像取自各人在 GitHub / B 站等平台的公开头像（已登记授权台账），
             加载失败时自动退回姓名首字。带 <b>CC</b> 标记的是权利人给出的作品许可，点开可看授权原文。
           </div>
         </div>

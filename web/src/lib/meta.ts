@@ -5,7 +5,6 @@
 import avatarBinggan from '../assets/avatars/binggan-bskeke.jpg';
 import avatarChunqiu from '../assets/avatars/chunqiu-fxxggllj.jpg';
 import avatarHanbing from '../assets/avatars/hanbing-bili.webp';
-import avatarLiuli from '../assets/avatars/liuli1719.jpg';
 import avatarLuo from '../assets/avatars/luo-tequed232.jpg';
 import avatarMidada from '../assets/avatars/midada-bili.webp';
 import avatarWeizhou from '../assets/avatars/weizhou-whitemoon319.jpg';
@@ -50,6 +49,8 @@ export interface CreditPerson {
   role: string;
   /** 姓名首字：头像加载失败时的兜底，也是无图环境的显示 */
   mark: string;
+  /** 名字旁的小徽标（作者「项目作者」、顾问「该项目顾问」…），窄卡片上会自动换行到名字下方 */
+  badge?: string;
   /** 各平台公开头像（已登记在 docs/asset-permissions.md） */
   avatar: string;
   /** 作者本人那张：跨三列高亮显示 */
@@ -71,6 +72,7 @@ export const CREDITS: CreditPerson[] = [
     mark: '罗',
     avatar: avatarLuo,
     lead: true,
+    badge: '项目作者',
     links: [
       { platform: 'github', label: 'GitHub', url: 'https://github.com/tequed232' },
       { platform: 'bilibili', label: 'Bilibili', url: 'https://space.bilibili.com/407275151' },
@@ -96,6 +98,7 @@ export const CREDITS: CreditPerson[] = [
     role: 'MAA-Meow',
     mark: '维',
     avatar: avatarWeizhou,
+    badge: '该项目顾问',
     links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/WhiteMoon319' }],
   },
   {
@@ -140,14 +143,8 @@ export const CREDITS: CreditPerson[] = [
     avatar: avatarChunqiu,
     links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/fxxggllj' }],
   },
-  {
-    displayName: 'liuli1719',
-    role: '星爱流萤 · 同学',
-    mark: '星',
-    avatar: avatarLiuli,
-    links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/liuli1719' }],
-  },
 ];
+
 /**
  * Liquid Glass 视觉实现所参考的开源库（GitHub）。
  * 项目按需自绘玻璃层，不直接嵌入这些库的代码或素材，但在「关于」与 README 中明确引用致谢。

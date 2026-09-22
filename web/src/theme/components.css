@@ -1264,6 +1264,10 @@ md-filled-text-field {
 
 .credit-name-row {
   align-items: center;
+  justify-content: center;
+  /* 窄卡片放不下徽标时，让徽标换行到名字下方，而不是把名字挤成省略号 */
+  flex-wrap: wrap;
+  row-gap: 4px;
   min-width: 0;
 }
 
@@ -1282,6 +1286,12 @@ md-filled-text-field {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.3px;
+}
+
+/* 浅色名片上的徽标（深色锚点卡用上面的默认样式） */
+.credit-badge.soft {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+  color: var(--md-sys-color-primary);
 }
 
 .credit-links {

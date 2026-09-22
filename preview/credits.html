@@ -134,6 +134,13 @@
   .card.me .avatar { width: 72px; height: 72px; border-radius: 24px; font-size: 30px; }
 
   .who { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+  .badge {
+    flex: 0 0 auto;
+    padding: 2px 10px; border-radius: 999px;
+    background: var(--secondary-container); color: var(--on-secondary-container);
+    font-size: 12px; font-weight: 600;
+  }
   .name { font-size: 17px; font-weight: 600; }
   .card.me .name { font-size: 20px; }
   .role { font-size: 13px; color: var(--on-surface-variant); }
@@ -209,8 +216,8 @@
     <div class="card">
       <span class="avatar">维<img src="../web/src/assets/avatars/weizhou-whitemoon319.jpg" alt="" onerror="this.remove()"></span>
       <span class="who">
-        <span class="name">维舟</span>
-        <span class="role">MAA-Meow · 同学 · 协助</span>
+        <span class="name-row"><span class="name">维舟</span><span class="badge">该项目顾问</span></span>
+        <span class="role">MAA-Meow</span>
       </span>
       <span class="links">
         <a class="link-btn" href="https://github.com/WhiteMoon319" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -246,7 +253,8 @@
       <span class="tag">美术</span>
     </div>
 
-    <div class="card">
+    <!-- liuli1719 暂不在名单里；最后一张跨 2 列补满（其余 5 位 → 3 + 2） -->
+    <div class="card" style="grid-column: span 2">
       <span class="avatar">椿<img src="../web/src/assets/avatars/chunqiu-fxxggllj.jpg" alt="" onerror="this.remove()"></span>
       <span class="who">
         <span class="name">椿湫</span>
@@ -257,20 +265,7 @@
       </span>
       <span class="tag">指导</span>
     </div>
-
-    <div class="card">
-      <span class="avatar">星<img src="../web/src/assets/avatars/liuli1719.jpg" alt="" onerror="this.remove()"></span>
-      <span class="who">
-        <span class="name">liuli1719（星爱流萤）</span>
-        <span class="role">同学 · 界面走查与体验反馈</span>
-      </span>
-      <span class="links">
-        <a class="link-btn" href="https://github.com/liuli1719" target="_blank" rel="noopener noreferrer">GitHub</a>
-      </span>
-      <span class="tag">同学</span>
-    </div>
   </main>
-
   <footer>
     点名片上的按钮会在新标签页打开对方的 GitHub / B 站 / 抖音 / X 主页；<b>CC 标记</b>是权利人给出的作品许可，带凭据的那条点开就是授权原文。<br>
     <b>本文件是宽屏版预览</b>：应用里的「关于 → 致谢 · 名片墙」已经接入同一份名单

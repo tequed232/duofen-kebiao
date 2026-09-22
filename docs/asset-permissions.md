@@ -63,7 +63,7 @@ miratsu 老师您好，
 | 素材 | 来源 | 授权 | 用途 | 状态 |
 | --- | --- | --- | --- | --- |
 | `web/public/art/cc0-header.jpg` | 项目作者提供：由 Gemini 基于 **CC0** 素材生成（作者付费生成） | CC0（公有领域，无需署名，仍致谢） | 课表页头图（16% 不透明度、向下渐隐，不影响可读性） | ✅ approved |
-| `web/src/assets/avatars/*.jpg`、`*.webp`（5 张 GitHub + 2 张 B 站 + 2 张备用） | 各贡献者本人的平台公开头像：GitHub `github.com/<user>.png?size=240`；B 站 `api.bilibili.com/x/web-interface/card` 的 `face` + `@240w_240h_1c.webp` | 各人本人的公开头像，非商业致谢用途；项目作者（tequed232）确认可抓取 | 「关于 → 致谢 · 名片墙」的圆形头像（40dp / 52dp），加载失败自动退回姓名首字 | ✅ approved |
+| `web/src/assets/avatars/*.jpg`、`*.webp`（4 张 GitHub + 2 张 B 站 + 2 张备用） | 各贡献者本人的平台公开头像：GitHub `github.com/<user>.png?size=240`；B 站 `api.bilibili.com/x/web-interface/card` 的 `face` + `@240w_240h_1c.webp` | 各人本人的公开头像，非商业致谢用途；项目作者（tequed232）确认可抓取 | 「关于 → 致谢 · 名片墙」的圆形头像（40dp / 52dp），加载失败自动退回姓名首字 | ✅ approved |
 | `web/src/assets/avatars/luo-bili.webp`、`binggan-bili.webp` | 同上（B 站头像） | 备用文件：把作者本人 / 饼干的名片头像从 GitHub 换回 B 站时使用 | 同上 | ⏸ 备用，当前未被引用 |
 
 > 头像只做**圆形裁切显示**，不改色、不加特效、不出现在其它页面。头像属于各人本人：
