@@ -233,7 +233,7 @@ export default function AboutScreen() {
             ))}
           </div>
           <div className="md-body-small muted mt-8">
-            名片按「作者 + 特别感谢的朋友们」排列；头像取自各人在 GitHub / B 站等平台的公开头像（已登记授权台账），
+            名片按「作者 + 感谢的人」排列；头像取自各人在 GitHub / B 站等平台的公开头像（已登记授权台账），
             加载失败时自动退回姓名首字。带 <b>CC</b> 标记的是权利人给出的作品许可，点开可看授权原文。
           </div>
         </div>

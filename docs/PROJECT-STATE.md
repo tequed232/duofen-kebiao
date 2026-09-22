@@ -32,7 +32,7 @@
 | 本地缓存课表 | ✅ | `web/src/lib/scheduleCache.ts`：导入自动留快照（≤3 份），可一键恢复 |
 | 教材窗口 | ✅ | 多选删除（可回档）+ 快捷添加 FAB |
 | 开源清单 | ✅ | `scripts/collect-licenses.mjs` → 设置页「开源相关」+ README 分类表 |
-| 贡献者名片墙 | ✅ 已接入应用 | 「关于 → 致谢 · 名片墙」：1×3 作者本人（跨三列）+ 2×3 其他六位；真头像（GitHub / B 站公开头像，已登记 `docs/asset-permissions.md`）+ 姓名首字兜底；数据源 `web/src/lib/meta.ts` 的 `CREDITS`；宽屏设计稿 `preview/credits.html` |
+| 贡献者名片墙 | ✅ 已接入应用 | 「关于 → 致谢 · 名片墙」：作者 1×3（跨三列）+ 其余按三列排（最后一行不满时最后一张跨列补满）；真头像（GitHub / B 站公开头像，已登记 `docs/asset-permissions.md`）+ 姓名首字兜底；平台剪影（Remix Icon）+ CC 许可标记；数据源 `web/src/lib/meta.ts` 的 `CREDITS`；宽屏设计稿 `preview/credits.html` |
 | 致谢 / 致歉声明 | ✅ 已更新 | 删除 README 与关于页的「致歉声明」；名单同步到 README、`CONTRIBUTORS.md`、应用名片墙三处 |
 | 仓库卫生 | ✅ 已加固 | 7 个 `enhance*.apk` 全部 `git rm --cached` 剔除；`.gitignore` 忽略 `*.apk/*.aab/*.zip`；`scripts/check-repo-hygiene.mjs` + `.github/workflows/repo-hygiene.yml` 在推送/PR 上拦截（已做反向验证：塞进 APK 即 CI 红）；APK 只作为 Release 附件，短链改用 `releases/latest/download/enhance.apk` |
 
