@@ -869,9 +869,11 @@ html[data-perf='low'] .screen {
   z-index: 0;
   opacity: calc(0.35 + var(--dock-scroll, 0) * 0.35);
   filter: var(--lg-map-url, url(#m3e-dock-refraction));
-  /* 边缘散射**不在这里做背景模糊**：模糊层叠在清晰内容上会变成"清晰+模糊"的重影，
-     整块看起来就糊了（试过 18px/0.35，列表直接认不出）。
-     散射改由下面 ::after 的发光边缘 + 本体 box-shadow 的内外柔光表达，都不碰内容像素。 */
+  /* 散射字体的特性：底栏边缘那一圈做**更重的背景模糊**（本体只 2px），
+     于是穿过底栏的列表文字在边上被"散开"、中间仍读得清 —— 真实玻璃的散射就是这样分布。
+     遮罩是透镜生成的 rim 图（窄窄一圈弧面），所以重模糊不会铺满整块。 */
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
   -webkit-mask-image: var(--lg-edge-url, none);
   mask-image: var(--lg-edge-url, none);
   background: linear-gradient(
@@ -908,7 +910,10 @@ html[data-perf='low'] .screen {
 .m3e-dock.dragging .m3e-dock-slider {
   transition: none;
   left: 0;
-  transform: translate3d(var(--pill-x, 0px), 0, 0) scaleX(var(--pill-stretch, 1));
+  transform: translate3d(var(--pill-x, 0px), 0, 0)
+    scaleX(calc(var(--pill-stretch, 1) * var(--pill-squash, 1) * var(--pill-deform-x, 1)))
+    scaleY(calc(var(--pill-bulge, 1) * var(--pill-deform-y, 1)))
+    skewX(var(--pill-skew, 0deg));
 }
 
 /* 三个标签：图标在上、文字在下 */
@@ -947,8 +952,7 @@ html[data-perf='low'] .m3e-dock {
   background: var(--md-sys-color-surface-container-high);
 }
 
-html[data-perf='low'] .m3e-dock-refraction,
-html[data-perf='low'] .m3e-dock-ball {
+html[data-perf='low'] .m3e-dock-refraction {
   display: none;
 }
 
@@ -1000,6 +1004,56 @@ html[data-perf='low'] .m3e-dock-slider {
 
 .m3e-dock-tab {
   border-radius: 28px;
+}
+
+/* 内容穿过底栏边界时的**散射反馈**（散射 dock 栏的核心）：
+   两层叠加 ——
+     ① 模糊层：更重的背景模糊，用纵向渐变遮罩限制在边界一带（上缘最重、往里渐隐），
+        内容"穿进玻璃"时先被散开；
+     ② 光散层：边界内侧一圈很淡的白，模拟光在玻璃边缘被散开的样子，
+        让边界有"砂化"的观感而不是一条硬边。
+   中间留清晰区（46%~74%），所以透过底栏照样读得清列表。 */
+.m3e-dock-scatter {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.95;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, #ffffff 12%, transparent) 0%,
+      transparent 30%
+    ),
+    linear-gradient(
+      to top,
+      color-mix(in srgb, #ffffff 7%, transparent) 0%,
+      transparent 18%
+    );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    color-mix(in srgb, #000 52%, transparent) 30%,
+    transparent 50%,
+    transparent 72%,
+    color-mix(in srgb, #000 60%, transparent) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    color-mix(in srgb, #000 52%, transparent) 30%,
+    transparent 50%,
+    transparent 72%,
+    color-mix(in srgb, #000 60%, transparent) 100%
+  );
+}
+
+/* 低性能档：不做散射（省电），只留底色与描边 */
+html[data-perf='low'] .m3e-dock-scatter {
+  display: none;
 }
 
 /* 玻璃边缘的"高光描边"：Apple 强调玻璃要有清晰的边缘反射 */
@@ -1109,7 +1163,10 @@ html[data-perf='low'] .m3e-dock {
    （--pill-x 位移 px、--pill-stretch 拉伸比例 1→1.37；以前这里读的
    --dock-velocity / --dock-drag 从来没人写，所以拉伸一直是失效的） */
 .m3e-dock.dragging .m3e-dock-slider {
-  transform: translate3d(var(--pill-x, 0px), 0, 0) scaleX(var(--pill-stretch, 1));
+  transform: translate3d(var(--pill-x, 0px), 0, 0)
+    scaleX(calc(var(--pill-stretch, 1) * var(--pill-squash, 1) * var(--pill-deform-x, 1)))
+    scaleY(calc(var(--pill-bulge, 1) * var(--pill-deform-y, 1)))
+    skewX(var(--pill-skew, 0deg));
   transform-origin: 50% 50%;
 }
 
@@ -1167,7 +1224,10 @@ html[data-perf='low'] .m3e-dock-slider-reflection {
 .m3e-dock.dragging .m3e-dock-slider {
   left: 0;
   width: calc((100% - 12px - 8px) / 3);
-  transform: translate3d(var(--pill-x, 0px), 0, 0) scaleX(var(--pill-stretch, 1));
+  transform: translate3d(var(--pill-x, 0px), 0, 0)
+    scaleX(calc(var(--pill-stretch, 1) * var(--pill-squash, 1) * var(--pill-deform-x, 1)))
+    scaleY(calc(var(--pill-bulge, 1) * var(--pill-deform-y, 1)))
+    skewX(var(--pill-skew, 0deg));
   transition: none;
 }
 
@@ -1242,90 +1302,9 @@ html[data-perf='high'] .m3e-dock {
 }
 
 
-/* ==================== 点击小圆球 → 自动吸附进色块 ====================
-   点哪里就在哪里弹出一颗小球，随后水平飞向该格中心、**压扁**融入色块（吸完即移除）。
-   形状约定：**拖动期间小球保持正圆** —— 拖动时的"流体椭圆"只由滑块（.m3e-dock-slider）表达，
-   两个椭圆同时出现既重复又更费帧；小球只负责「触摸反馈 + 松手吸附」。
-   分两层：外层 .m3e-dock-ball 管位置（--ball-x，逐帧写入、不加过渡，保证跟手），
-   内层 ::before 圆盘管颜色：白色实心 + difference 混合，压到文字上会把文字反相
-   （深色底上的白字变黑字），球移开又变回白色。 */
-.m3e-dock-ball {
-  position: absolute;
-  /* 尺寸贴着 dock（68dp 高）来：只小一圈 */
-  width: 56px;
-  height: 56px;
-  margin: -28px 0 0 -28px;
-  pointer-events: none;
-  /* 画在标签之上，才能和文字做反相混合 */
-  z-index: 3;
-  will-change: transform, opacity;
-}
-
-.m3e-dock-ball::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, #ffffff, #f0f0f0 62%);
-  mix-blend-mode: difference;
-}
-
-/* 吸附飞行的球：位置 + 压扁都在关键帧里（形状过渡由关键帧本身提供帧） */
-.m3e-dock-ball {
-  animation: m3e-ball-snap 460ms cubic-bezier(0.2, 0.9, 0.3, 1.15) forwards;
-}
-
-.m3e-dock-ball.dragging {
-  animation: none;
-}
-
-/* 吸附：弹一下 → 拉长 → **压扁**着滑进选中色块 —— 单击也有这个「变扁平」的过程 */
-@keyframes m3e-ball-snap {
-  0% {
-    transform: translate3d(0, 0, 0) scale(0.62);
-    opacity: 0.95;
-  }
-  22% {
-    transform: translate3d(calc(var(--ball-to, 0px) * 0.14), 0, 0) scaleX(1.12) scaleY(1.16);
-    opacity: 1;
-  }
-  46% {
-    transform: translate3d(calc(var(--ball-to, 0px) * 0.42), 0, 0) scaleX(1.24) scaleY(1.02);
-    opacity: 1;
-  }
-  70% {
-    transform: translate3d(calc(var(--ball-to, 0px) * 0.74), 0, 0) scaleX(1.34) scaleY(0.72);
-    opacity: 0.9;
-  }
-  88% {
-    transform: translate3d(calc(var(--ball-to, 0px) * 0.92), 0, 0) scaleX(1.5) scaleY(0.38);
-    opacity: 0.5;
-  }
-  100% {
-    transform: translate3d(var(--ball-to, 0px), 0, 0) scaleX(1.62) scaleY(0.16);
-    opacity: 0;
-  }
-}
-
-/* 按住 / 拖动时的跟手小球：位置由 --ball-x 每帧写入，速度驱动椭圆拉伸
-   （--ball-stretch 沿运动方向拉长、--ball-squash 压高度保持体积感），停下自动回圆 */
-.m3e-dock-ball.dragging {
-  left: 0;
-  top: 50%;
-  animation: none;
-  opacity: 0.98;
-  transform: translate3d(var(--ball-x, 0px), 0, 0) scaleX(var(--ball-stretch, 1))
-    scaleY(var(--ball-squash, 1));
-  transform-origin: 50% 50%;
-  transition: none;
-  will-change: transform;
-}
-
-/* 低性能档：不做小球动画（省电） */
-html[data-perf='low'] .m3e-dock-ball {
-  display: none;
-}
-
+/* 触摸小球已移除：底栏只保留**一直显示**的那一个圆（选中色块 .m3e-dock-slider）。
+   小球与色块同时出现会出现"两个圆"，而且小球那套每帧要算速度 + 过渡 + 混合，更费帧；
+   触摸反馈与流体拉伸统一由色块表达（含撞边挤压，见 applyFrame 里的 --pill-squash / --pill-bulge）。 */
 
 /* 列表项的小字并排显示（第一行/第二行放同一行，窄屏自动换行） */
 .list-inline-texts {

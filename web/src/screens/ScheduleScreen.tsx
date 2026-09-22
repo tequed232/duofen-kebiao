@@ -22,6 +22,7 @@ import {
 } from '../components/schedule';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
+import { haptic } from '../lib/native';
 import { LENS_PLAYER } from '../lib/lens';
 import { useLens } from '../lib/useLens';
 import {
@@ -131,6 +132,7 @@ export default function ScheduleScreen() {
   }, [schedule]);
 
   const openCourse = (next: CoursePayload) => {
+    haptic('select'); // 点击课表里的课程：确认触感
     setPayload(next);
     setDetailOpen(true);
   };
@@ -151,11 +153,13 @@ export default function ScheduleScreen() {
   };
 
   const shiftWeek = (weeks: number) => {
+    haptic('tick'); // 周数步进：轻刻度
     setSelectedDate((value) => addDays(value, weeks * 7));
     setCollapsed(false);
   };
 
   const goToday = () => {
+    haptic('heavy'); // 一锤定音的操作：用最重的一档
     setSelectedDate(today);
     setCollapsed(false);
   };
@@ -172,11 +176,11 @@ export default function ScheduleScreen() {
         <TopAppBar
           title="多分课表"
           scrolled={scrolled}
-          leading={<MdIconButton icon="search_check_2" label="筛选课程" onClick={() => nav.push('scheduleFilter', {}, 'slide')} />}
+          leading={<MdIconButton icon="search_check_2" label="筛选课程" onClick={() => { haptic('select'); nav.push('scheduleFilter', {}, 'slide'); }} />}
           actions={
             <>
-              <MdIconButton className="appbar-textbooks" icon="menu_book" label="查看教材" onClick={() => nav.push('textbookList', {}, 'slide')} />
-              <MdIconButton className="appbar-import" icon="edit" label="课表数据与导入" onClick={() => setImportOpen(true)} />
+              <MdIconButton className="appbar-textbooks" icon="menu_book" label="查看教材" onClick={() => { haptic('select'); nav.push('textbookList', {}, 'slide'); }} />
+              <MdIconButton className="appbar-import" icon="edit" label="课表数据与导入" onClick={() => { haptic('select'); setImportOpen(true); }} />
             </>
           }
         />
@@ -220,8 +224,12 @@ export default function ScheduleScreen() {
             selectedDate={selectedDate}
             highlightKey={scheduleHighlight?.key ?? null}
             collapsed={collapsed}
-            onToggleCollapse={() => setCollapsed((value) => !value)}
+            onToggleCollapse={() => {
+              haptic('tick'); // 收起 / 展开课表
+              setCollapsed((value) => !value);
+            }}
             onSelectDay={(date) => {
+              haptic('tick'); // 滑动找日期：每换一天一次轻刻度
               setSelectedDate(date);
               setCollapsed(false);
             }}

@@ -140,6 +140,42 @@ export function nativeDockActive(index: number): void {
   }
 }
 
+export type HapticKind = 'wall' | 'select' | 'tick' | 'heavy';
+
+/** 同一帧里最多响一次：拖动时 applyFrame 每帧都可能命中边界，不去重会连成一片嗡嗡声 */
+let lastHapticAt = 0;
+let lastHapticKind: HapticKind | null = null;
+
+/**
+ * 触感反馈：优先走原生桥（`View.performHapticFeedback` + 系统常量，
+ * 自动遵守用户的触感开关，也不需要 VIBRATE 权限）；
+ * 浏览器里退回 `navigator.vibrate`（桌面一般没有，静默失败）。
+ */
+export function haptic(kind: HapticKind): void {
+  const now = performance.now();
+  // 同一种触感 40ms 内不重复；不同触感至少隔 20ms
+  const gap = kind === lastHapticKind ? 40 : 20;
+  if (now - lastHapticAt < gap) return;
+  lastHapticAt = now;
+  lastHapticKind = kind;
+
+  const api = (window as unknown as { DuofenNative?: { haptic?: (k: string) => void } }).DuofenNative;
+  if (api?.haptic) {
+    try {
+      api.haptic(kind);
+      return;
+    } catch {
+      /* 落到下面的浏览器兜底 */
+    }
+  }
+  const pattern = kind === 'heavy' ? 32 : kind === 'select' ? 18 : kind === 'wall' ? 12 : 8;
+  try {
+    navigator.vibrate?.(pattern);
+  } catch {
+    /* 忽略 */
+  }
+}
+
 /** 上课提醒（实况通知 / 灵动岛）：course/room/timeText/textbooks + 剩余分钟数 + 开始时间戳 + 导航链接 */
 export interface ClassReminder {
   course: string;

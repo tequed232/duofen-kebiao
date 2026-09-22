@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { MdIcon, MdIconButton } from './md';
 import { useNav } from '../nav/navigation';
 import { useAppState } from '../state/AppState';
-import { isNativeShell } from '../lib/native';
+import { isNativeShell, haptic } from '../lib/native';
 import { LENS_PLAYER } from '../lib/lens';
 import { useLens } from '../lib/useLens';
 
@@ -86,16 +86,20 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  /** 点击时弹出的小圆球（点哪里弹哪里，随后自动吸附进色块） */
-  const [balls, setBalls] = useState<{ id: number; x: number; y: number; toX: number }[]>([]);
-  const ballIdRef = useRef(0);
 
   /** 拖动期间缓存的几何（避免每帧重排） */
   const geoRef = useRef<{ left: number; width: number; height: number; centers: number[]; cell: number } | null>(null);
   const frameRef = useRef<number | undefined>(undefined);
   const pendingXRef = useRef(0);
-  /** 拖动中跟手的小球：位置每帧写一次 CSS 变量，不触发 React 渲染 */
-  const dragBallRef = useRef<HTMLSpanElement>(null);
+  /** 手指运动学：速度 v（px/ms）与加速度 a（px/ms²）—— 形变量直接绑在 a 上 */
+  const velRef = useRef(0);
+  const accelRef = useRef(0);
+  /** 加速度的平滑峰值：手指急停后按帧衰减，形变才不会"啪"一下消失 */
+  const accelHoldRef = useRef(0);
+  const shapeFrameRef = useRef<number | undefined>(undefined);
+  const lastMoveRef = useRef({ x: 0, t: 0 });
+  /** 是否已经贴住边界（用于"刚撞上"的那一次触感） */
+  const inWallRef = useRef(false);
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -124,43 +128,106 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     // 参考实现：54 → 上限 74（约 1.37 倍），用 scaleX 实现（不触发 layout）
     const stretch = Math.min(1.37, 1 + (offset * 0.25) / 54);
     const halfCell = geo.cell / 2;
-    element.style.setProperty('--pill-x', `${(x - halfCell).toFixed(1)}px`);
-    // 变量协议：--pill-x 是位移（px），--pill-stretch 是拉伸比例（1→1.37，scaleX 用）。
+    /* 物理：色块撞到 dock 内边界时**先夹在边界内、再压扁** ——
+       顶边那一侧横向收紧、纵向鼓起，越贴边压得越扁（上限 30%），松手由 CSS 回弹曲线弹回。 */
+    const pad = 6;
+    const cellWidth = geo.cell - 4; // 滑块宽度（含 4px 间隙）
+    const rawLeft = x - halfCell;
+    const limit = Math.max(pad, geo.width - pad - cellWidth);
+    const left = Math.min(Math.max(rawLeft, pad), limit);
+    const overflow = Math.abs(rawLeft - left);
+    const squash = Math.min(0.32, overflow / 70);
+    element.style.setProperty('--pill-x', `${left.toFixed(1)}px`);
+    /* 碰壁触感：只在"刚撞上"的那一帧响一次（inWallRef 记录状态），
+       不然每帧都命中边界会连成一片嗡嗡声。 */
+    const inWall = overflow > 1;
+    if (inWall && !inWallRef.current) haptic('wall');
+    inWallRef.current = inWall;
+    // 变量协议：--pill-x 是位移（px），--pill-stretch 是流体拉伸比例（1→1.37，scaleX 用）。
     // 以前这里写的是一份「比例」但 CSS 当长度用（width: var(--pill-width)），导致拉伸失效。
     element.style.setProperty('--pill-stretch', stretch.toFixed(3));
+    // 撞边：横向压窄（0.6 系数压得住流体拉伸）、纵向鼓起（体积感）
+    element.style.setProperty('--pill-squash', (1 - squash * 0.62).toFixed(3));
+    element.style.setProperty('--pill-bulge', (1 + squash * 0.3).toFixed(3));
+    /* 加速度 → 形变量：
+       |a| 越大，形变越狠 —— 沿运动方向拉长、垂直方向压扁（保持体积感），
+       并按 a 的符号做一点切变，看上去像"被手指拽着走"。
+       用「平滑峰值」而不是瞬时值：匀速拖动时瞬时 a≈0（物理上对的，但看不见效果），
+       取峰值 + 逐帧衰减，才读得出「甩出去」和「急停」两个瞬间。
+       增益 2.6：指尖常见的 0.1~0.15 px/ms² 就够吃到上限 34%。 */
+    const deform = Math.min(0.34, accelHoldRef.current * 2.6);
+    element.style.setProperty('--pill-deform-x', (1 + deform).toFixed(3));
+    element.style.setProperty('--pill-deform-y', (1 - deform * 0.55).toFixed(3));
+    element.style.setProperty('--pill-skew', `${(Math.max(-1, Math.min(1, accelRef.current * 2.2)) * 4).toFixed(2)}deg`);
     element.style.setProperty('--dock-x', `${((x / geo.width) * 100).toFixed(1)}%`);
-    // 跟手的小球：只写位置（形状不再跟速度拉伸 —— 拖动期间的"流体椭圆"交给滑块那套，
-    // 小球保持正圆，避免两个椭圆同时出现，也省掉每帧的混合/过渡开销）
-    dragBallRef.current?.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
     setHoverIndex(nearest);
   };
 
-  /** 小球首次出现时先摆到手指位置（React 渲染晚于 applyFrame 一帧） */
+  /** 拖动开始时先按下的位置摆好色块（React 渲染晚于 applyFrame 一帧） */
   useEffect(() => {
     if (!dragging) return;
     const geo = geoRef.current;
-    const element = dragBallRef.current;
-    if (!geo || !element) return;
-    const x = clamp(pendingXRef.current - geo.left, 18, geo.width - 18);
-    element.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
+    if (!geo) return;
+    applyFrame();
   }, [dragging]);
 
   const scheduleFrame = () => {
     if (frameRef.current === undefined) frameRef.current = window.requestAnimationFrame(applyFrame);
   };
 
+  /** 形变衰减循环：只在按住期间跑 —— 每帧把加速度峰值打折，再重算一次形变量。
+      注意**不能**用「速度为 0 就退出」做终止条件：按下第一帧 velRef 还是 0，
+      循环会在还没开始跟手时就自杀（这个 bug 让形变恒为 1.000），只在松手时取消。 */
+  const startShapeLoop = () => {
+    if (shapeFrameRef.current !== undefined) return;
+    const step = () => {
+      if (!draggingRef.current) {
+        shapeFrameRef.current = undefined;
+        return;
+      }
+      // 手指停下后没有新的 pointermove，accelRef 会一直保留最后一次采样值，
+      // 于是 max() 永远压不下去 —— 超过 40ms 没事件就当作"已停止"，形变才会回弹。
+      const idle = performance.now() - lastMoveRef.current.t;
+      if (idle > 40) accelRef.current = 0;
+      accelHoldRef.current = Math.max(Math.abs(accelRef.current), accelHoldRef.current * 0.84);
+      /* 兜底：万一 pointerup 在系统层面丢了（来电、切后台、弹层抢焦点），
+         这个循环会一直跑下去烧 CPU。空闲超过 800ms 或页面不可见就自己收摊。 */
+      if (idle > 800 || document.hidden) {
+        draggingRef.current = false;
+        shapeFrameRef.current = undefined;
+        return;
+      }
+      applyFrame();
+      shapeFrameRef.current = window.requestAnimationFrame(step);
+    };
+    shapeFrameRef.current = window.requestAnimationFrame(step);
+  };
+
   const onDown = (event: React.PointerEvent<HTMLElement>) => {
     if (!dockRef.current) return;
     geoRef.current = measure(); // 只在这里读布局
 
-    // 按住即出现跟手小球（拖动时一直跟着手指），松手那一刻再吸附进选中色块
+    // 按住：常驻色块直接跟手（不再弹触摸小球，避免同时出现两个圆）
     pendingXRef.current = event.clientX;
     draggingRef.current = true;
     setDragging(true);
+    velRef.current = 0;
+    accelRef.current = 0;
+    accelHoldRef.current = 0;
+    inWallRef.current = false;
+    lastMoveRef.current = { x: event.clientX, t: performance.now() };
     applyFrame();
+    startShapeLoop();
 
     const onWindowMove = (moveEvent: PointerEvent) => {
       if (!draggingRef.current) return;
+      // 速度 → 加速度：都用「本次位移 / 间隔」估算，不读布局
+      const now = performance.now();
+      const dt = Math.max(8, now - lastMoveRef.current.t);
+      const vel = (moveEvent.clientX - lastMoveRef.current.x) / dt;
+      accelRef.current = (vel - velRef.current) / dt; // px/ms²
+      velRef.current = vel;
+      lastMoveRef.current = { x: moveEvent.clientX, t: now };
       pendingXRef.current = moveEvent.clientX;
       scheduleFrame(); // 合帧：一帧最多写一次
     };
@@ -177,18 +244,31 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         if (geo && element) {
           const x = clamp(upEvent.clientX - geo.left, 0, geo.width - 1);
           const index = clamp(Math.floor(x / geo.cell), 0, TABS.length - 1);
-          // 松手：把跟手的小球换成「吸附」那一颗 —— 从当前位置飞进选中色块后消失
-          const id = (ballIdRef.current += 1);
-          const fromX = clamp(x, 18, geo.width - 18);
-          setBalls((prev) => [...prev, { id, x: fromX, y: geo.height / 2, toX: geo.centers[index] }]);
-          window.setTimeout(() => setBalls((prev) => prev.filter((ball) => ball.id !== id)), 480);
+          // 松手：清掉拖动变量 → 色块沿 CSS 的回弹曲线磁吸到选中格（挤压也在这一步弹回）
           element.style.removeProperty('--pill-x');
-          element.style.removeProperty('--pill-width');
+          element.style.removeProperty('--pill-stretch');
+          element.style.removeProperty('--pill-squash');
+          element.style.removeProperty('--pill-bulge');
+          element.style.removeProperty('--pill-deform-x');
+          element.style.removeProperty('--pill-deform-y');
+          element.style.removeProperty('--pill-skew');
+          velRef.current = 0;
+          accelRef.current = 0;
+          accelHoldRef.current = 0;
+          if (shapeFrameRef.current !== undefined) {
+            window.cancelAnimationFrame(shapeFrameRef.current);
+            shapeFrameRef.current = undefined;
+          }
           setHoverIndex(null);
           const tab = TABS[index];
           if (tab && index !== activeIndex) {
+            // 控件生效：切换标签的确认触感
+            haptic('select');
             if (typeof navSelectTab === 'function') navSelectTab(tab.id);
             else onSelect(tab.id);
+          } else if (tab) {
+            // 点了当前标签：给一次轻刻度，避免"点了没反应"的手感
+            haptic('tick');
           }
         }
         geoRef.current = null;
@@ -221,20 +301,8 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         </filter>
       </svg>
       <span className="m3e-dock-refraction" aria-hidden="true" />
-      {/* 按住 / 拖动时跟手的小球（位置由 --ball-x 每帧写入） */}
-      {dragging ? <span className="m3e-dock-ball dragging" ref={dragBallRef} aria-hidden="true" /> : null}
-      {balls.map((ball) => (
-        <span
-          key={ball.id}
-          className="m3e-dock-ball"
-          aria-hidden="true"
-          style={{
-            left: `${ball.x}px`,
-            top: `${ball.y}px`,
-            ['--ball-to' as string]: `${(ball.toX - ball.x).toFixed(1)}px`,
-          }}
-        />
-      ))}
+      {/* 内容穿过底栏边界时的散射反馈（上缘最强、往里渐隐，中间保持清晰） */}
+      <span className="m3e-dock-scatter" aria-hidden="true" />
       <span className="m3e-dock-slider" aria-hidden="true">
         <span className="m3e-dock-slider-reflection" aria-hidden="true" />
       </span>
@@ -252,6 +320,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
+              haptic('select');
               if (typeof navSelectTab === 'function') navSelectTab(tab.id);
               else onSelect(tab.id);
             }

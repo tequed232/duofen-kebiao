@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef, type RefObject } from 'react';
 import { buildLensMap, type LensParams } from './lens';
+import { timeSync } from './perf-telemetry';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -71,7 +72,9 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       const height = Math.round(element.offsetHeight);
       if (!width || !height) return;
       const radius = Math.min(parseFloat(getComputedStyle(element).borderRadius) || 0, width / 2, height / 2);
-      const map = buildLensMap(width, height, radius, params);
+      // 重建贴图是纯主线程活（逐像素 + 两次 base64 编码）：用 timeSync 报到 console，
+      // 真机上超过 200ms 就会出现在 `adb logcat -s DuofenWeb` 里。
+      const map = timeSync(`lens.build ${width}x${height}`, () => buildLensMap(width, height, radius, params));
       if (map.key === host.key) return;
       host.key = map.key;
       filter.setAttribute('width', String(width));
@@ -86,11 +89,24 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     };
 
     update();
-    const observer = new ResizeObserver(update);
+    /* ResizeObserver 可能在一帧里连发多次（弹层展开/收起、安全区变化），
+       每次都重算贴图 + 两次 toDataURL 在主线程上就是几十毫秒 —— 合帧 + 限流。
+       页面不可见时也不重建（后台没人看）。 */
+    let pending: number | undefined;
+    const scheduleUpdate = () => {
+      if (document.hidden) return;
+      if (pending !== undefined) return;
+      pending = window.setTimeout(() => {
+        pending = undefined;
+        update();
+      }, 120);
+    };
+    const observer = new ResizeObserver(scheduleUpdate);
     observer.observe(element);
 
     return () => {
       observer.disconnect();
+      if (pending !== undefined) window.clearTimeout(pending);
       svg.remove();
       hostRef.current = null;
       element.style.removeProperty('--lg-map-url');

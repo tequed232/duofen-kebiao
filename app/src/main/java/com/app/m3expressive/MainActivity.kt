@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
@@ -227,6 +229,26 @@ class MainActivity : ComponentActivity() {
                 },
             )
         }
+
+        applyPeakRefreshRate()
+    }
+
+    /**
+     * 申请屏幕支持的**最高刷新率**（本机是 144Hz 屏；120Hz 是模式的上一档）。
+     *
+     * 用 preferredRefreshRate 而不是 preferredDisplayModeId：前者只是「希望至少到这个档」，
+     * 系统仍可在省电 / 静止画面时自行降档；后者会把模式钉死，费电。
+     * 注意系统端还有一道闸：`settings system peak_refresh_rate`（本机默认 120），
+     * 那道闸不开，应用申请 144 也只能拿到 120 —— 这是系统行为，不是应用能力。
+     */
+    private fun applyPeakRefreshRate() {
+        val display = windowManager.defaultDisplay ?: return
+        val best = display.supportedModes.maxByOrNull { it.refreshRate } ?: return
+        val attributes = window.attributes
+        if (attributes.preferredRefreshRate != best.refreshRate) {
+            attributes.preferredRefreshRate = best.refreshRate
+            window.attributes = attributes
+        }
     }
 
     /** 网页侧的历史栈优先；栈空了才真的退出应用 */
@@ -251,14 +273,27 @@ class MainActivity : ComponentActivity() {
     /** 把系统栏高度写进 CSS 变量（dp，除以 density；网页据此给顶栏留白） */
     private fun injectInsets() {
         val density = resources.displayMetrics.density
-        val js = "document.documentElement.style.setProperty('--native-inset-top','${insetTopPx / density}px');" +
-            "document.documentElement.style.setProperty('--native-inset-bottom','${insetBottomPx / density}px');" +
-            "document.documentElement.style.setProperty('--native-dock','${NativeDock.heightPx(this) / density}px');" +
-            "document.documentElement.dataset.nativeDock='1';"
+        val js = "(function(){var r=document.documentElement||document.body;if(!r||!r.style)return;" +
+            "r.style.setProperty('--native-inset-top','${insetTopPx / density}px');" +
+            "r.style.setProperty('--native-inset-bottom','${insetBottomPx / density}px');" +
+            "r.style.setProperty('--native-dock','${NativeDock.heightPx(this) / density}px');" +
+            "r.dataset.nativeDock='1';})();"
         webView.post { webView.evaluateJavascript(js, null) }
     }
 
     private fun chromeClient() = object : WebChromeClient() {
+        /**
+         * 把网页 console 转发进 logcat（`adb logcat -s DuofenWeb`）。
+         * 真机上的卡死/长任务只能靠这条链定位：网页里的 warn/error 桌面复现不出来。
+         */
+        override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+            val text = message.message()
+            if (text.contains("[longtask]") || text.contains("[slow]") || message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                android.util.Log.d("DuofenWeb", "$text @${message.sourceId()}:${message.lineNumber()}")
+            }
+            return true
+        }
+
         /** 网页请求麦克风：应用已授权就直接放行，否则先申请运行时权限 */
         override fun onPermissionRequest(request: PermissionRequest) {
             val missing = request.resources.mapNotNull { resource ->
@@ -298,8 +333,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** 给网页用的原生桥：流体云进度通知 + 平台标识 */
+    /** 给网页用的原生桥：流体云进度通知 + 触感 + 平台标识 */
     private inner class NativeBridge {
+        /**
+         * 触感反馈（系统对接版）：走 View.performHapticFeedback + 系统常量，
+         * 因此**自动遵守用户的「触感反馈」开关与强度设置**，也不需要 VIBRATE 权限。
+         * kind：
+         *   · "wall"   —— 色块撞到底栏边界（用 SEGMENT_TICK，Android 14+ 的分段刻度感）
+         *   · "select" —— 控件生效 / 切换标签（用 CONFIRM，系统确认感）
+         *   · "tick"   —— 轻刻度（拖动经过某格、周数 / 日期步进）
+         *   · "heavy"  —— 重触感（「回到今天」这类一锤定音的操作，用 LONG_PRESS 的力度）
+         */
+        @JavascriptInterface
+        fun haptic(kind: String) {
+            runOnUiThread {
+                val constant = when (kind) {
+                    "wall" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        HapticFeedbackConstants.SEGMENT_TICK
+                    } else {
+                        HapticFeedbackConstants.CLOCK_TICK
+                    }
+
+                    "select" -> HapticFeedbackConstants.CONFIRM
+                    "heavy" -> HapticFeedbackConstants.LONG_PRESS
+                    else -> HapticFeedbackConstants.CLOCK_TICK
+                }
+                webView.performHapticFeedback(constant)
+                // 触感是否真的下发到系统：`adb logcat -s DuofenHaptic`（真机核对用，
+                // 系统触感总开关关掉时这里仍会打印，但马达不会响 —— 那是系统行为）
+                android.util.Log.d("DuofenHaptic", "kind=$kind constant=$constant")
+            }
+        }
+
         /** 流体云 / Live Updates：网页录音时持续调用，带上进度 */
         @JavascriptInterface
         fun liveUpdate(title: String, text: String, progress: Int) {

@@ -9,6 +9,7 @@
  */
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { iconChar } from '../theme/icon-codepoints';
+import { haptic } from '../lib/native';
 
 type ElementRef<T> = { current: T | null };
 
@@ -118,7 +119,11 @@ export function MdSlider({
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    const onInputEvent = () => inputHandler.current?.(Number(element.value));
+    // 滑动控件：每动一步给一次轻刻度（haptic() 内部自带 40ms 去重，不会连成嗡嗡声）
+    const onInputEvent = () => {
+      haptic('tick');
+      inputHandler.current?.(Number(element.value));
+    };
     const onChangeEvent = () => changeHandler.current?.(Number(element.value));
     element.addEventListener('input', onInputEvent);
     element.addEventListener('change', onChangeEvent);

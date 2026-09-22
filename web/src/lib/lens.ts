@@ -49,7 +49,15 @@ function roundedRectSDF(x: number, y: number, hw: number, hh: number, r: number)
   return Math.min(Math.max(qx, qy), 0) + Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) - r;
 }
 
-/** 生成位移图与边缘图（尺寸或参数变化时才重建） */
+/** 生成位移图与边缘图（尺寸或参数变化时才重建）
+ *
+ *  **半分辨率**：位移贴图是很软的折射场，按 0.5 倍像素生成、由 SVG 拉伸回元素尺寸，
+ *  肉眼无差别，但像素数少 4 倍 —— 手机上这一步的主线程开销（逐像素循环 + 两次 base64 编码，
+ *  实测能到 300~400ms 长任务）直接降到四分之一。feImage 已设 preserveAspectRatio="none"，
+ *  贴图会被拉到元素尺寸；feDisplacementMap 的 scale 用的是元素像素单位，与贴图分辨率无关。
+ */
+const MAP_SCALE = 0.5;
+
 export function buildLensMap(
   width: number,
   height: number,
@@ -57,54 +65,58 @@ export function buildLensMap(
   params: LensParams,
 ): LensMap {
   const key = [width, height, Math.round(radius), params.bezel, params.strength, params.zoom].join(':');
+  const mapWidth = Math.max(8, Math.round(width * MAP_SCALE));
+  const mapHeight = Math.max(8, Math.round(height * MAP_SCALE));
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = mapWidth;
+  canvas.height = mapHeight;
   const ctx = canvas.getContext('2d');
   if (!ctx) return { mapUrl: '', edgeUrl: '', scale: 1, key };
 
-  const img = ctx.createImageData(width, height);
-  const edge = ctx.createImageData(width, height);
-  const raw = new Float32Array(width * height * 2);
-  const hw = width / 2;
-  const hh = height / 2;
+  const img = ctx.createImageData(mapWidth, mapHeight);
+  const edge = ctx.createImageData(mapWidth, mapHeight);
+  const raw = new Float32Array(mapWidth * mapHeight * 2);
+  const hw = mapWidth / 2;
+  const hh = mapHeight / 2;
+  const scaledRadius = radius * MAP_SCALE;
   // 弧面厚度跟随圆角半径：宽扁的胶囊不会被拉伸到中心
-  const bezel = Math.min(hw, hh, radius || Math.min(width, height) / 2) * params.bezel;
+  const bezel = Math.min(hw, hh, scaledRadius || Math.min(mapWidth, mapHeight) / 2) * params.bezel;
   const k = params.strength;
   let maxD = 0.0001;
 
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
+  for (let y = 0; y < mapHeight; y += 1) {
+    for (let x = 0; x < mapWidth; x += 1) {
       const cx = x + 0.5 - hw;
       const cy = y + 0.5 - hh;
-      const d = roundedRectSDF(cx, cy, hw, hh, radius);
+      const d = roundedRectSDF(cx, cy, hw, hh, scaledRadius);
       let m = smoothStep(-bezel, 0, d); // 0=深处 → 1=边缘
       m *= m; // 平滑衰减，中心几乎无形变
-      const nx = roundedRectSDF(cx + 0.5, cy, hw, hh, radius) - roundedRectSDF(cx - 0.5, cy, hw, hh, radius);
-      const ny = roundedRectSDF(cx, cy + 0.5, hw, hh, radius) - roundedRectSDF(cx, cy - 0.5, hw, hh, radius);
+      const nx = roundedRectSDF(cx + 0.5, cy, hw, hh, scaledRadius) - roundedRectSDF(cx - 0.5, cy, hw, hh, scaledRadius);
+      const ny = roundedRectSDF(cx, cy + 0.5, hw, hh, scaledRadius) - roundedRectSDF(cx, cy - 0.5, hw, hh, scaledRadius);
       const len = Math.hypot(nx, ny) || 1;
       const dx = -(nx / len) * m * k * bezel - cx * params.zoom;
       const dy = -(ny / len) * m * k * bezel - cy * params.zoom;
-      const i = (y * width + x) * 2;
+      const i = (y * mapWidth + x) * 2;
       raw[i] = dx;
       raw[i + 1] = dy;
       maxD = Math.max(maxD, Math.abs(dx), Math.abs(dy));
 
-      const p = (y * width + x) * 4;
+      const p = (y * mapWidth + x) * 4;
       edge.data[p] = 255;
       edge.data[p + 1] = 255;
       edge.data[p + 2] = 255;
-      // 只在弧面内侧留一圈 rim
-      const rim = smoothStep(-2.2, -1.1, d) * (1 - smoothStep(-0.3, 0.5, d));
+      // 只在弧面内侧留一圈窄 rim（散射带的宽度就由它决定；太平会让模糊铺满整块）
+      const rim = smoothStep(-1.6, -0.7, d) * (1 - smoothStep(-0.25, 0.35, d));
       edge.data[p + 3] = d <= 0 ? Math.round(rim * 255) : 0;
     }
   }
 
-  const scale = maxD * 2;
+  // 位移量按元素像素换算（贴图是半分辨率，位移场要按 1/MAP_SCALE 放大回来）
+  const scale = (maxD * 2) / MAP_SCALE;
   const data = img.data;
   for (let i = 0, p = 0; i < raw.length; i += 2, p += 4) {
-    data[p] = clamp(raw[i] / scale + 0.5, 0, 1) * 255;
-    data[p + 1] = clamp(raw[i + 1] / scale + 0.5, 0, 1) * 255;
+    data[p] = clamp(raw[i] / (maxD * 2) + 0.5, 0, 1) * 255;
+    data[p + 1] = clamp(raw[i + 1] / (maxD * 2) + 0.5, 0, 1) * 255;
     data[p + 2] = 128;
     data[p + 3] = 255;
   }
