@@ -783,3 +783,22 @@ html[data-ui-scale='small'] .stage,
 html[data-ui-scale='large'] .stage {
   overflow: hidden;
 }
+
+
+/* ==================== 底栏醒目化（真机可见性保障） ====================
+   真机上一度"看不到底栏"：它用了 surfaceContainer，在深色主题下与页面背景几乎同色。
+   这里给它明确的层色 + 顶部分隔线 + 安全区留白，并保证最小高度，任何主题下都清晰可辨。 */
+.app-nav-bar {
+  position: relative;
+  z-index: 30;
+  flex: 0 0 auto;
+  min-height: 80px;
+  background: var(--md-sys-color-surface-container-high);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px));
+}
+
+.app-nav-bar md-navigation-bar {
+  --md-navigation-bar-container-color: var(--md-sys-color-surface-container-high);
+  background: var(--md-sys-color-surface-container-high);
+}

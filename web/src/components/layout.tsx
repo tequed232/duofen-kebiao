@@ -84,7 +84,22 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   }, [activeIndex, onSelect]);
 
   return (
-    <div className="app-nav-bar">
+    // 整条底栏兜底可点：即使 md-navigation-tab 的事件在某些 WebView 里没触发，
+    // 按点击的横向位置换算标签也能切换 —— 保证"点哪儿都能用"。
+    <div
+      className="app-nav-bar"
+      onClick={(event) => {
+        const target = event.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        if (!rect.width) return;
+        const index = Math.min(
+          TABS.length - 1,
+          Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * TABS.length)),
+        );
+        const tab = TABS[index];
+        if (tab && tab.id !== active) onSelect(tab.id);
+      }}
+    >
       <md-navigation-bar ref={ref as never}>
         {TABS.map((tab) => (
           <md-navigation-tab key={tab.id} label={tab.label} onClick={() => onSelect(tab.id)}>

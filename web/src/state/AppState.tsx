@@ -139,7 +139,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const schedule = importedSchedule ?? EMBEDDED_SCHEDULE;
+  const scheduleHasCourses = Boolean(importedSchedule?.periods?.some((period) => period.days.some((day) => day.length > 0)));
+    // 已保存的课表若为空（例如曾被清空），回落到内置课表 —— 恢复内置数据后立刻生效，且不删用户数据
+    const schedule = scheduleHasCourses ? (importedSchedule as ScheduleData) : EMBEDDED_SCHEDULE;
 
   const setSchedule = useCallback<AppStateValue['setSchedule']>((data) => {
     if (!data) {
