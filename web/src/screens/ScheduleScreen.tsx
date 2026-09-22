@@ -252,7 +252,9 @@ export default function ScheduleScreen() {
             />
           </div>
 
-          <div style={{ padding: '0 16px 24px' }}>
+          {/* 当天课程区：底部要同时让开「回到今天」FAB 与底栏，
+              只有一节课时也能完整显示（见 .schedule-day-list） */}
+          <div className="schedule-day-list">
             <DayTimeline
               schedule={schedule}
               date={selectedDate}

@@ -13,6 +13,7 @@ import { ExpandableSheet } from '../components/overlays';
 import { MapChooserDialog, highlightKeyFor } from '../components/schedule';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
+import { haptic } from '../lib/native';
 import {
   WEEKDAY_LONG,
   formatAddress,
@@ -80,6 +81,7 @@ export default function ScheduleFilterScreen() {
     .join(' · ');
 
   const clearFilters = () => {
+    haptic('select');
     setTeacher('');
     setCourseQuery('');
     setPlace('');
@@ -123,6 +125,7 @@ export default function ScheduleFilterScreen() {
       label: '回到今天',
       icon: 'today',
       onSelect: () => {
+        haptic('heavy');
         setDate(toISODate(new Date()));
         setMenuOpen(false);
       },
@@ -150,7 +153,7 @@ export default function ScheduleFilterScreen() {
 
         <div className="screen-content">
           {/* 把原来的分类标签 + 搜索栏合并成一个按钮，点开后在同一个面板里填老师/课程/地点/时间 */}
-          <button type="button" className="filter-button" ref={filterButtonRef} onClick={() => setSheetOpen(true)}>
+          <button type="button" className="filter-button" ref={filterButtonRef} onClick={() => { haptic('select'); setSheetOpen(true); }}>
             <MdIcon name="filter_list" size={22} />
             <span className="col flex-1" style={{ gap: 2, textAlign: 'left' }}>
               <span className="md-title-small-emphasized">筛选条件</span>
@@ -204,6 +207,7 @@ export default function ScheduleFilterScreen() {
                     className="filter-row"
                     key={`${hit.course.name}-${hit.course.teacher}-${hit.course.room}-${hit.dayIndex}-${hit.period}`}
                     onClick={() => {
+                      haptic('select');
                       setSelected(hit);
                       openHit(hit);
                     }}
@@ -252,7 +256,7 @@ export default function ScheduleFilterScreen() {
         headerActions={
           <>
             <md-text-button onClick={clearFilters}>清空</md-text-button>
-            <md-filled-tonal-button onClick={() => setSheetOpen(false)}>查看结果</md-filled-tonal-button>
+            <md-filled-tonal-button onClick={() => { haptic('select'); setSheetOpen(false); }}>查看结果</md-filled-tonal-button>
           </>
         }
       >
@@ -272,7 +276,7 @@ export default function ScheduleFilterScreen() {
           <div>
             <SectionHeader icon="event" title="时间" />
             <div className="row gap-12" style={{ alignItems: 'center' }}>
-              <MdSwitch selected={timeEnabled} onSelectedChange={setTimeEnabled} ariaLabel="按日期筛选开关" />
+              <MdSwitch selected={timeEnabled} onSelectedChange={(value) => { haptic('tick'); setTimeEnabled(value); }} ariaLabel="按日期筛选开关" />
               <span className="md-body-medium flex-1">只看某一天</span>
             </div>
             {timeEnabled ? (

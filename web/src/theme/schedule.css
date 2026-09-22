@@ -8,6 +8,14 @@
   padding: 0 16px 8px;
 }
 
+/* 首页「当天课程」列表：底部要同时让开两个常驻控件 ——
+   「回到今天」FAB（56）与底栏（68），否则只有一节课、内容滚到底时卡片会被它们压住
+   （实测：卡片 772~856，FAB 744~800、底栏从 814 起，分别重叠 28 / 42px）。 */
+.schedule-day-list {
+  padding: 0 16px;
+  padding-bottom: calc(56px + 68px + 16px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
+}
+
 /* 课表页头图：**暂时下架**（主美会另出更好的图）。
    新图到位后：把文件放回 web/public/art/，恢复下面这段规则 + ScheduleScreen 里的
    <div className="schedule-hero" aria-hidden="true" />，并在 docs/asset-permissions.md 登记。

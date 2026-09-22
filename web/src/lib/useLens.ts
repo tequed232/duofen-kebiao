@@ -82,7 +82,50 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     backdropDisp.setAttribute('in2', 'map');
     backdropDisp.setAttribute('xChannelSelector', 'R');
     backdropDisp.setAttribute('yChannelSelector', 'G');
-    backdropFilter.append(backdropImage, backdropDisp);
+    backdropDisp.setAttribute('result', 'lens');
+    /* 边缘色散：把透镜后的画面拆成 R / G / B 三个通道，R 与 B 各偏 0.9px 反向位移，
+       再用 screen 叠回去 —— 通道错位就是真实玻璃边缘的色散（色边），
+       这是 Apple 材质里我们也缺的最后一项。位移量固定很小，只在边缘会看出来。 */
+    const dispersion = 0.9;
+    const channel = (which: 'r' | 'g' | 'b', dx: number, name: string) => {
+      const matrix = document.createElementNS(SVG_NS, 'feColorMatrix');
+      matrix.setAttribute('in', 'lens');
+      matrix.setAttribute('type', 'matrix');
+      matrix.setAttribute(
+        'values',
+        which === 'r'
+          ? '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'
+          : which === 'g'
+            ? '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0'
+            : '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0',
+      );
+      matrix.setAttribute('result', `${name}-only`);
+      if (dx === 0) return [matrix];
+      const offset = document.createElementNS(SVG_NS, 'feOffset');
+      offset.setAttribute('in', `${name}-only`);
+      offset.setAttribute('dx', String(dx));
+      offset.setAttribute('dy', '0');
+      offset.setAttribute('result', name);
+      return [matrix, offset];
+    };
+    const blendR = document.createElementNS(SVG_NS, 'feBlend');
+    blendR.setAttribute('in', 'r');
+    blendR.setAttribute('in2', 'g');
+    blendR.setAttribute('mode', 'screen');
+    blendR.setAttribute('result', 'rg');
+    const blendB = document.createElementNS(SVG_NS, 'feBlend');
+    blendB.setAttribute('in', 'rg');
+    blendB.setAttribute('in2', 'b');
+    blendB.setAttribute('mode', 'screen');
+    backdropFilter.append(
+      backdropImage,
+      backdropDisp,
+      ...channel('r', dispersion, 'r'),
+      ...channel('g', 0, 'g'),
+      ...channel('b', -dispersion, 'b'),
+      blendR,
+      blendB,
+    );
     svg.appendChild(backdropFilter);
     document.body.appendChild(svg);
 
