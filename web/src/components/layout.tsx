@@ -80,9 +80,12 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  /** 点击时弹出的小圆球（点哪里弹哪里，随后自动吸附进色块） */
+  const [balls, setBalls] = useState<{ id: number; x: number; y: number; toX: number }[]>([]);
+  const ballIdRef = useRef(0);
 
   /** 拖动期间缓存的几何（避免每帧重排） */
-  const geoRef = useRef<{ left: number; width: number; centers: number[]; cell: number } | null>(null);
+  const geoRef = useRef<{ left: number; width: number; height: number; centers: number[]; cell: number } | null>(null);
   const frameRef = useRef<number | undefined>(undefined);
   const pendingXRef = useRef(0);
 
@@ -98,7 +101,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
       const r = button.getBoundingClientRect();
       return r.left - rect.left + r.width / 2;
     });
-    return { left: rect.left, width: rect.width, cell: rect.width / TABS.length, centers };
+    return { left: rect.left, width: rect.width, height: rect.height, cell: rect.width / TABS.length, centers };
   };
 
   /** 把指针位置换算成「色块中心 x」与「拉伸比例」，一帧只写一次 */
@@ -126,6 +129,18 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const onDown = (event: React.PointerEvent<HTMLElement>) => {
     if (!dockRef.current) return;
     geoRef.current = measure(); // 只在这里读布局
+
+    // 点击处弹出一颗小圆球，动画结束后自动吸附进选中色块（吸完即移除，零残留）
+    const geo = geoRef.current;
+    if (geo) {
+      const localX = event.clientX - geo.left;
+      // **单线轨道**：纵向固定为底栏中线，所有小球都在这条水平线上飞行（不再跟随手指的纵向落点）
+      const localY = geo.height / 2;
+      const nearest = clamp(Math.floor(localX / geo.cell), 0, TABS.length - 1);
+      const id = (ballIdRef.current += 1);
+      setBalls((prev) => [...prev, { id, x: localX, y: localY, toX: geo.centers[nearest] }]);
+      window.setTimeout(() => setBalls((prev) => prev.filter((ball) => ball.id !== id)), 480);
+    }
     pendingXRef.current = event.clientX;
     draggingRef.current = true;
     setDragging(true);
@@ -189,6 +204,18 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
       </svg>
       <span className="m3e-dock-refraction" aria-hidden="true" />
       <span className="m3e-dock-specular" aria-hidden="true" />
+      {balls.map((ball) => (
+        <span
+          key={ball.id}
+          className="m3e-dock-ball"
+          aria-hidden="true"
+          style={{
+            left: `${ball.x}px`,
+            top: `${ball.y}px`,
+            ['--ball-to' as string]: `${(ball.toX - ball.x).toFixed(1)}px`,
+          }}
+        />
+      ))}
       <span className="m3e-dock-slider" aria-hidden="true">
         <span className="m3e-dock-slider-reflection" aria-hidden="true" />
       </span>

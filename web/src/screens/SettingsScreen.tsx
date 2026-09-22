@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 设置 (Settings)
  *
  * A 6 item list group (M3 Expressive connected list: 3dp gaps, 28dp outer corners,
@@ -260,8 +260,33 @@ export default function SettingsScreen() {
               <span className="md-body-small muted">{imageStats.used} / {imageStats.limit} 张</span>
             </div>
 
-            {/* -------------------------------------- 实时通知（流体云） */}
-            
+            {/* -------------------------------------- 实时通知（流体云 / 实况） */}
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="notifications_active" />
+              </div>
+              <div slot="headline">实时通知（流体云）</div>
+              <div className="list-inline-texts" slot="supporting-text">
+                <span>{settings.liveNotify ? '已开启' : '已关闭'}</span>
+                <span>录音 / 上课时在状态栏显示实时进度</span>
+              </div>
+              <div slot="end">
+                <MdSwitch
+                  selected={settings.liveNotify}
+                  onSelectedChange={(value) =>
+                    updateSettings({ liveNotify: value }, { message: value ? '已开启实时通知' : '已关闭实时通知' })
+                  }
+                  ariaLabel="实时通知开关"
+                />
+              </div>
+            </md-list-item>
+            <div className="list-control-row">
+              <md-filled-tonal-button className="btn-s" onClick={() => nativeTestLiveUpdate()}>
+                <MdIcon slot="icon" name="play_arrow" />
+                发送实况测试
+              </md-filled-tonal-button>
+              <span className="md-body-small muted">点它立刻发一条实况，确认流体云是否出现</span>
+            </div>
 
             {/* ------------------------------------------------ 5 API编辑 */}
             <md-list-item
@@ -285,10 +310,10 @@ export default function SettingsScreen() {
                 <MdIcon name="notifications_active" />
               </div>
               <div slot="headline">上课提醒（灵动岛）</div>
-              <div slot="supporting-text">
-                {settings.classReminder
-                  ? `已开启：提前 ${settings.classReminderLead} 分钟用实况通知提醒，通知里可直接「导航」到教室、点「课本」看这节课要带的书`
-                  : '已关闭：上课前不发送提醒'}
+              <div className="list-inline-texts" slot="supporting-text">
+                <span>{settings.classReminder ? '已开启' : '已关闭'}</span>
+                <span>{settings.classReminder ? `提前 ${settings.classReminderLead} 分钟` : '上课前不提醒'}</span>
+                <span>通知可「导航去 / 我到了」</span>
               </div>
               <div slot="end">
                 <MdSwitch

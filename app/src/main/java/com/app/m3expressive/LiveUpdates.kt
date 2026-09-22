@@ -60,12 +60,13 @@ object LiveUpdates {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setSmallIcon(com.app.m3expressive.R.drawable.ic_stat_notify)
             .setContentTitle(title)
             .setContentText(text)
             .setContentIntent(pending)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setColor(0xFF12512E.toInt())
             .setCategory(Notification.CATEGORY_PROGRESS)
             // 直接确认：不打开应用也能结束当前实时任务
             .addAction(
@@ -114,7 +115,7 @@ object LiveUpdates {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val builder = Notification.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setSmallIcon(com.app.m3expressive.R.drawable.ic_stat_notify)
             .setContentTitle("$course 即将上课")
             .setContentText(
                 buildString {
@@ -141,13 +142,12 @@ object LiveUpdates {
                 /* 设备不支持则忽略 */
             }
         }
-
-        // 动作 1：导航到教室
+        // 动作 1：导航去（按作者设计稿的文案）
         if (!navigateUri.isNullOrBlank()) {
             builder.addAction(
                 Notification.Action.Builder(
                     null,
-                    "导航",
+                    "导航去",
                     PendingIntent.getActivity(
                         context,
                         2,
@@ -157,11 +157,11 @@ object LiveUpdates {
                 ).build(),
             )
         }
-        // 动作 2：看这节课要带的课本（回到应用并跳到教材窗口）
+        // 动作 2：我到了（回到应用并跳到教材窗口，同时结束这次提醒）
         builder.addAction(
             Notification.Action.Builder(
                 null,
-                "课本",
+                "我到了",
                 PendingIntent.getActivity(
                     context,
                     3,
@@ -172,6 +172,31 @@ object LiveUpdates {
                 ),
             ).build(),
         )
+
+        // 大图标（设计稿左侧的方块）：课程名首字 + 主题色底
+        try {
+            val size = (context.resources.displayMetrics.density * 56).toInt()
+            val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            paint.color = 0xFF12512E.toInt()
+            val radius = size / 2f
+            canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), radius * 0.42f, radius * 0.42f, paint)
+            paint.color = 0xFFFFFFFF.toInt()
+            paint.textAlign = android.graphics.Paint.Align.CENTER
+            paint.textSize = size * 0.46f
+            paint.typeface = android.graphics.Typeface.DEFAULT_BOLD
+            val metrics = paint.fontMetrics
+            canvas.drawText(
+                course.take(1),
+                radius,
+                radius - (metrics.ascent + metrics.descent) / 2f,
+                paint,
+            )
+            builder.setLargeIcon(android.graphics.drawable.Icon.createWithBitmap(bitmap))
+        } catch (_: Throwable) {
+            /* 画不出就忽略，不影响通知 */
+        }
 
         // 标准样式：Android 16 走 ProgressStyle（反射，复用 applyLiveUpdateStyle），否则 BigTextStyle
         val promoted = applyLiveUpdateStyle(builder, 100)
