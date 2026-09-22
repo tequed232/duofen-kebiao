@@ -1243,6 +1243,16 @@ html[data-perf='high'] .m3e-dock {
   }
 }
 
+/* 按住 / 拖动时的跟手小球：位置由 --ball-x 每帧写入，没有吸附动画（松手才播） */
+.m3e-dock-ball.dragging {
+  left: 0;
+  top: 50%;
+  animation: none;
+  opacity: 0.98;
+  transform: translate3d(var(--ball-x, 0px), 0, 0) scale(1);
+  transition: none;
+}
+
 /* 低性能档：不做小球动画（省电） */
 html[data-perf='low'] .m3e-dock-ball {
   display: none;

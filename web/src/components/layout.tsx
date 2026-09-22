@@ -88,6 +88,8 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const geoRef = useRef<{ left: number; width: number; height: number; centers: number[]; cell: number } | null>(null);
   const frameRef = useRef<number | undefined>(undefined);
   const pendingXRef = useRef(0);
+  /** 拖动中跟手的小球：位置每帧写一次 CSS 变量，不触发 React 渲染 */
+  const dragBallRef = useRef<HTMLSpanElement>(null);
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -119,8 +121,20 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     element.style.setProperty('--pill-x', `${(x - halfCell).toFixed(1)}px`);
     element.style.setProperty('--pill-width', stretch.toFixed(3));
     element.style.setProperty('--dock-x', `${((x / geo.width) * 100).toFixed(1)}%`);
+    // 跟手的小球：同样一帧只写一个变量
+    dragBallRef.current?.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
     setHoverIndex(nearest);
   };
+
+  /** 小球首次出现时先摆到手指位置（React 渲染晚于 applyFrame 一帧） */
+  useEffect(() => {
+    if (!dragging) return;
+    const geo = geoRef.current;
+    const element = dragBallRef.current;
+    if (!geo || !element) return;
+    const x = clamp(pendingXRef.current - geo.left, 18, geo.width - 18);
+    element.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
+  }, [dragging]);
 
   const scheduleFrame = () => {
     if (frameRef.current === undefined) frameRef.current = window.requestAnimationFrame(applyFrame);
@@ -130,17 +144,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     if (!dockRef.current) return;
     geoRef.current = measure(); // 只在这里读布局
 
-    // 点击处弹出一颗小圆球，动画结束后自动吸附进选中色块（吸完即移除，零残留）
-    const geo = geoRef.current;
-    if (geo) {
-      const localX = event.clientX - geo.left;
-      // **单线轨道**：纵向固定为底栏中线，所有小球都在这条水平线上飞行（不再跟随手指的纵向落点）
-      const localY = geo.height / 2;
-      const nearest = clamp(Math.floor(localX / geo.cell), 0, TABS.length - 1);
-      const id = (ballIdRef.current += 1);
-      setBalls((prev) => [...prev, { id, x: localX, y: localY, toX: geo.centers[nearest] }]);
-      window.setTimeout(() => setBalls((prev) => prev.filter((ball) => ball.id !== id)), 480);
-    }
+    // 按住即出现跟手小球（拖动时一直跟着手指），松手那一刻再吸附进选中色块
     pendingXRef.current = event.clientX;
     draggingRef.current = true;
     setDragging(true);
@@ -164,6 +168,11 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         if (geo && element) {
           const x = clamp(upEvent.clientX - geo.left, 0, geo.width - 1);
           const index = clamp(Math.floor(x / geo.cell), 0, TABS.length - 1);
+          // 松手：把跟手的小球换成「吸附」那一颗 —— 从当前位置飞进选中色块后消失
+          const id = (ballIdRef.current += 1);
+          const fromX = clamp(x, 18, geo.width - 18);
+          setBalls((prev) => [...prev, { id, x: fromX, y: geo.height / 2, toX: geo.centers[index] }]);
+          window.setTimeout(() => setBalls((prev) => prev.filter((ball) => ball.id !== id)), 480);
           element.style.removeProperty('--pill-x');
           element.style.removeProperty('--pill-width');
           setHoverIndex(null);
@@ -204,6 +213,8 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
       </svg>
       <span className="m3e-dock-refraction" aria-hidden="true" />
       <span className="m3e-dock-specular" aria-hidden="true" />
+      {/* 按住 / 拖动时跟手的小球（位置由 --ball-x 每帧写入） */}
+      {dragging ? <span className="m3e-dock-ball dragging" ref={dragBallRef} aria-hidden="true" /> : null}
       {balls.map((ball) => (
         <span
           key={ball.id}
