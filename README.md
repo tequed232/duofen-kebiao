@@ -235,6 +235,8 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 
 ## 贡献者
 
+> 提交信息统一按 [`docs/commit-convention.md`](./docs/commit-convention.md) 写：`类型(范围): 中文描述`。
+
 应用「关于 → 致谢 · 名片墙」与 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 是**同一份名单**（数据源：`web/src/lib/meta.ts` 的 `CREDITS`），
 名片墙为 1×3（作者本人整行）+ 其余三列排布（最后一行不满时最后一张跨列补满）：
 

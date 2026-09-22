@@ -27,6 +27,9 @@
 
 ## 怎么加入这份名单
 
+> 提交信息请遵循 [`docs/commit-convention.md`](./docs/commit-convention.md)：
+> `类型(范围): 中文描述`，例如 `fix(android): 修复设备控制开关不持久的问题`。
+
 三种方式任选，合并进默认分支后会自动出现在仓库的 **Contributors** 列表里：
 
 1. **Pull Request（推荐）**：Fork 仓库 → 改点东西 → 发 PR，合并后即计入（Squash merge 也会把你的提交记在你名下）。
