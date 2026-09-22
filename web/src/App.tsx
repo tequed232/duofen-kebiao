@@ -7,38 +7,32 @@ import { SplashScreen } from './components/splash';
 import { useAppState } from './state/AppState';
 import { nativeDockActive } from './lib/native';
 import { startClassReminderLoop } from './lib/classReminder';
-import HomeScreen from './screens/HomeScreen';
-import HistoryScreen from './screens/HistoryScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import RecordDetailScreen from './screens/RecordDetailScreen';
-import ApiEditScreen from './screens/ApiEditScreen';
-import BlankScreen from './screens/BlankScreen';
 import ScheduleScreen from './screens/ScheduleScreen';
 import ScheduleFilterScreen from './screens/ScheduleFilterScreen';
 import AboutScreen from './screens/AboutScreen';
 import TextbooksScreen from './screens/TextbooksScreen';
 import LicensesScreen from './screens/LicensesScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import ApiEditScreen from './screens/ApiEditScreen';
+import BlankScreen from './screens/BlankScreen';
 
 const SCREENS = {
-  home: HomeScreen,
-  history: HistoryScreen,
-  settings: SettingsScreen,
-  record: RecordDetailScreen,
-  apiEdit: ApiEditScreen,
   blank: BlankScreen,
   schedule: ScheduleScreen,
   scheduleFilter: ScheduleFilterScreen,
   about: AboutScreen,
+  apiEdit: ApiEditScreen,
   textbookList: TextbooksScreen,
   licenses: LicensesScreen,
+  settings: SettingsScreen,
 };
 
-/** Screens that own a bottom navigation bar keep the snackbar 16dp above it. */
-const WITH_NAV_BAR: RouteName[] = ['home', 'camera', 'history', 'settings', 'schedule'];
+/** 底边栏是常驻单例（见 PersistentDock），所以屏幕内容统一给它留出高度 */
+const SNACKBAR_BOTTOM = 96;
 
 /** 路由 → 标签：底栏的选中项由当前路由推导（唯一事实来源） */
 function tabForRoute(route: RouteName): 'schedule' | 'search' | 'settings' {
-  if (route === 'settings' || route === 'about' || route === 'apiEdit' || route === 'licenses') return 'settings';
+  if (route === 'settings' || route === 'about' || route === 'licenses' || route === 'apiEdit') return 'settings';
   if (route === 'scheduleFilter') return 'search';
   return 'schedule';
 }
@@ -52,7 +46,7 @@ function PersistentDock() {
 export default function App() {
   const { current, selectTab, push } = useNav();
   const { ready, settings, schedule, textbooks } = useAppState();
-  const bottom = WITH_NAV_BAR.includes(current.route) ? 96 : 16;
+  const bottom = SNACKBAR_BOTTOM;
 
   // 开屏：数据就绪后自动进入；进入时主页组件从下向上依次弹出
   const [splash, setSplash] = useState(true);
@@ -85,10 +79,20 @@ export default function App() {
   }, [settings.uiScale]);
 
   // 上课提醒：每 30 秒检查一次，临近上课时发实况通知（灵动岛 / 流体云）
+  // 注意：这里必须把 AppSettings 映射成 ReminderSettings（enabled / leadMinutes），
+  // 直接把整个 settings 传进去会让 enabled 恒为 undefined —— 提醒永远不会触发。
   useEffect(() => {
     if (!ready) return undefined;
-    return startClassReminderLoop(() => ({ schedule, textbooks, settings }));
-  }, [ready, schedule, textbooks, settings]);
+    return startClassReminderLoop(() => ({
+      schedule,
+      textbooks,
+      settings: {
+        enabled: settings.classReminder,
+        leadMinutes: settings.classReminderLead,
+        schoolName: settings.schoolName,
+      },
+    }));
+  }, [ready, schedule, textbooks, settings.classReminder, settings.classReminderLead, settings.schoolName]);
 
   // 通知里的「课本」动作：宿主打开应用后调用它跳到教材窗口
   useEffect(() => {

@@ -90,7 +90,7 @@ function CreditLicenseMark({ license }: { license: CreditLicense }) {
 
 export default function AboutScreen() {
   const nav = useNav();
-  const { records, schedule, seed, dynamicColor, textbooks } = useAppState();
+  const { schedule, seed, dynamicColor, textbooks } = useAppState();
   const textbookCount = Object.values(textbooks).filter((book) => book.title).length;
   /** 设计说明默认折叠：微信里也能一屏看完，想看再点开 */
   const [openNote, setOpenNote] = useState<string | null>(null);
@@ -120,10 +120,6 @@ export default function AboutScreen() {
               {schedule.periods.reduce((total, period) => total + period.days.reduce((sum, day) => sum + day.length, 0), 0)} 门课
               · 已识别教材 {textbookCount} 本
             </span>
-          </div>
-          <div className="row gap-8">
-            <MdIcon name="photo_library" size={18} />
-            <span className="md-body-medium flex-1">本机记录：{records.length} 条</span>
           </div>
           <div className="row gap-8">
             <MdIcon name="colorize" size={18} />

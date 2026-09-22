@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 筛选 (schedule filter)
  *
  * Tabs: 老师 / 课程 / 地点 / 时间. Search across the embedded schedule, list the hits
@@ -24,12 +24,12 @@ import {
   toISODate,
   weekNumberFor,
   weekdayIndex,
-  type SearchField,
+  type ScheduleField,
   type SearchHit,
 } from '../lib/schedule';
 
 const TABS = ['老师', '课程', '地点', '时间'] as const;
-const FIELDS: SearchField[] = ['teacher', 'course', 'place', 'course'];
+const FIELDS: ScheduleField[] = ['teacher', 'course', 'place', 'course'];
 
 export default function ScheduleFilterScreen() {
   const nav = useNav();
@@ -49,7 +49,7 @@ export default function ScheduleFilterScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
-  const hitKey = (hit: SearchHit) => `${hit.course.name}|${hit.dayIndex}|${hit.period.period}`;
+  const hitKey = (hit: SearchHit) => `${hit.course.name}|${hit.dayIndex}|${hit.period}`;
 
   const activeCount = [teacher, courseQuery, place, timeEnabled ? 'time' : ''].filter(Boolean).length;
 

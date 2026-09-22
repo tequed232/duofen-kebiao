@@ -1,4 +1,4 @@
-﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
+/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useNav } from '../nav/navigation';
@@ -238,7 +238,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
             }
           }}
         >
-          <MdIcon name={tab.id === active ? (tab.activeIcon ?? tab.icon) : tab.icon} size={24} />
+          <MdIcon name={tab.icon} size={24} />
           <span className="m3e-dock-label">{tab.label}</span>
         </button>
       ))}

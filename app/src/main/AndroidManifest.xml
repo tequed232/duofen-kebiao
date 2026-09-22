@@ -1,14 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Android 13+ 通知权限：Android 16 Live Updates / ColorOS 流体云 状态卡片需要 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Google 官方的硬性要求：成为实况通知（Live Update）必须声明这个非运行时权限 -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
-    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <application
         android:icon="@mipmap/ic_launcher"

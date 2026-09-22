@@ -1,10 +1,8 @@
 /**
- * Speech-to-text / image-to-text / question answering integrations.
+ * 教材封面识别用的视觉接口（图片 → 文字）。
  *
- * The endpoints and keys are configured by the user on the API screen and stored locally.
- * Nothing here invents content: when an endpoint is not configured the caller either falls
- * back to a *local* analysis of the data the user actually produced (keyword overlap over
- * the real transcript / summary) or reports a clear error so the UI can tell the user.
+ * 接口地址与密钥由用户在「设置 → 教材识别接口」里填写并只存本机。
+ * 这里不编造内容：没配置接口就抛出可读错误，交给界面提示用户。
  */
 import type { AppSettings } from './types';
 import { keywords, splitSentences } from './utils';
@@ -13,14 +11,6 @@ export interface TextSummary {
   summary: string;
   keyPoints: string[];
   tags: string[];
-}
-
-export type AnswerSource = 'api' | 'local' | 'none';
-
-export interface AnswerResult {
-  answer: string;
-  source: AnswerSource;
-  topic: string;
 }
 
 function authHeaders(key: string): Record<string, string> {
@@ -44,11 +34,10 @@ function pickText(payload: unknown, depth = 0): string {
     const record = payload as Record<string, unknown>;
     const preferred = [
       'text',
-      'transcript',
       'summary',
       'description',
       'caption',
-      'answer',
+      'title',
       'result',
       'output',
       'content',
@@ -98,24 +87,10 @@ async function postJson(url: string, body: unknown, key: string): Promise<string
   return text;
 }
 
-/** Speech-to-text for a recorded audio blob (multipart, OpenAI compatible). */
-export async function transcribeAudio(blob: Blob, settings: AppSettings): Promise<string> {
-  const url = settings.sttApiUrl.trim();
-  if (!url) throw new Error('未配置语音转文字API');
-  const form = new FormData();
-  form.append('file', blob, 'audio.webm');
-  form.append('model', 'whisper-1');
-  const response = await fetch(url, { method: 'POST', headers: authHeaders(settings.sttApiKey), body: form });
-  const text = await readResponse(response);
-  if (!response.ok) throw new Error(`语音转文字接口返回 ${response.status}${text ? `：${text.slice(0, 120)}` : ''}`);
-  if (!text) throw new Error('语音转文字接口没有返回文本');
-  return text;
-}
-
-/** Image-to-text: sends the picked/captured image and returns summary + key points. */
+/** Image-to-text: sends the picked image and returns summary + key points. */
 export async function analyzeImage(dataUrl: string, settings: AppSettings): Promise<TextSummary> {
   const url = settings.visionApiUrl.trim();
-  if (!url) throw new Error('未配置图片转文字API');
+  if (!url) throw new Error('未配置图片识别接口');
   const base64 = dataUrl.includes(',') ? dataUrl.slice(dataUrl.indexOf(',') + 1) : dataUrl;
   const text = await postJson(
     url,
@@ -151,97 +126,6 @@ export function structureSummary(text: string): TextSummary {
     keyPoints: keyPoints.length ? keyPoints : deriveKeyPoints(summary || text),
     tags: tags.slice(0, 4),
   };
-}
-
-/** Ask a question about the current record content. */
-export async function askQuestion(
-  question: string,
-  context: { transcript: string; imageSummary: string; keyPoints: string[] },
-  settings: AppSettings,
-): Promise<AnswerResult> {
-  const url = settings.qaApiUrl.trim();
-  if (url) {
-    try {
-      const answer = await postJson(
-        url,
-        {
-          question,
-          context: {
-            transcript: context.transcript,
-            image_summary: context.imageSummary,
-            key_points: context.keyPoints,
-          },
-          prompt: '只依据给定的记录内容回答问题，不要编造。',
-        },
-        settings.qaApiKey,
-      );
-      return { answer, source: 'api', topic: topicFor(question, context) };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '问答接口调用失败';
-      return { answer: `问答接口调用失败：${message}`, source: 'api', topic: topicFor(question, context) };
-    }
-  }
-  const local = localAnswer(question, context);
-  return local;
-}
-
-/** Which mind-map branch the question belongs to. */
-export function topicFor(
-  question: string,
-  context: { transcript: string; imageSummary: string; keyPoints: string[] },
-): string {
-  const words = keywords(question);
-  if (!words.length) return question.length > 12 ? `${question.slice(0, 12)}…` : question;
-  const haystack = `${context.transcript}\n${context.imageSummary}\n${context.keyPoints.join('\n')}`.toLowerCase();
-  let best = words[0];
-  let bestScore = -1;
-  for (const word of words) {
-    const score = haystack.split(word).length - 1;
-    if (score > bestScore) {
-      bestScore = score;
-      best = word;
-    }
-  }
-  return best;
-}
-
-/**
- * Local answer: finds the parts of the *actual* captured data that match the question.
- * No match -> the branch is created but explicitly reports that nothing was found.
- */
-export function localAnswer(
-  question: string,
-  context: { transcript: string; imageSummary: string; keyPoints: string[] },
-): AnswerResult {
-  const words = keywords(question);
-  const topic = topicFor(question, context);
-  interface Hit {
-    text: string;
-    where: string;
-    score: number;
-  }
-  const hits: Hit[] = [];
-  const add = (text: string, where: string) => {
-    const lower = text.toLowerCase();
-    let score = 0;
-    for (const word of words) if (lower.includes(word)) score += 1;
-    if (score > 0) hits.push({ text: text.trim(), where, score });
-  };
-  splitSentences(context.transcript).forEach((sentence) => add(sentence, '语音转文字'));
-  splitSentences(context.imageSummary).forEach((sentence) => add(sentence, '图片总结'));
-  context.keyPoints.forEach((point) => add(point, '重点'));
-
-  if (!hits.length) {
-    return {
-      answer: '当前记录里没有找到与该问题相关的内容。可以先在主页录制语音或导入图片，再针对内容提问。',
-      source: 'none',
-      topic,
-    };
-  }
-  hits.sort((a, b) => b.score - a.score);
-  const top = hits.slice(0, 3);
-  const body = top.map((hit) => `· 来自${hit.where}：${hit.text}`).join('\n');
-  return { answer: `在本次记录中找到以下相关内容：\n${body}`, source: 'local', topic };
 }
 
 /** Deterministic key point extraction used when the vision API returns plain prose. */

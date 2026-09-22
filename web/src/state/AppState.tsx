@@ -1,4 +1,4 @@
-/** Global application state: settings, records, live draft, snackbar and theme. */
+/** Global application state: settings, schedule, textbooks, snackbar and theme. */
 import {
   createContext,
   useCallback,
@@ -10,14 +10,11 @@ import {
   type ReactNode,
 } from 'react';
 import * as db from '../lib/db';
-import { deriveKeyPoints } from '../lib/api';
-import { DEFAULT_SETTINGS, EMPTY_DRAFT, type AppSettings, type Draft, type NoteRecord, type QaBranch } from '../lib/types';
+import { DEFAULT_SETTINGS, type AppSettings } from '../lib/types';
 import { applyRoles, buildThemes, detectSeed, type SeedSource } from '../theme/palette';
-import { formatDateTime, uid } from '../lib/utils';
 import { EMBEDDED_SCHEDULE } from '../data/schedule';
 import type { ScheduleData } from '../lib/schedule';
 import { libraryTextbook, type Textbook } from '../lib/textbooks';
-import { IMAGE_CACHE_LIMIT, countImages, pruneToLimit } from '../lib/imageCache';
 
 /** Temporary highlight applied when the filter screen jumps back to the schedule. */
 export interface ScheduleHighlight {
@@ -42,24 +39,9 @@ export interface UpdateOptions {
   undoable?: boolean;
 }
 
-export interface RecordInput {
-  title?: string;
-  note?: string;
-  images?: string[];
-  transcript?: string;
-  imageSummary?: string;
-  keyPoints?: string[];
-  branches?: QaBranch[];
-  tags?: string[];
-}
-
 interface AppStateValue {
   ready: boolean;
   settings: AppSettings;
-  records: NoteRecord[];
-  draft: Draft;
-  /** key points currently displayed (API provided, or derived from the captured text) */
-  effectiveKeyPoints: string[];
   seed: SeedSource;
   dynamicColor: boolean;
   /** embedded course schedule, overridden by an imported one */
@@ -71,20 +53,7 @@ interface AppStateValue {
   /** 课程名 → 教材（内置教材库 + 用户识别/填写的覆盖） */
   textbooks: Record<string, Textbook>;
   setTextbook: (courseName: string, textbook: Textbook | null) => void;
-  /** 本地已缓存的图片张数 / 上限（默认 25），以及手动清理入口 */
-  imageStats: { used: number; limit: number };
-  pruneImages: () => Promise<void>;
   updateSettings: (patch: Partial<AppSettings>, options?: UpdateOptions) => void;
-  createRecord: (input: RecordInput) => Promise<NoteRecord>;
-  updateRecord: (id: string, patch: Partial<NoteRecord>) => Promise<void>;
-  removeRecord: (id: string) => Promise<void>;
-  clearAllRecords: () => Promise<void>;
-  restoreRecords: (list: NoteRecord[]) => Promise<void>;
-  setDraft: (patch: Partial<Draft>) => void;
-  appendTranscript: (text: string) => void;
-  addBranchAnswer: (question: string, answer: string, topic: string, source: 'api' | 'local' | 'none') => void;
-  resetDraft: () => void;
-  markDraftSaved: () => void;
   showSnackbar: (options: Omit<SnackbarMessage, 'id' | 'duration'> & { duration?: number }) => void;
   hideSnackbar: () => void;
   snackbar: SnackbarMessage | null;
@@ -101,8 +70,6 @@ export function useAppState(): AppStateValue {
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-  const [records, setRecords] = useState<NoteRecord[]>([]);
-  const [draft, setDraftState] = useState<Draft>(EMPTY_DRAFT);
   const [snackbar, setSnackbar] = useState<SnackbarMessage | null>(null);
   const [seed] = useState<SeedSource>(() => detectSeed());
   const theme = useMemo(() => buildThemes(seed), [seed]);
@@ -113,23 +80,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const snackbarTimer = useRef<number | undefined>(undefined);
-  const draftTimer = useRef<number | undefined>(undefined);
 
   /* ------------------------------------------------------------- loading */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [storedSettings, storedRecords, storedDraft, storedSchedule, storedTextbooks] = await Promise.all([
+      const [storedSettings, storedSchedule, storedTextbooks] = await Promise.all([
         db.readSettings(),
-        db.getAllRecords(),
-        db.readKv<Draft>(db.DRAFT_KEY),
         db.readKv<ScheduleData>(db.SCHEDULE_KEY),
         db.readKv<Record<string, Textbook>>(db.TEXTBOOK_KEY),
       ]);
       if (cancelled) return;
       setSettings({ ...DEFAULT_SETTINGS, ...storedSettings });
-      setRecords(storedRecords);
-      if (storedDraft) setDraftState({ ...EMPTY_DRAFT, ...storedDraft, interim: '' });
       if (storedSchedule?.periods?.length) setImportedSchedule(storedSchedule);
       if (storedTextbooks) setTextbookOverrides(storedTextbooks);
       setReady(true);
@@ -140,8 +102,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const scheduleHasCourses = Boolean(importedSchedule?.periods?.some((period) => period.days.some((day) => day.length > 0)));
-    // 已保存的课表若为空（例如曾被清空），回落到内置课表 —— 恢复内置数据后立刻生效，且不删用户数据
-    const schedule = scheduleHasCourses ? (importedSchedule as ScheduleData) : EMBEDDED_SCHEDULE;
+  // 已保存的课表若为空（例如曾被清空），回落到内置课表 —— 恢复内置数据后立刻生效，且不删用户数据
+  const schedule = scheduleHasCourses ? (importedSchedule as ScheduleData) : EMBEDDED_SCHEDULE;
 
   const setSchedule = useCallback<AppStateValue['setSchedule']>((data) => {
     if (!data) {
@@ -188,15 +150,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     void db.writeSettings(settings);
   }, [settings, ready]);
 
-  useEffect(() => {
-    if (!ready) return;
-    window.clearTimeout(draftTimer.current);
-    draftTimer.current = window.setTimeout(() => {
-      void db.writeKv(db.DRAFT_KEY, { ...draft, interim: '' });
-    }, 400);
-    return () => window.clearTimeout(draftTimer.current);
-  }, [draft, ready]);
-
   /* --------------------------------------------------------------- theme */
   useEffect(() => {
     applyRoles(settings.darkMode ? theme.dark : theme.light, settings.darkMode);
@@ -242,138 +195,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [showSnackbar],
   );
 
-  /* ------------------------------------------------------------- records */
-  const createRecord = useCallback<AppStateValue['createRecord']>(
-    async (input) => {
-      const now = Date.now();
-      const record: NoteRecord = {
-        id: uid('rec'),
-        title: input.title?.trim() || `记录 · ${formatDateTime(now)}`,
-        note: input.note ?? '',
-        images: input.images ?? [],
-        transcript: input.transcript ?? '',
-        imageSummary: input.imageSummary ?? '',
-        keyPoints: input.keyPoints ?? [],
-        branches: input.branches ?? [],
-        tags: input.tags ?? [],
-        createdAt: now,
-        updatedAt: now,
-      };
-      await db.putRecord(record);
-      // 写入后立刻按上限裁剪：本地最多保留 IMAGE_CACHE_LIMIT 张图（文字一律保留）
-      setRecords((value) => {
-        const result = pruneToLimit([record, ...value]);
-        if (result.removed) {
-          void (async () => {
-            for (const changed of result.changed) await db.putRecord(changed);
-          })();
-        }
-        return result.records;
-      });
-      return record;
-    },
-    [],
-  );
-
-  /** 本地图片缓存：超出上限就从最旧的记录开始删图（文字一律保留） */
-  const imageStats = useMemo(
-    () => ({ used: countImages(records, draft.images ?? []), limit: IMAGE_CACHE_LIMIT }),
-    [records, draft.images],
-  );
-
-  const pruneImages = useCallback(async () => {
-    const result = pruneToLimit(records);
-    if (!result.removed) {
-      showSnackbar({ message: `本地图片 ${countImages(records)} 张，未超过 ${IMAGE_CACHE_LIMIT} 张上限`, duration: 3500 });
-      return;
-    }
-    setRecords(result.records);
-    for (const record of result.changed) await db.putRecord(record);
-    showSnackbar({
-      message: `已清理 ${result.removed} 张旧图片，保留最近 ${IMAGE_CACHE_LIMIT} 张（文字内容不受影响）`,
-      duration: 4500,
-    });
-  }, [records, showSnackbar]);
-
-  const updateRecord = useCallback<AppStateValue['updateRecord']>(async (id, patch) => {
-    let updated: NoteRecord | undefined;
-    setRecords((value) =>
-      value.map((record) => {
-        if (record.id !== id) return record;
-        updated = { ...record, ...patch, updatedAt: Date.now() };
-        return updated;
-      }),
-    );
-    if (updated) await db.putRecord(updated);
-  }, []);
-
-  const removeRecord = useCallback<AppStateValue['removeRecord']>(async (id) => {
-    setRecords((value) => value.filter((record) => record.id !== id));
-    await db.deleteRecord(id);
-  }, []);
-
-  const clearAllRecords = useCallback<AppStateValue['clearAllRecords']>(async () => {
-    setRecords([]);
-    await db.clearRecords();
-  }, []);
-
-  const restoreRecords = useCallback(async (list: NoteRecord[]) => {
-    setRecords([...list].sort((a, b) => b.createdAt - a.createdAt));
-    await Promise.all(list.map((record) => db.putRecord(record)));
-  }, []);
-
-  /* --------------------------------------------------------------- draft */
-  const setDraft = useCallback<AppStateValue['setDraft']>((patch) => {
-    setDraftState((value) => ({ ...value, ...patch, updatedAt: Date.now() }));
-  }, []);
-
-  const appendTranscript = useCallback((text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    setDraftState((value) => {
-      const needsSpace = value.transcript && !/[\s\n]$/.test(value.transcript);
-      return {
-        ...value,
-        transcript: `${value.transcript}${needsSpace ? ' ' : ''}${trimmed}`,
-        updatedAt: Date.now(),
-      };
-    });
-  }, []);
-
-  const addBranchAnswer = useCallback<AppStateValue['addBranchAnswer']>((question, answer, topic, source) => {
-    setDraftState((value) => {
-      const branches = value.branches.map((branch) => ({ ...branch, entries: [...branch.entries] }));
-      const entry = { id: uid('qa'), question, answer, source, createdAt: Date.now() };
-      const index = branches.findIndex((branch) => branch.topic === topic);
-      if (index >= 0) {
-        branches[index].entries.push(entry);
-      } else {
-        branches.push({ id: uid('br'), topic, entries: [entry] });
-      }
-      return { ...value, branches, updatedAt: Date.now() };
-    });
-  }, []);
-
-  const resetDraft = useCallback(() => setDraftState({ ...EMPTY_DRAFT }), []);
-
-  const markDraftSaved = useCallback(() => {
-    window.clearTimeout(draftTimer.current);
-    void db.writeKv(db.DRAFT_KEY, EMPTY_DRAFT);
-  }, []);
-
-  const effectiveKeyPoints = useMemo(() => {
-    if (draft.keyPoints.length) return draft.keyPoints;
-    const text = `${draft.transcript}\n${draft.imageSummary}`.trim();
-    return text ? deriveKeyPoints(text) : [];
-  }, [draft.keyPoints, draft.transcript, draft.imageSummary]);
-
   const value = useMemo<AppStateValue>(
     () => ({
       ready,
       settings,
-      records,
-      draft,
-      effectiveKeyPoints,
       seed,
       dynamicColor: theme.dynamic,
       schedule,
@@ -383,21 +208,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setScheduleHighlight,
       textbooks,
       setTextbook,
-      imageStats,
-      pruneImages,
       updateSettings,
-      createRecord,
-      updateRecord,
-      removeRecord,
-      clearAllRecords,
-      restoreRecords,
-      imageStats,
-      pruneImages,
-      setDraft,
-      appendTranscript,
-      addBranchAnswer,
-      resetDraft,
-      markDraftSaved,
       showSnackbar,
       hideSnackbar,
       snackbar,
@@ -405,33 +216,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [
       ready,
       settings,
-      records,
-      draft,
-      effectiveKeyPoints,
       seed,
       theme.dynamic,
       schedule,
       importedSchedule,
       setSchedule,
       scheduleHighlight,
-      setScheduleHighlight,
       textbooks,
       setTextbook,
-      imageStats,
-      pruneImages,
       updateSettings,
-      createRecord,
-      updateRecord,
-      removeRecord,
-      clearAllRecords,
-      restoreRecords,
-      imageStats,
-      pruneImages,
-      setDraft,
-      appendTranscript,
-      addBranchAnswer,
-      resetDraft,
-      markDraftSaved,
       showSnackbar,
       hideSnackbar,
       snackbar,

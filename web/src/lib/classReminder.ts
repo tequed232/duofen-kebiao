@@ -9,7 +9,7 @@
  *  3. 上课后（minutesLeft < 0）自动撤销提醒，不留常驻通知；
  *  4. 不在原生宿主（浏览器）里时不发通知，只更新内部状态。
  */
-import type { ScheduleData, Course } from './schedule';
+import type { ScheduleData, ScheduleCourse } from './schedule';
 import { nativeClassReminder, nativeStopClassReminder, isNativeShell } from './native';
 
 export interface ReminderSettings {
@@ -54,7 +54,7 @@ function startMinutes(time: string): number | null {
 }
 
 export interface UpcomingClass {
-  course: Course;
+  course: ScheduleCourse;
   period: string;
   time: string;
   minutesLeft: number;

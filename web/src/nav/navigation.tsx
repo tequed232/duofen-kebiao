@@ -21,17 +21,14 @@ import { uid } from '../lib/utils';
 
 export type TransitionKind = 'slide' | 'fade' | 'zoom';
 export type RouteName =
-  | 'home'
-  | 'history'
-  | 'settings'
-  | 'record'
-  | 'apiEdit'
-  | 'blank'
   | 'schedule'
   | 'scheduleFilter'
+  | 'settings'
   | 'about'
+  | 'apiEdit'
   | 'textbookList'
-  | 'licenses';
+  | 'licenses'
+  | 'blank';
 
 export interface RouteEntry {
   key: string;
@@ -72,7 +69,7 @@ export function useRouteParams(): Record<string, string> {
   return useNav().current.params;
 }
 
-export function NavProvider({ initial = 'home', children }: { initial?: RouteName; children: ReactNode }) {
+export function NavProvider({ initial = 'schedule', children }: { initial?: RouteName; children: ReactNode }) {
   const initialEntry = useMemo<RouteEntry>(
     () => ({ key: uid('scr'), route: initial, params: {}, transition: 'fade', direction: 'forward' }),
     [initial],

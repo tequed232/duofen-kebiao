@@ -366,7 +366,6 @@ body {
 
 /* 进入应用时：主页组件从下向上依次弹出，与开屏动画自然衔接 */
 .phone.entering .screen .screen-content > *,
-.phone.entering .screen .home-footer,
 .phone.entering .screen .app-bar {
   animation: rise-in var(--md-sys-motion-spring-spatial-default-duration, 500ms)
     var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)) both;
@@ -378,7 +377,6 @@ body {
 .phone.entering .screen .screen-content > *:nth-child(4) { animation-delay: 170ms; }
 .phone.entering .screen .screen-content > *:nth-child(5) { animation-delay: 220ms; }
 .phone.entering .screen .screen-content > *:nth-child(6) { animation-delay: 270ms; }
-.phone.entering .screen .home-footer { animation-delay: 200ms; }
 .phone.entering .screen .app-bar { animation-delay: 0ms; }
 .phone.entering .screen .nav-bar {
   animation: rise-in var(--md-sys-motion-spring-spatial-default-duration, 500ms)
@@ -519,20 +517,6 @@ html.native-shell .phone {
   .app-bar .md-headline-small-emphasized {
     font-size: 22px;
     line-height: 28px;
-  }
-
-  .home-stack > .container-box.surface-high {
-    min-height: 120px;
-    max-height: 168px;
-  }
-
-  .home-stack > .container-box.tertiary {
-    min-height: 150px;
-  }
-
-  .home-footer {
-    padding: 8px 12px 10px;
-    gap: 8px;
   }
 
   .glass-nav {

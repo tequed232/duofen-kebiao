@@ -15,7 +15,7 @@
  *   · 单元格用 `<br>`、换行或「/」分隔多段信息
  */
 
-import type { Course, ScheduleData } from './schedule';
+import type { ScheduleCourse, ScheduleData } from './schedule';
 
 export interface ParsedSchedule extends ScheduleData {
   /** 解析诊断：命中了几门课、用了哪种结构、有哪些可疑单元格 */
@@ -168,7 +168,7 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
   ];
 
   /** 收集到的课程：key = 节次序号-1 + 星期 */
-  const grid = new Map<string, Course>();
+  const grid = new Map<string, ScheduleCourse>();
   const gridPeriods = new Map<number, { period: string; time: string; section: string }>();
   let layout: 'grid' | 'list' | 'unknown' = 'unknown';
   let term = '';
@@ -322,7 +322,7 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
       time: defaultPeriods.find((p) => p.period === `第${start}-${end + 1}节`)?.time ?? '',
       section: defaultPeriods.find((p) => p.period === `第${start}-${end + 1}节`)?.section ?? 'morning',
     };
-    const days: Course[][] = DAY_NAMES.map(() => []);
+    const days: ScheduleCourse[][] = DAY_NAMES.map(() => []);
     DAY_NAMES.forEach((_, dayIndex) => {
       const course = grid.get(`${start}-${dayIndex}`);
       if (course) days[dayIndex] = [course];

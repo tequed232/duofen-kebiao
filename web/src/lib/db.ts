@@ -1,13 +1,12 @@
 /**
- * Persistence: IndexedDB for records / settings / draft.
+ * Persistence: IndexedDB for settings / key-value (schedule, textbooks).
  * Falls back to localStorage when IndexedDB is unavailable (private mode, old browsers)
- * so user created data still survives a reload.
+ * so user data still survives a reload.
  */
-import type { AppSettings, Draft, NoteRecord } from './types';
+import type { AppSettings } from './types';
 
 const DB_NAME = 'm3-expressive-notes';
 const DB_VERSION = 1;
-const STORE_RECORDS = 'records';
 const STORE_SETTINGS = 'settings';
 const STORE_KV = 'kv';
 
@@ -22,14 +21,10 @@ function hasIdb(): boolean {
 
 function openDb(): Promise<IDBDatabase> {
   if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
+    dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
-        if (!db.objectStoreNames.contains(STORE_RECORDS)) {
-          const store = db.createObjectStore(STORE_RECORDS, { keyPath: 'id' });
-          store.createIndex('createdAt', 'createdAt');
-        }
         if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
           db.createObjectStore(STORE_SETTINGS);
         }
@@ -40,8 +35,9 @@ function openDb(): Promise<IDBDatabase> {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('IndexedDB open failed'));
       request.onblocked = () => reject(new Error('IndexedDB blocked'));
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       idbFailed = true;
+      dbPromise = null;
       throw error;
     });
   }
@@ -58,61 +54,6 @@ function tx<T>(store: string, mode: IDBTransactionMode, run: (s: IDBObjectStore)
         request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
       }),
   );
-}
-
-/* ------------------------------------------------------------------ records */
-
-export async function getAllRecords(): Promise<NoteRecord[]> {
-  if (!hasIdb()) {
-    const raw = localStorage.getItem(`${LS_PREFIX}records`);
-    const list = raw ? (JSON.parse(raw) as NoteRecord[]) : [];
-    return list.sort((a, b) => b.createdAt - a.createdAt);
-  }
-  try {
-    const all = await tx<NoteRecord[]>(STORE_RECORDS, 'readonly', (s) => s.getAll());
-    return (all ?? []).sort((a, b) => b.createdAt - a.createdAt);
-  } catch {
-    return [];
-  }
-}
-
-export async function putRecord(record: NoteRecord): Promise<void> {
-  if (!hasIdb()) {
-    const all = await getAllRecords();
-    const next = [record, ...all.filter((r) => r.id !== record.id)];
-    localStorage.setItem(`${LS_PREFIX}records`, JSON.stringify(next));
-    return;
-  }
-  try {
-    await tx(STORE_RECORDS, 'readwrite', (s) => s.put(record));
-  } catch {
-    /* quota or private mode: keep the in-memory copy the UI already holds */
-  }
-}
-
-export async function deleteRecord(id: string): Promise<void> {
-  if (!hasIdb()) {
-    const all = await getAllRecords();
-    localStorage.setItem(`${LS_PREFIX}records`, JSON.stringify(all.filter((r) => r.id !== id)));
-    return;
-  }
-  try {
-    await tx(STORE_RECORDS, 'readwrite', (s) => s.delete(id));
-  } catch {
-    /* ignore */
-  }
-}
-
-export async function clearRecords(): Promise<void> {
-  if (!hasIdb()) {
-    localStorage.setItem(`${LS_PREFIX}records`, JSON.stringify([]));
-    return;
-  }
-  try {
-    await tx(STORE_RECORDS, 'readwrite', (s) => s.clear());
-  } catch {
-    /* ignore */
-  }
 }
 
 /* ----------------------------------------------------------------- settings */
@@ -180,6 +121,5 @@ export async function removeKv(key: string): Promise<void> {
   }
 }
 
-export const DRAFT_KEY = 'draft';
 export const SCHEDULE_KEY = 'schedule';
 export const TEXTBOOK_KEY = 'textbooks';

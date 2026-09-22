@@ -17,7 +17,7 @@ import { isNativeShell, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib
 
 export default function SettingsScreen() {
   const nav = useNav();
-  const { settings, updateSettings, records, seed, dynamicColor, schedule, showSnackbar, imageStats, pruneImages } = useAppState();
+  const { settings, updateSettings, seed, dynamicColor, schedule, showSnackbar } = useAppState();
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   /** 点数字直接输入精确值 */
@@ -27,8 +27,6 @@ export default function SettingsScreen() {
   const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
   const [perfDialogOpen, setPerfDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
-  /** 卡扣（每 5%）落位时给数值一个短促的反馈 */
-  const [snapPulse, setSnapPulse] = useState({ speech: false, camera: false });
   const listRef = useRef<HTMLDivElement>(null);
 
   // keep the sliders in sync when settings are changed elsewhere (e.g. 撤销)
@@ -50,13 +48,8 @@ export default function SettingsScreen() {
     const anchor = ANCHORS.reduce((best, value) => (Math.abs(value - raw) < Math.abs(best - raw) ? value : best), 0);
     return Math.abs(raw - anchor) <= 6 ? anchor : Math.round(raw);
   };
-  const apiConfigured = Boolean(settings.sttApiUrl.trim() || settings.visionApiUrl.trim());
+  const apiConfigured = Boolean(settings.visionApiUrl.trim());
   const mapProvider = mapProviderById(settings.mapProvider);
-
-  const pulse = (which: 'speech' | 'camera') => {
-    setSnapPulse((value) => ({ ...value, [which]: true }));
-    window.setTimeout(() => setSnapPulse((value) => ({ ...value, [which]: false })), 220);
-  };
 
   const toggleLiquidGlass = () => {
     updateSettings(
@@ -242,42 +235,14 @@ export default function SettingsScreen() {
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
 
-            {/* -------------------------------------- 本地图片缓存上限 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="photo_library" />
-              </div>
-              <div slot="headline">本地图片缓存</div>
-              <div slot="supporting-text">
-                最多保留 {imageStats.limit} 张（当前 {imageStats.used} 张）：超出后自动从最旧的记录开始删图，文字内容不受影响
-              </div>
-            </md-list-item>
-            <div className="list-control-row">
-              <md-outlined-button className="btn-s" onClick={() => void pruneImages()}>
-                <MdIcon slot="icon" name="cleaning_services" />
-                立即清理到上限
-              </md-outlined-button>
-              <span className="md-body-small muted">{imageStats.used} / {imageStats.limit} 张</span>
-            </div>
-
-            {/* -------------------------------------- 实时通知（流体云 / 实况） */}
+            {/* -------------------------------------- 实时通知（流体云 / 实况）自检 */}
             <md-list-item type="text" className="rounded-middle">
               <div slot="start" className="list-icon-badge">
                 <MdIcon name="notifications_active" />
               </div>
-              <div slot="headline">实时通知（流体云）</div>
-              <div className="list-inline-texts" slot="supporting-text">
-                <span>{settings.liveNotify ? '已开启' : '已关闭'}</span>
-                <span>录音 / 上课时在状态栏显示实时进度</span>
-              </div>
-              <div slot="end">
-                <MdSwitch
-                  selected={settings.liveNotify}
-                  onSelectedChange={(value) =>
-                    updateSettings({ liveNotify: value }, { message: value ? '已开启实时通知' : '已关闭实时通知' })
-                  }
-                  ariaLabel="实时通知开关"
-                />
+              <div slot="headline">实时通知（流体云）自检</div>
+              <div slot="supporting-text">
+                上课提醒会在状态栏显示实况进度；点下面的按钮立刻发一条，确认流体云是否出现
               </div>
             </md-list-item>
             <div className="list-control-row">
@@ -285,7 +250,7 @@ export default function SettingsScreen() {
                 <MdIcon slot="icon" name="play_arrow" />
                 发送实况测试
               </md-filled-tonal-button>
-              <span className="md-body-small muted">点它立刻发一条实况，确认流体云是否出现</span>
+              <span className="md-body-small muted">仅 Android 16 / ColorOS 生效</span>
             </div>
 
             {/* ------------------------------------------------ 5 API编辑 */}
@@ -295,11 +260,11 @@ export default function SettingsScreen() {
               onClick={() => nav.push('apiEdit', {}, 'slide')}
             >
               <div slot="start" className="list-icon-badge">
-                <MdIcon name="bolt" />
+                <MdIcon name="menu_book" />
               </div>
-              <div slot="headline">API编辑</div>
+              <div slot="headline">教材识别接口</div>
               <div slot="supporting-text">
-                {apiConfigured ? '已配置接口，点击可修改' : '未配置，点击填写语音与图片接口'}
+                {apiConfigured ? '已配置，点击可修改' : '未配置，点击填写图片识别接口'}
               </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
@@ -382,7 +347,7 @@ export default function SettingsScreen() {
               <div className="row gap-8">
                 <MdIcon name="storage" size={18} />
                 <span className="md-body-medium flex-1">
-                  全部数据保存在本机浏览器（IndexedDB），当前共有 {records.length} 条记录。
+                  课表、教材与设置都保存在本机浏览器（IndexedDB），不上传服务器。
                 </span>
               </div>
               <div className="row gap-8">
