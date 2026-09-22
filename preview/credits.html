@@ -128,6 +128,9 @@
   }
   .lic:hover { background: color-mix(in srgb, var(--primary) 14%, transparent); }
 
+  /* 多平台名片：只留剪影，按钮排成一行 */
+  .link-btn.icon-only { font-size: 0; gap: 0; width: 32px; height: 32px; padding: 0; justify-content: center; }
+
   .card.me .avatar { width: 72px; height: 72px; border-radius: 24px; font-size: 30px; }
 
   .who { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -304,6 +307,11 @@
       });
       document.querySelectorAll('.cc-mark').forEach(function (el) {
         el.innerHTML = svgOf(BRAND.cc, 13);
+      });
+      // 其余名片 ≥2 个平台就只留剪影（排成一行）；作者那张够宽，保留文字
+      document.querySelectorAll('.card:not(.me) .links').forEach(function (row) {
+        var links = row.querySelectorAll('a.link-btn');
+        if (links.length > 1) Array.prototype.forEach.call(links, function (a) { a.classList.add('icon-only'); });
       });
     })();
   </script>

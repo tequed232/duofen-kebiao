@@ -209,18 +209,23 @@ export default function AboutScreen() {
                 </div>
                 {person.license ? <CreditLicenseMark license={person.license} /> : null}
                 <div className="credit-links">
-                  {person.links.map((link) => (
-                    <button
-                      key={link.url}
-                      type="button"
-                      className="credit-link"
-                      title={link.url}
-                      onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
-                    >
-                      <PlatformMark brand={link.platform} />
-                      {link.label}
-                    </button>
-                  ))}
+                  {person.links.map((link) => {
+                    /* 其余名片 ≥2 个平台就只留剪影（一行放得下）；单平台的、以及够宽的作者卡保留文字按钮 */
+                    const compact = !person.lead && person.links.length > 1;
+                    return (
+                      <button
+                        key={link.url}
+                        type="button"
+                        className={compact ? 'credit-link icon-only' : 'credit-link'}
+                        title={`${link.label} · ${link.url}`}
+                        aria-label={link.label}
+                        onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                      >
+                        <PlatformMark brand={link.platform} size={compact ? 14 : 12} />
+                        {compact ? null : link.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}

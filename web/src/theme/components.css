@@ -1321,6 +1321,15 @@ md-filled-text-field {
   color: var(--md-sys-color-on-primary-container);
 }
 
+/* 多平台名片：只留剪影，2～3 个挤得进一行（120dp 卡片里内容区约 100dp） */
+.credit-link.icon-only {
+  gap: 0;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  justify-content: center;
+}
+
 .credit-link:hover {
   background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
