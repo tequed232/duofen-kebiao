@@ -41,7 +41,7 @@
   padding: 4px;
   margin: 4px 0 8px;
   border-radius: 999px;
-  background: var(--md-sys-color-surface-container);
+  /* 底色与玻璃层交给 .liquid-glass，这里不要再写 background 覆盖它 */
 }
 
 .week-stepper .week-label {
@@ -328,8 +328,8 @@
   gap: 6px;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid var(--md-sys-color-outline);
-  background: transparent;
+  /* 底色由 .liquid-glass 提供；这里只留描边 */
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 40%, transparent);
   color: var(--md-sys-color-on-surface);
   font-family: var(--md-ref-typeface-brand);
   font-size: 13px;

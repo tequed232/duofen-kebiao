@@ -11,8 +11,8 @@
 # 多分课表（使用DeepSeek Harness，Google Gemini，M3ECanvas制作，本人仅有一点点审美技巧和Python开发经验 ）
  作于2026.9.19 时年大一
 
-Material 3 Expressive 风格的移动端 Web 应用：**实时语音转文字 + 图片转文字总结 + 历史记录 + 设置/API 配置**。
-目标形态为竖屏手机 **1080 × 1920dp**，浏览器内运行（`dist/` 为可直接部署的 production build）。
+Material 3 Expressive 风格的课表应用：**四日课表 + 教材识别 + 上课提醒（灵动岛 / 流体云）+ 课表导入**。
+目标形态为竖屏手机 **412 × 892dp**（1080p 级设备），浏览器内运行（`dist/` 为可直接部署的 production build）。
 
 **在线体验：<https://tequed232.github.io/duofen-kebiao/>** · **发布：<https://github.com/tequed232/duofen-kebiao/releases>**
 
@@ -77,7 +77,7 @@ npm run dev        # 开发模式 (http://127.0.0.1:5173)
 npm run verify     # 用 Chromium 真机视口跑一遍全流程并截图（screenshots/）
 ```
 
-**交付物：`dist/`**（53 个文件、约 1.5 MB）— 纯静态站点，任意静态服务器直接托管即可。
+**交付物：`dist/`**（62 个文件、约 1.76 MB）— 纯静态站点，任意静态服务器直接托管即可。
 
 ```
 dist/
@@ -95,21 +95,20 @@ dist/
 
 | 路由 | 屏幕 | 主要能力 |
 | --- | --- | --- |
-| `home` | 主页 | 实时语音转文字容器（点击 → 全屏面板）、总结/重点/思维导图容器（点击 → 全屏面板）、长按输入框进入提问模式、"拍照 / 导入图片" 相连按钮组、导航栏 |
-| `camera` | 摄像 | `getUserMedia` 实时预览（圆角 20dp）、预览左上角"返回"填充按钮、标签输入（含历史标签建议）、快门写入记录并调用图片转文字 API |
-| `history` | 历史 | "最近三次记录"顶部应用栏 + more_vert 菜单、搜索框、记录卡片列表、卡片菜单（查看/编辑/删除）、空状态 |
-| `settings` | 设置 | 6 项列表（3dp 间距、28dp 外圆角 / 8dp 内圆角）+ 叠放其上的开关与两个 Expressive 滑块 + 默认跳转地图、已保存消息条（撤销） |
-| `record` | 屏幕 5 · 记录详情 | 图片多浏览轮播 → 全屏查看器（左右滑动 / 下滑关闭）、文字要点容器 → 可滚动全屏面板、顶部返回 / 编辑 / 删除（确认对话框） |
-| `apiEdit` | API 修改 | 语音转文字 / 图片转文字 / 问答 API 与密钥、380×380 测试图片占位、刷新（重新载入）与删除全部 API（确认对话框）、保存后消息条 + 撤销 |
-| `schedule` | 课表 · 多分课表 | 内嵌课表 + 四日表格（上午/中午/下午/晚上时间轴、左右拖动跟手切换日期窗口）、点击课程查看老师/时间/地点、点击地点启动地图导航、课表数据导入面板 |
+| `schedule` | 课表 · 多分课表（首页） | 内嵌课表 + 四日表格（上午/中午/下午/晚上时间轴、左右拖动跟手切换日期窗口）、点击课程查看老师/时间/地点、点击地点启动地图导航、课表数据导入面板、右下角「回到今天」 |
 | `scheduleFilter` | 筛选 | 老师 / 课程 / 地点 / 时间 四个标签检索，结果按 课程·老师·地点 三列排列，点击回到课表并高亮 5 秒 |
+| `textbookList` | 教材 | 已导入教材清单、封面选图识别（走「教材识别接口」）、手动填写与移除 |
+| `settings` | 设置 | 外观 / 性能 / 安全区 / 地图与学校名 / 索引与开源入口等列表项 + 叠放其上的开关与 Expressive 滑块、已保存消息条（撤销） |
+| `apiEdit` | 教材识别接口 | 图片识别接口的地址与密钥（只存本机）、选一张图试跑 |
+| `about` | 关于 | 应用信息、Material 3 设计说明、致谢 · 名片墙、素材与隐私说明 |
+| `licenses` | 开源相关 | 按用途分类的依赖清单（`scripts/collect-licenses.mjs` 生成） |
 | `blank` | 屏幕 7 | 按草图保留的空屏幕 |
 
 ### 课表（自主嵌入）
 
-* `scripts/import-schedule.mjs` 解析学校教务系统导出的 `学生课表.doc`（RTF 表格），同时生成
-  Web 的 `web/src/data/schedule.ts` 与 Android 的 `ScheduleData.kt` —— 应用启动即自带课表
-  （**已清空**：原内置数据含教师姓名、教室与班级人数等个人信息，不再随项目分发；首次打开是空白课表，由作者自行导入或手动填写）。
+* `scripts/import-schedule.mjs` 解析学校教务系统导出的 `学生课表.doc`（RTF 表格），生成
+  Web 的 `web/src/data/schedule.ts` —— 应用启动即自带课表；也可以在应用内用「课表数据」面板
+  导入自己的导出文件覆盖它（导入结果存本机 IndexedDB）。
 * **4×4 容器 + 左右翻页**：容器是四行（**上午 / 中午 / 下午 / 晚上**）× 四列的表格，一周按 **7 天** 计算，
   左右**拖动跟手翻页**（第 1 页 周一–周四，第 2 页 周五–周日 + 下周一），底部有页码圆点与左右翻页按钮；
   点击某天选中该日，下方列出当天课程。
@@ -120,36 +119,35 @@ dist/
 * **向下滑收起课表**：在课表上向下滑（或页面向下滚动）会把课表折叠成一行摘要（周次 · 星期 · 日期 · 当天课程数），
   腾出空间显示当天课程清单；点摘要行或向上滑即可展开。
 * 课程详情：默认只显示课程名，点击后展开授课老师、节次时间、周次、上课日期与地点；点击地点即调用地图。
-* 筛选屏：`老师/课程/地点/时间` 四标签 + 语音输入搜索词，点击结果回到课表并**高亮 5 秒**
+* 筛选屏：`老师/课程/地点/时间` 四标签，点击结果回到课表并**高亮 5 秒**
   （若该课程不在当前周，自动切到它开课的那一周并提示）。
 * 导入：`课表数据` 面板支持 `.doc/.rtf`、`.html` 表格、`.csv/.txt` 文本导入或恢复内置课表，结果存于 IndexedDB。
 
-### 语音：录音试用与进度/通知
+### 上课提醒（灵动岛 / 流体云）
 
-* **API 保存后先试用**：在 API 修改页保存了语音转文字API地址后，会立即弹出「录音试用语音转文字API」对话框：
-  录制最长 15 秒（带计时、进度条与实时音量电平）→ 直接调用该接口 → 显示识别结果；失败给出具体原因，可重新录制。
-* **快速开始点语音**：主页麦克风按钮点下后，容器内出现进度条（不确定进度 + 计时 + 停止按钮），
-  同时发布**系统通知**（"正在录音 · 多分课表"，每秒刷新计时），停止后提示识别完成并自动收起——与 Android 端流体云卡片行为一致。
+* 每 30 秒检查一次「下一节课」，提前量可调（设置 → 上课提醒，默认 10 分钟）；
+  同一节课只提醒一次（按 课程+日期+节次 去重，重启不重复打扰），下课后自动撤销通知。
+* 通知带两个动作：**导航去**（直接拉起地图到教室）与**我到了**（回到应用看这节课要带的教材）。
+* 设置 → 实时通知（流体云）里有「发送实况测试」，用来确认状态栏实况是否出现。
 
 ### Android（Android 16 / 天玑 9400 / ColorOS 流体云）
 
-* `app/` 是同一套设计的 Compose 实现，导航栏同样包含 **课表** 标签页，课表数据与 Web 端同源。
-* **流体云**：语音识别与拍照期间发布 Android 16 **Live Updates**
+* `app/` 只是 WebView 宿主（`MainActivity.kt` + `LiveUpdates.kt`），界面全部来自 `web/`，两端同一份构建。
+* **流体云**：上课提醒与「发送实况测试」会发布 Android 16 **Live Updates**
   （`Notification.ProgressStyle` + `setRequestPromotedOngoing(true)`），ColorOS 16 会渲染成**流体云**卡片；
   完成后显示结果并在数秒后自动收起。该 API 仅存在于 Android 16，代码用反射调用，
   因此同一份 APK 在旧系统上退化为普通进行中通知，在 Android 16 上则进入流体云。
 * 已加入 `POST_NOTIFICATIONS` 运行时申请、`enableOnBackInvokedCallback`（Android 16 预测式返回）、
-  `uses-feature camera/microphone required=false`、`windowSoftInputMode=adjustResize`。
+  `windowSoftInputMode=adjustResize`；随语音与相机功能删除，清单里已不再申请录音权限与相机 / 麦克风特性。
 * 本机 SDK 平台为 android-35，因此 APK 目前是 `targetSdk 35`（在 Android 16 / ColorOS 16 上正常运行）；
   安装 `platforms;android-36` 后把 `app/build.gradle.kts` 的 `compileSdk/targetSdk` 改成 36 并升级 AGP ≥ 8.9
   即可得到 targetSdk 36 构建。
 
 ### 真实数据
 
-* 记录、设置、主页草稿全部写入 **IndexedDB**（`m3-expressive-notes`），刷新后保留；IndexedDB 不可用时自动降级到 `localStorage`。
-* 没有示例/假数据：没有记录时显示空状态；没有图片时显示占位符；没有配置 API 时明确提示而不是编造结果。
-* 语音识别的置信度门限由"语音输入强度"设置控制；拍摄分辨率与 JPEG 画质由"相机清晰度"设置控制（两者都真实生效并持久化）。
-* 提问回答来源分为：`问答接口`（已配置且调用成功）、`本次记录内容`（在真实转写/总结中检索到的片段）、`未找到相关内容`（会新建分支但如实说明）。
+* 课表、教材与设置全部写入 **IndexedDB**（`m3-expressive-notes`），刷新后保留；IndexedDB 不可用时自动降级到 `localStorage`。
+* 没有示例/假数据：没有导入课表就用内置课表、没有教材就显示空状态；没有配置识别接口时明确提示而不是编造结果。
+* 教材封面识别用的接口地址与密钥只存本机，随设置一起导出/恢复；不配置也能用，只是识别按钮会提示未配置。
 
 ---
 
@@ -160,7 +158,7 @@ dist/
   `--md-sys-color-*` 角色，代码里没有写死颜色。
 * **动效** — `web/src/theme/motion.ts` 解析求解 M3 Expressive 的物理弹簧（spatial 0.9 / effects 1.0 阻尼比，stiffness 1400·700·300 / 3800·1600·800），
   生成 CSS `linear()` 缓动与时长并写入自定义属性，用于页面转场、面板展开、消息条与涟漪反馈。
-* **页面栈导航** — `web/src/nav/navigation.tsx`：`slide`（右侧滑入）/ `fade`（淡入）/ `zoom`（相机缩放弹簧）三种转场，栈同步到 `history.state`，
+* **页面栈导航** — `web/src/nav/navigation.tsx`：`slide`（右侧滑入）/ `fade`（淡入）/ `zoom`（缩放弹簧）三种转场，栈同步到 `history.state`，
   系统返回手势与返回键和页面内返回按钮行为一致（反向播放进入动画）。
 * **组件** — 一律使用 **Material Web**（`@material/web`）标准组件：filled/outlined/tonal/text button、outlined text field、switch、slider、navigation bar/tab、
   filled/elevated/outlined card、dialog、menu、list-item、fab、divider、icon、circular-progress、ripple。库里没有的（顶部应用栏、消息条、轮播、全屏查看器、可展开面板）
@@ -170,16 +168,17 @@ dist/
 
 ## 浏览器验证
 
-`npm run verify`（Playwright + Chromium，412×892 视口，含虚拟摄像头）走的真实流程：
+`npm run verify`（Playwright + Chromium，412×892 视口）走的真实流程：
 
 ```
-主页渲染 → 容器全屏面板展开/收起 → 历史/设置/API 页 → 相机实时预览 → 快门生成记录
-→ 历史卡片 → 记录详情 → 图片全屏查看器 → 文字面板 → 刷新后记录仍在（IndexedDB）
-→ 深色模式开关 + 撤销 → 删除确认对话框 + 取消 → 长按进入提问模式 → 提问生成思维导图分支
-→ 滑块拖动 + 刷新后仍为 81% → 历史 more_vert 菜单
-→ 课表：四日表格渲染（4 列 × 4 段 × 7 节次）→ 点击课程详情 → 拖动切换日期窗口
-→ 筛选屏检索 → 结果高亮定位 → 课表数据导入面板
+课表首页渲染（四日表格 4 列 × 4 段 × 7 节次）→ 点开教材窗口 / 关闭 → 设置页
+→ 教材识别接口页（填地址与密钥、保存）→ 返回设置
+→ 课表：点击课程详情 → 教材封面匹配与标记 → 拖动切换日期窗口 → 下滑收起 / 点摘要展开
+→ 筛选屏检索 → 结果高亮定位 → 课表数据导入面板 → 导入后课表出现新课 → 恢复演示课表
 ```
+
+> 语音 / 相机 / 记录相关步骤已随功能删除一并移除（见 `test(verify)` 提交）。
+> 另外 `build/smoke-screens.mjs` 会逐屏冒烟（课表 / 筛选 / 教材 / 关于 / 开源相关 / 教材识别接口 / 回到今天），0 报错才算通过。
 
 结果：**62 步全部通过，0 个 console 错误、0 个 page error**；截图见 `screenshots/`（`report.json` 内含配色、尺寸与令牌核对数据）。
 线上部署（GitHub Pages）用同一套脚本跑过一遍，截图与报告在 `screenshots-live/`。
@@ -195,7 +194,7 @@ web/src/
   App.tsx                 412×892 舞台 + 屏幕栈 + 消息条
   components/             md.tsx（Material Web 封装）、layout / overlays / content
   screens/                7 个屏幕
-  nav/ state/ lib/ theme/ 导航、全局状态、IndexedDB / 语音 / API / 图像、设计令牌
+  nav/ state/ lib/ theme/ 导航、全局状态、IndexedDB / 课表解析 / 教材识别、设计令牌
 scripts/                  subset-icons.mjs、check-icons.mjs、import-schedule.mjs、rtf-dump.mjs、
                           verify.mjs、github-release.mjs、serve-dist.mjs
 legacy/index.html         上一版单文件页面（保留备查）
@@ -268,7 +267,7 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 
 ## 唯一设计基准：Web
 
-**所有功能（课表、识别/记录、历史、设置、筛选、教材、关于…）都以 `web/` 为唯一设计基准。**
+**所有功能（课表、筛选、教材、设置、关于、开源相关…）都以 `web/` 为唯一设计基准。**
 
 APK 不含任何自有界面：`app/` 里只有两个 Kotlin 文件——
 

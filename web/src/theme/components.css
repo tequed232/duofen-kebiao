@@ -741,6 +741,92 @@ md-switch {
   cursor: pointer;
 }
 
+/* ============================ 液态玻璃小组件（Liquid Glass）================
+   参考 Apple-Music-Web-Liquid-Glass 的调参口径，把它的参数名原样搬过来，
+   这样照着那份 README 就能一格一格调：
+     TINT_A   底色不透明度      BEZEL    边缘内高光强度
+     STRENGTH 折射/饱和强度      BLUR     背景模糊
+     SAT      饱和度            BRIGHT   亮度
+     ZOOM     边缘放大            EDGE     边缘光带宽度
+   实现只用 CSS（backdrop-filter + 内阴影 + 边缘光带）：Chromium/WebView 会丢弃
+   `backdrop-filter: url(#svg)`，所以折射走 SVG 滤镜叠层（与底边栏同一套滤镜）。
+   低性能模式下自动降级为不带模糊的实心表面（见 html[data-perf='low'] 规则）。 */
+.liquid-glass {
+  /* 比例类参数用百分比变量：color-mix() 不接受 calc(0.49 * 100%) 这种写法 */
+  --lg-tint-a: 49%; /* TINT_A 底色不透明度 */
+  --lg-bezel: 58%; /* BEZEL 边缘内高光强度 */
+  --lg-edge-a: 44%; /* EDGE 换算出的光带透明度 */
+  --lg-strength: 1.2; /* STRENGTH 折射/饱和强度 */
+  --lg-blur: 1.75; /* BLUR 背景模糊 */
+  --lg-sat: 175%; /* SAT 饱和度 */
+  --lg-bright: 1; /* BRIGHT 亮度 */
+  --lg-zoom: 0.02; /* ZOOM 边缘放大 */
+  --lg-edge: 0.2; /* EDGE 边缘光带宽度 */
+  position: relative;
+  isolation: isolate;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) var(--lg-tint-a), transparent);
+  -webkit-backdrop-filter: blur(calc(var(--lg-blur) * 3px)) saturate(var(--lg-sat)) brightness(var(--lg-bright));
+  backdrop-filter: blur(calc(var(--lg-blur) * 3px)) saturate(var(--lg-sat)) brightness(var(--lg-bright));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff var(--lg-bezel), transparent),
+    inset 0 -1px 0 color-mix(in srgb, #ffffff calc(var(--lg-bezel) * 0.42), transparent),
+    inset 1px 0 0 color-mix(in srgb, #ffffff calc(var(--lg-bezel) * 0.28), transparent),
+    inset -1px 0 0 color-mix(in srgb, #ffffff calc(var(--lg-bezel) * 0.28), transparent),
+    0 2px 10px color-mix(in srgb, var(--md-sys-color-shadow, #000) 16%, transparent);
+}
+
+/* 边缘光带：让玻璃看起来有厚度（EDGE 控制宽度，STRENGTH 控制亮度） */
+.liquid-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, #ffffff calc(var(--lg-edge) * 220%), transparent),
+    transparent 42%,
+    transparent 62%,
+    color-mix(in srgb, #ffffff calc(var(--lg-edge) * 120%), transparent)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: calc(0.6 + var(--lg-strength) * 0.2);
+}
+
+/* 折射叠层：与底边栏共用 App.tsx 里的 liquid-glass-refraction 滤镜 */
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, #ffffff 22%, transparent),
+    transparent 55%
+  );
+  filter: url(#liquid-glass-refraction);
+  opacity: calc(var(--lg-zoom) * 6 + var(--lg-edge) * 0.5);
+  mix-blend-mode: screen;
+}
+
+/* 低性能模式：去掉模糊与折射，保留底色与内高光（仍然是同一套表面语言） */
+html[data-perf='low'] .liquid-glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+html[data-perf='low'] .liquid-glass::before {
+  display: none;
+}
+
 /* ------------------------------------------------------- section header -- */
 .section-header {
   display: flex;

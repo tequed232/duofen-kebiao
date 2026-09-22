@@ -188,7 +188,7 @@ export default function ScheduleScreen() {
             </div>
 
             <div className="row gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
-              <button type="button" className="schedule-datebutton" onClick={() => setDateOpen(true)}>
+              <button type="button" className="schedule-datebutton liquid-glass" onClick={() => setDateOpen(true)}>
                 <MdIcon name="event" size={16} />
                 {monthLabel} · {formatMonthDayWeekday(selectedDate)}
                 <MdIcon name="expand_more" size={16} />
@@ -198,7 +198,7 @@ export default function ScheduleScreen() {
               </span>
             </div>
 
-            <div className="week-stepper">
+            <div className="week-stepper liquid-glass">
               <MdIconButton icon="chevron_left" label="上一周" onClick={() => shiftWeek(-1)} />
               <span className="week-label md-title-small-emphasized">
                 第 {week} 周 · {formatMonthDay(addDays(startOfWeek(selectedDate), 6))} 止
