@@ -65,106 +65,83 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
   /**
-   * 底栏（Dock）：位置即结果 + 流体跟手 + 液态玻璃。
+   * 底栏（Dock）——按作者提供的参考实现改写交互模型：
    *
-   * 三条原则（按作者要求）：
-   *  1. **点到什么就是什么**：指针落在哪一格就切到哪一格，不会"跳回主页"（切换只由位置决定）。
-   *  2. **不抽搐**：拖动时色块**连续跟手**（无过渡），但**页面切换带阻尼**（在新格里稳定 90ms 才切），
-   *     因此手指在格子边界来回抖动时不会疯狂切页。
-   *  3. **流体 + 散射 + 反射**：色块跟手移动时按速度横向拉伸（流体感），
-   *     并叠加模糊边缘（散射）与顶部高光/内侧反光（反射）。
+   *  1. **拖动期间只移动色块**（连续跟手）+ 按"离最近标签中心的距离"**动态拉伸宽度**（54→74px，流体感），
+   *     期间**不切换页面** —— 因此不会抽搐，也不会"跳回主页"。
+   *  2. **松手磁吸**到最近的标签并切换（cubic-bezier(0.2,0.9,0.3,1.2) 带轻微回弹）。
+   *  3. 点按等价于"按下即松手" → 落在哪一格就是哪一格（点到什么就是什么）。
+   *  4. 材质不变：液态玻璃 + 折射 + 散射 + 反射（跟手高光）。
    */
   const navSelectTab = useNav().selectTab;
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
   const draggingRef = useRef(false);
-  const committedRef = useRef(activeIndex);
-  const pendingRef = useRef<number | null>(null);
-  const dwellTimer = useRef<number | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    committedRef.current = activeIndex;
-  }, [activeIndex]);
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-  useEffect(() => () => window.clearTimeout(dwellTimer.current), []);
-
-  /** 指针 x → 标签序号，并把色块位置与速度写到 CSS 变量（色块由 CSS 连续跟手） */
-  const indexAt = (clientX: number, clientY?: number) => {
+  /** 标签中心（相对底栏左边缘） */
+  const tabCenter = (index: number) => {
     const element = dockRef.current;
-    if (!element) return activeIndex;
-    const rect = element.getBoundingClientRect();
-    if (!rect.width) return activeIndex;
-    const ratio = Math.min(0.9999, Math.max(0, (clientX - rect.left) / rect.width));
-    element.style.setProperty('--dock-drag', String(ratio));
-    if (clientY !== undefined) {
-      const localY = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-      element.style.setProperty('--dock-y', `${localY * 100}%`);
-    }
-    return Math.min(TABS.length - 1, Math.floor(ratio * TABS.length));
+    const button = element?.querySelectorAll<HTMLElement>('.m3e-dock-tab')[index];
+    if (!element || !button) return 0;
+    const dockRect = element.getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    return rect.left - dockRect.left + rect.width / 2;
   };
 
-  /** 立即切换（命中新格子时调用，带回调） */
-  const commitNow = (index: number) => {
-    if (index === committedRef.current) return;
-    const tab = TABS[index];
-    if (!tab) return;
-    committedRef.current = index;
-    if (typeof navSelectTab === 'function') navSelectTab(tab.id);
-    else onSelect(tab.id);
-  };
-
-  /** 拖动中的切换：带 90ms 稳定判定，避免边界抖动导致连续切页（抽搐） */
-  const commitWithDwell = (index: number) => {
-    if (index === committedRef.current) return;
-    if (pendingRef.current === index) return;
-    pendingRef.current = index;
-    window.clearTimeout(dwellTimer.current);
-    dwellTimer.current = window.setTimeout(() => {
-      if (pendingRef.current !== null) commitNow(pendingRef.current);
-      pendingRef.current = null;
-    }, 130);
-  };
-
-  /** 速度驱动的流体形变：位移越快，色块横向拉伸越明显 */
-  const trackVelocity = (clientX: number) => {
+  /** 指针位置 → 「色块位置 + 动态宽度」并写入 CSS 变量（不切页） */
+  const followPointer = (clientX: number) => {
     const element = dockRef.current;
     if (!element) return;
-    const now = performance.now();
-    const last = (element as HTMLElement & { __lastX?: number; __lastT?: number });
-    const dx = last.__lastX === undefined ? 0 : clientX - last.__lastX;
-    const dt = last.__lastT === undefined ? 16 : Math.max(1, now - last.__lastT);
-    last.__lastX = clientX;
-    last.__lastT = now;
-    const speed = Math.min(1, Math.abs(dx / dt) * 1.6);
-    element.style.setProperty('--dock-velocity', speed.toFixed(3));
+    const rect = element.getBoundingClientRect();
+    if (!rect.width) return;
+    const x = clamp(clientX - rect.left, 20, rect.width - 20);
+    const tabWidth = rect.width / TABS.length;
+    const nearest = clamp(Math.floor(x / tabWidth), 0, TABS.length - 1);
+    const offsetToCenter = Math.abs(x - tabCenter(nearest));
+    // 参考实现：宽度 54 → 上限 74，随离中心距离线性增长
+    const width = Math.min(74, 54 + offsetToCenter * 0.25);
+    element.style.setProperty('--pill-width', `${width.toFixed(1)}px`);
+    element.style.setProperty('--pill-x', `${(x - width / 2).toFixed(1)}px`);
+    element.style.setProperty('--dock-x', `${((x / rect.width) * 100).toFixed(1)}%`);
+    setHoverIndex(nearest);
+  };
+
+  /** 磁吸切换（只在松手时调用） */
+  const snapTo = (clientX: number) => {
+    const element = dockRef.current;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    const tabWidth = rect.width / TABS.length;
+    const index = clamp(Math.floor((clientX - rect.left) / tabWidth), 0, TABS.length - 1);
+    element.style.removeProperty('--pill-width');
+    element.style.removeProperty('--pill-x');
+    setHoverIndex(null);
+    const tab = TABS[index];
+    if (tab && index !== activeIndex) {
+      if (typeof navSelectTab === 'function') navSelectTab(tab.id);
+      else onSelect(tab.id);
+    }
   };
 
   const onDown = (event: React.PointerEvent<HTMLElement>) => {
     if (!dockRef.current) return;
     draggingRef.current = true;
     setDragging(true);
-    pendingRef.current = null;
-    const index = indexAt(event.clientX, event.clientY);
-    commitNow(index); // 点按：立刻就是它
+    followPointer(event.clientX);
 
     const onWindowMove = (moveEvent: PointerEvent) => {
       if (!draggingRef.current) return;
-      trackVelocity(moveEvent.clientX);
-      commitWithDwell(indexAt(moveEvent.clientX, moveEvent.clientY));
+      followPointer(moveEvent.clientX);
     };
     const onWindowUp = (upEvent: PointerEvent) => {
       if (draggingRef.current) {
         draggingRef.current = false;
         setDragging(false);
-        window.clearTimeout(dwellTimer.current);
-        pendingRef.current = null;
-        commitNow(indexAt(upEvent.clientX, upEvent.clientY)); // 松手：停在哪就是哪
-        const element = dockRef.current;
-        if (element) {
-          element.style.removeProperty('--dock-drag');
-          element.style.setProperty('--dock-velocity', '0');
-        }
+        snapTo(upEvent.clientX); // 松手才切换，且磁吸到最近标签
       }
       window.removeEventListener('pointermove', onWindowMove);
       window.removeEventListener('pointerup', onWindowUp);
@@ -175,22 +152,14 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     window.addEventListener('pointercancel', onWindowUp);
   };
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLElement>, index: number) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      commitNow(index);
-    }
-  };
-
   return (
     <nav
       className={`m3e-dock${dragging ? ' dragging' : ''}`}
       aria-label="主导航"
       ref={dockRef}
-      style={{ '--m3e-active': String(activeIndex), '--dock-velocity': '0' } as React.CSSProperties}
+      style={{ '--m3e-active': String(activeIndex) } as React.CSSProperties}
       onPointerDown={onDown}
       onPointerMove={(event) => {
-        // 悬停高光：不按住也跟手
         const element = dockRef.current;
         if (!element) return;
         const rect = element.getBoundingClientRect();
@@ -217,10 +186,20 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         <button
           key={tab.id}
           type="button"
-          className={`m3e-dock-tab${tab.id === active ? ' active' : ''}`}
+          className={[
+            'm3e-dock-tab',
+            tab.id === active ? 'active' : '',
+            hoverIndex === index ? 'hovered' : '',
+          ].join(' ').trim()}
           aria-label={tab.label}
           aria-current={tab.id === active ? 'page' : undefined}
-          onKeyDown={(event) => onKeyDown(event, index)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              if (typeof navSelectTab === 'function') navSelectTab(tab.id);
+              else onSelect(tab.id);
+            }
+          }}
         >
           <MdIcon name={tab.id === active ? (tab.activeIcon ?? tab.icon) : tab.icon} size={24} />
           <span className="m3e-dock-label">{tab.label}</span>
