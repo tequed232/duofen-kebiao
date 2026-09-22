@@ -1032,3 +1032,93 @@ html[data-transition='none'] .m3e-dock-slider,
 html[data-perf='low'] .m3e-dock-slider {
   transition: none;
 }
+
+
+/* ============ Apple Liquid Glass 指引的落地细节（作者要求参照官方文件） ============
+   1. 同心圆角：内层滑块半径 = 外层半径 − 内边距，视觉上"同圆心"
+   2. 内容感知着色：玻璃表面混入主题色（primary）作为 tint，随主题变化
+   3. 运动响应：高光位置由指针与滚动共同驱动（见组件里的 --dock-x/--dock-scroll）
+   4. 降低透明度/低性能：降级为不透明表面（对应系统辅助功能中的"降低透明度"）
+   5. 不与其它玻璃叠放：本项目仅顶栏与底栏，两处互不重叠 */
+.m3e-dock {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent),
+      transparent 55%
+    ),
+    color-mix(in srgb, var(--md-sys-color-surface-container) 56%, transparent);
+  border-radius: 34px;
+}
+
+.m3e-dock-slider {
+  /* 同心圆角：外层 34px − 内边距 6px */
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 94%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 30%, transparent);
+}
+
+.m3e-dock-tab {
+  border-radius: 28px;
+}
+
+/* 玻璃边缘的"高光描边"：Apple 强调玻璃要有清晰的边缘反射 */
+.m3e-dock::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #ffffff 26%, transparent);
+  z-index: 3;
+}
+
+html[data-transition='none'] .m3e-dock,
+html[data-perf='low'] .m3e-dock {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+
+/* ==================== 常驻底栏（App 层唯一一份） ====================
+   底栏固定在手机框架底部，屏幕内容为其预留高度，二者不重叠。 */
+.phone > .m3e-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 12px calc(10px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
+}
+
+.phone > .screen,
+.phone > .screen-inner {
+  padding-bottom: calc(68px + 26px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
+}
+
+
+/* ==================== 屏幕安全区（上下端分别可调） ====================
+   取值 = max(系统 env() 安全区, APK 注入的原生 inset, 用户在设置里的覆盖值)
+   —— Web 与 APK 共用这套变量，因此两端表现一致。 */
+:root {
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--native-inset-top, 0px), var(--inset-top, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px), var(--inset-bottom, 0px));
+}
+
+/* 顶栏按安全区下移（内容不被状态栏/刘海压住） */
+.app-bar {
+  padding-top: calc(var(--safe-top) + 8px) !important;
+}
+
+/* 屏幕内容顶部同样让开 */
+.screen-content {
+  scroll-padding-top: calc(var(--safe-top) + 8px);
+}
+
+/* 常驻底栏按下端安全区抬起 */
+.phone > .m3e-dock {
+  margin-bottom: calc(10px + var(--safe-bottom)) !important;
+}
+
+.phone > .screen,
+.phone > .screen-inner {
+  padding-bottom: calc(68px + 26px + var(--safe-bottom)) !important;
+}

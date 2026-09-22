@@ -63,6 +63,10 @@ export interface AppSettings {
   classReminder: boolean;
   /** 界面缩放：小 / 标准 / 大（窄屏设备可调小以免拥挤） */
   uiScale: 'small' | 'normal' | 'large';
+  /** 上端安全区（dp）：-1 = 自动跟随系统状态栏/刘海 */
+  insetTop: number;
+  /** 下端安全区（dp）：-1 = 自动跟随系统手势条 */
+  insetBottom: number;
   /** 提前多少分钟提醒（可调） */
   classReminderLead: number;
   /** 页面切换的过渡模式：M3 规范 / 仅淡入淡出 / 横向滑移 / 无动画 */
@@ -87,6 +91,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   liveNotify: true,
   classReminder: true,
   uiScale: 'normal',
+  insetTop: -1,
+  insetBottom: -1,
   classReminderLead: 10,
   transition: 'm3',
 };

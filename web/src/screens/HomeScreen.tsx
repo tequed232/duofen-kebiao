@@ -9,7 +9,7 @@
  * Nav bar        : 首页 selected
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppNavBar, SectionHeader, TopAppBar, useLongPress } from '../components/layout';
+import { SectionHeader, TopAppBar, useLongPress } from '../components/layout';
 import { MdDialog, MdIcon, MdIconButton, MdTextField } from '../components/md';
 import { GlassMark } from '../components/glass';
 import { Waveform } from '../components/waveform';
@@ -492,7 +492,6 @@ export default function HomeScreen() {
         {draft.transcript.trim() ? '本次识别到的文字已写入草稿。' : '本次没有识别到文字。'}
         你可以点「直接确认」结束这次实时通知，或稍后在历史里查看。
       </MdDialog>
-      <AppNavBar active="schedule" onSelect={selectTab} />
       </div>
 
       {/* ------------------------------------------------ fullscreen panels */}

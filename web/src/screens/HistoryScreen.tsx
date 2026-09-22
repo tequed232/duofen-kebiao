@@ -6,7 +6,7 @@
  * shared nav bar. Cards open the record detail screen.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { AppNavBar, EmptyState, TopAppBar, useScrolled } from '../components/layout';
+import { EmptyState, TopAppBar, useScrolled } from '../components/layout';
 import { MdDialog, MdIcon, MdIconButton, MdMenu, MdTextField, type MenuAction } from '../components/md';
 import { ConfirmDialog } from '../components/overlays';
 import { RecordCard } from '../components/content';
@@ -243,8 +243,6 @@ export default function HistoryScreen() {
             </div>
           ) : null}
         </div>
-
-        <AppNavBar active="schedule" onSelect={selectTab} />
       </div>
 
       <MdMenu anchor={appMenuAnchor} open={appMenuOpen} actions={appMenuActions} onClose={() => setAppMenuOpen(false)} />

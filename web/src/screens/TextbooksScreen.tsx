@@ -8,7 +8,7 @@
  * 删除采用「隐藏清单」实现（键写在 localStorage），不当场销毁数据，随时可回档。
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppNavBar, SectionHeader, TopAppBar } from '../components/layout';
+import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdDialog, MdIcon, MdIconButton, MdTextField } from '../components/md';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
@@ -301,18 +301,6 @@ export default function TextbooksScreen() {
           />
         </div>
       </MdDialog>
-
-      <AppNavBar
-        active="schedule"
-        onSelect={(tab) => {
-          if (tab === 'schedule') {
-            nav.popTo('schedule');
-            return;
-          }
-          nav.popTo('schedule');
-          nav.push(tab === 'search' ? 'scheduleFilter' : 'settings', {}, 'slide');
-        }}
-      />
     </div>
   );
 }

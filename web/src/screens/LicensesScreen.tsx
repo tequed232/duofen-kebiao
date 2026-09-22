@@ -6,7 +6,7 @@
  * 数据由 scripts/collect-licenses.mjs 从 package.json + node_modules 自动生成。
  */
 import { useMemo, useState } from 'react';
-import { AppNavBar, SectionHeader, TopAppBar } from '../components/layout';
+import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdIcon, MdTextField } from '../components/md';
 import { useNav } from '../nav/navigation';
 import { LICENSE_GROUPS, REFERENCE_LIBS, type LicenseEntry } from '../data/licenses';
@@ -107,18 +107,6 @@ export default function LicensesScreen() {
           <div className="md-body-medium muted">没有匹配的条目。</div>
         ) : null}
       </div>
-
-      <AppNavBar
-        active="settings"
-        onSelect={(tab) => {
-          if (tab === 'settings') {
-            nav.popTo('settings');
-            return;
-          }
-          nav.popTo('schedule');
-          if (tab === 'search') nav.push('scheduleFilter', {}, 'slide');
-        }}
-      />
     </div>
   );
 }

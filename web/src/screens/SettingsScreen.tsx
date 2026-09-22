@@ -7,7 +7,7 @@
  * 撤销 and the shared nav bar.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AppNavBar, SectionHeader, TopAppBar } from '../components/layout';
+import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdDialog, MdIcon, MdIconButton, MdSlider, MdSwitch, MdTextField } from '../components/md';
 import { MapChooserDialog } from '../components/schedule';
 import { useAppState } from '../state/AppState';
@@ -114,6 +114,85 @@ export default function SettingsScreen() {
               </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
+
+            {/* ------------------------- 安全区：上下端各一个滑块，自由调节 */}
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="vertical_align_top" />
+              </div>
+              <div slot="headline">上端安全区</div>
+              <div slot="supporting-text">
+                {settings.insetTop < 0
+                  ? '自动：跟随系统状态栏/刘海（本机实测约 40dp）'
+                  : `手动：${settings.insetTop}dp（推荐 40dp，0 = 沉浸全屏）`}
+              </div>
+            </md-list-item>
+            <div className="list-control-row">
+              <MdSlider
+                className="expressive-slider flex-1"
+                value={settings.insetTop < 0 ? 40 : settings.insetTop}
+                min={0}
+                max={64}
+                step={1}
+                ariaLabel="上端安全区"
+                onInput={(value) => document.documentElement.style.setProperty('--inset-top', `${Math.round(value)}px`)}
+                onChange={(value) => {
+                  const next = Math.round(value);
+                  document.documentElement.style.setProperty('--inset-top', `${next}px`);
+                  updateSettings({ insetTop: next }, { message: `上端安全区：${next}dp` });
+                }}
+              />
+              <button
+                type="button"
+                className="overlay-value editable md-label-medium"
+                aria-label="上端安全区复位为自动"
+                onClick={() => {
+                  document.documentElement.style.removeProperty('--inset-top');
+                  updateSettings({ insetTop: -1 }, { message: '上端安全区：自动' });
+                }}
+              >
+                {settings.insetTop < 0 ? '自动' : `${settings.insetTop}dp`}
+              </button>
+            </div>
+
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="vertical_align_bottom" />
+              </div>
+              <div slot="headline">下端安全区</div>
+              <div slot="supporting-text">
+                {settings.insetBottom < 0
+                  ? '自动：跟随系统手势条（本机实测约 16dp）'
+                  : `手动：${settings.insetBottom}dp（推荐 16dp，0 = 贴底）`}
+              </div>
+            </md-list-item>
+            <div className="list-control-row">
+              <MdSlider
+                className="expressive-slider flex-1"
+                value={settings.insetBottom < 0 ? 16 : settings.insetBottom}
+                min={0}
+                max={64}
+                step={1}
+                ariaLabel="下端安全区"
+                onInput={(value) => document.documentElement.style.setProperty('--inset-bottom', `${Math.round(value)}px`)}
+                onChange={(value) => {
+                  const next = Math.round(value);
+                  document.documentElement.style.setProperty('--inset-bottom', `${next}px`);
+                  updateSettings({ insetBottom: next }, { message: `下端安全区：${next}dp` });
+                }}
+              />
+              <button
+                type="button"
+                className="overlay-value editable md-label-medium"
+                aria-label="下端安全区复位为自动"
+                onClick={() => {
+                  document.documentElement.style.removeProperty('--inset-bottom');
+                  updateSettings({ insetBottom: -1 }, { message: '下端安全区：自动' });
+                }}
+              >
+                {settings.insetBottom < 0 ? '自动' : `${settings.insetBottom}dp`}
+              </button>
+            </div>
 
             {/* -------------------------------------- 2 默认跳转地图 */}
             <md-list-item type="button" className="rounded-middle" onClick={() => setMapDialogOpen(true)}>
@@ -273,8 +352,6 @@ export default function SettingsScreen() {
             </div>
           </div>
         </div>
-
-        <AppNavBar active="settings" onSelect={selectTab} />
       </div>
 
       <MapChooserDialog

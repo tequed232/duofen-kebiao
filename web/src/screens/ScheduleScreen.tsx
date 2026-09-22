@@ -9,7 +9,7 @@
  * 向下滚动会把课表收起成一行摘要，腾出空间显示当天课程；再次点击即可展开。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppNavBar, SectionHeader, TopAppBar, useScrolled } from '../components/layout';
+import { SectionHeader, TopAppBar, useScrolled } from '../components/layout';
 import { MdIcon, MdIconButton } from '../components/md';
 import {
   CourseDetailSheet,
@@ -251,8 +251,6 @@ export default function ScheduleScreen() {
             />
           </div>
         </div>
-
-        <AppNavBar active="schedule" onSelect={selectTab} />
       </div>
 
       <CourseDetailSheet

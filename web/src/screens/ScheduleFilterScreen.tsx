@@ -7,7 +7,7 @@
  * panel that hands the address over to the default map app.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppNavBar, SectionHeader, TopAppBar } from '../components/layout';
+import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdIcon, MdIconButton, MdMenu, MdSwitch, MdTextField, type MenuAction } from '../components/md';
 import { ExpandableSheet } from '../components/overlays';
 import { MapChooserDialog, highlightKeyFor } from '../components/schedule';
@@ -238,14 +238,6 @@ export default function ScheduleFilterScreen() {
         </div>
 
         {/* 搜索页也保留底边控制栏（v2 三项：首页 / 搜索 / 设置） */}
-        <AppNavBar
-          active="search"
-          onSelect={(tab) => {
-            if (tab === 'search') return;
-            nav.popTo('schedule');
-            if (tab === 'settings') nav.push('settings', {}, 'slide');
-          }}
-        />
       </div>
 
       <MdMenu anchor={menuAnchor} open={menuOpen} actions={menuActions} onClose={() => setMenuOpen(false)} />

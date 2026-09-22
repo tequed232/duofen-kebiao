@@ -1,6 +1,7 @@
 ﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
+import { useNav } from '../nav/navigation';
 import { useAppState } from '../state/AppState';
 import { isNativeShell } from '../lib/native';
 
@@ -63,17 +64,27 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 ];
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
-  // 自绘底栏 + 液态玻璃（折射）效果。
-  //
-  // 交互原则（作者要求）：**位置即结果** —— 手指/指针落在哪一格，就是哪一格；
-  // 拖动经过哪一格，就实时切到哪一格；松手停在哪里，就留在哪里。
-  // 因此切换**完全由指针坐标决定**，不依赖每个按钮的 click（避免点击被吞或"点A到B"）。
+  /**
+   * 底栏（Dock）：位置即结果 + 拖拽跟手 + Liquid Glass。
+   *
+   * 切换的唯一事实来源是**指针位置**：不再给按钮绑 onClick（那是"跳两次/跳回主页"的来源）。
+   * 指针落在第 i 格 → 切到第 i 个标签；拖动经过第 i 格 → 实时切到第 i 个标签；
+   * 松手停在第 i 格 → 停在第 i 个标签。全程幂等，重复落在同一格不会重复触发。
+   */
+  // 直接拿路由的 selectTab：不依赖各屏传下来的 onSelect，消除"传错/传漏"的可能
+  const navSelectTab = useNav().selectTab;
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
-  const [dragging, setDragging] = useState(false);
   const draggingRef = useRef(false);
+  /** 已提交的标签序号：幂等的关键（避免同一次点击被重复提交） */
+  const committedRef = useRef(activeIndex);
+  const [dragging, setDragging] = useState(false);
 
-  /** 指针 x → 标签序号（0..2），并同步滑块位置 */
+  useEffect(() => {
+    committedRef.current = activeIndex;
+  }, [activeIndex]);
+
+  /** 指针 x → 标签序号（0..2），同时把滑块位置写到 CSS 变量 */
   const indexAt = (clientX: number) => {
     const element = dockRef.current;
     if (!element) return activeIndex;
@@ -84,34 +95,64 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     return Math.min(TABS.length - 1, Math.floor(ratio * TABS.length));
   };
 
+  /** 幂等提交：只有真正换了标签才通知外部 */
   const commit = (index: number) => {
+    if (index === committedRef.current) return;
     const tab = TABS[index];
-    if (tab && tab.id !== active) onSelect(tab.id);
+    if (!tab) return;
+    committedRef.current = index;
+    // 优先走路由的规范实现；父组件传入的 onSelect 作为兜底
+    if (typeof navSelectTab === 'function') navSelectTab(tab.id);
+    else onSelect(tab.id);
   };
 
   const onDown = (event: React.PointerEvent<HTMLElement>) => {
-    const element = dockRef.current;
-    if (!element) return;
-    element.setPointerCapture?.(event.pointerId);
+    if (!dockRef.current) return;
     draggingRef.current = true;
     setDragging(true);
-    commit(indexAt(event.clientX)); // 落在哪一格就立刻切到哪一格
+    commit(indexAt(event.clientX));
+
+    // 用 window 级监听跟随拖动：**不用 setPointerCapture** ——
+    // 底栏会随页面切换被卸载，捕获一旦残留，后续点击就会被送给已卸载的节点，
+    // 表现为"有时点不动、有时跳两次、有时跳回主页"。
+    const onWindowMove = (moveEvent: PointerEvent) => {
+      if (!draggingRef.current) return;
+      commit(indexAt(moveEvent.clientX));
+    };
+    const onWindowUp = (upEvent: PointerEvent) => {
+      if (draggingRef.current) {
+        draggingRef.current = false;
+        setDragging(false);
+        commit(indexAt(upEvent.clientX));
+        dockRef.current?.style.removeProperty('--dock-drag');
+      }
+      window.removeEventListener('pointermove', onWindowMove);
+      window.removeEventListener('pointerup', onWindowUp);
+      window.removeEventListener('pointercancel', onWindowUp);
+    };
+    window.addEventListener('pointermove', onWindowMove);
+    window.addEventListener('pointerup', onWindowUp);
+    window.addEventListener('pointercancel', onWindowUp);
   };
 
-  const onMove = (event: React.PointerEvent<HTMLElement>) => {
-    if (!draggingRef.current) return;
-    commit(indexAt(event.clientX)); // 拖动经过哪一格就实时切到哪一格
+  const onMove = () => {
+    /* 拖动跟随改由 window 级监听处理 */
   };
 
-  const onUp = (event: React.PointerEvent<HTMLElement>) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    setDragging(false);
-    commit(indexAt(event.clientX)); // 松手停在哪就在哪
-    const element = dockRef.current;
-    element?.style.removeProperty('--dock-drag');
+  const onUp = () => {
+    /* 结束拖动改由 window 级监听处理 */
   };
 
+  /** 键盘无障碍：方向键 / Enter 仍可切换（不走指针路径） */
+  const onKeyDown = (event: React.KeyboardEvent<HTMLElement>, index: number) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (typeof navSelectTab === 'function') navSelectTab(TABS[index].id);
+      else onSelect(TABS[index].id);
+    }
+  };
+
+  /** 运动响应：指针位置 + 滚动冲量共同驱动高光（Apple 的 motion-reactive specular） */
   useEffect(() => {
     const element = dockRef.current;
     if (!element) return undefined;
@@ -128,6 +169,8 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         const tick = () => {
           decay *= 0.86;
           element.style.setProperty('--dock-scroll', decay.toFixed(3));
+          // 滚动时高光随之偏移，玻璃看起来"在动"
+          element.style.setProperty('--dock-x', `${50 + decay * 28}%`);
           raf = decay > 0.02 ? window.requestAnimationFrame(tick) : undefined;
         };
         raf = window.requestAnimationFrame(tick);
@@ -162,14 +205,14 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
       <span className="m3e-dock-refraction" aria-hidden="true" />
       <span className="m3e-dock-specular" aria-hidden="true" />
       <span className="m3e-dock-slider" aria-hidden="true" />
-      {TABS.map((tab) => (
+      {TABS.map((tab, index) => (
         <button
           key={tab.id}
           type="button"
           className={`m3e-dock-tab${tab.id === active ? ' active' : ''}`}
           aria-label={tab.label}
           aria-current={tab.id === active ? 'page' : undefined}
-          onClick={() => onSelect(tab.id)}
+          onKeyDown={(event) => onKeyDown(event, index)}
         >
           <MdIcon name={tab.id === active ? (tab.activeIcon ?? tab.icon) : tab.icon} size={24} />
           <span className="m3e-dock-label">{tab.label}</span>

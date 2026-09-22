@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { NavHost, useNav, type RouteName } from './nav/navigation';
 import { SnackbarLayer } from './components/overlays';
+import { AppNavBar } from './components/layout';
 import { SplashScreen } from './components/splash';
 import { useAppState } from './state/AppState';
 import { nativeDockActive } from './lib/native';
@@ -35,6 +36,19 @@ const SCREENS = {
 /** Screens that own a bottom navigation bar keep the snackbar 16dp above it. */
 const WITH_NAV_BAR: RouteName[] = ['home', 'camera', 'history', 'settings', 'schedule'];
 
+/** 路由 → 标签：底栏的选中项由当前路由推导（唯一事实来源） */
+function tabForRoute(route: RouteName): 'schedule' | 'search' | 'settings' {
+  if (route === 'settings' || route === 'about' || route === 'apiEdit' || route === 'licenses') return 'settings';
+  if (route === 'scheduleFilter') return 'search';
+  return 'schedule';
+}
+
+/** 常驻底栏（只挂一次） */
+function PersistentDock() {
+  const { current, selectTab } = useNav();
+  return <AppNavBar active={tabForRoute(current.route)} onSelect={selectTab} />;
+}
+
 export default function App() {
   const { current, selectTab, push } = useNav();
   const { ready, settings, schedule, textbooks } = useAppState();
@@ -43,6 +57,18 @@ export default function App() {
   // 开屏：数据就绪后自动进入；进入时主页组件从下向上依次弹出
   const [splash, setSplash] = useState(true);
   const [entering, setEntering] = useState(false);
+
+  // 安全区覆盖：-1 表示自动（跟随系统 env() / APK 注入的原生 inset）。
+  // Web 与 APK 共用这两个变量，因此两端留白逻辑完全一致。
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = (name: string, value: number | undefined) => {
+      if (typeof value === 'number' && value >= 0) root.style.setProperty(name, `${value}px`);
+      else root.style.removeProperty(name);
+    };
+    apply('--inset-top', settings.insetTop);
+    apply('--inset-bottom', settings.insetBottom);
+  }, [settings.insetTop, settings.insetBottom]);
 
   // 界面缩放：写到 <html data-ui-scale>，由 CSS 的 zoom 统一缩放整页
   //（窄屏设备如 308dp 宽可调成「小」，避免元素拥挤；安全区留白也随之等比缩放）
@@ -99,6 +125,9 @@ export default function App() {
     <div className="stage">
       <div className={['phone', entering ? 'entering' : ''].join(' ').trim()}>
         <NavHost screens={SCREENS} />
+      {/* 常驻底栏：整个应用只渲染一份，位于屏幕栈之外 ——
+          从根本上避免"切页导致底栏卸载/捕获残留/动画位移"造成的点击失效与重复跳转 */}
+      <PersistentDock />
         <SnackbarLayer bottom={bottom} />
         {splash ? <SplashScreen ready={ready} onDone={() => setSplash(false)} /> : null}
 
