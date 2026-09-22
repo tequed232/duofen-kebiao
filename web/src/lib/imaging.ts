@@ -94,7 +94,34 @@ export async function downscaleDataUrl(dataUrl: string, sharpness: number): Prom
   }
 }
 
+/**
+ * 选图 → 缩放 → JPEG dataURL。
+ *
+ * **优先走 createImageBitmap**：解码在后台线程完成，主线程只做一次缩放的 drawImage。
+ * 老路径（FileReader 读成 base64 → `img.src` 再解一遍 base64 → 解码 JPEG）在手机上
+ * 处理一张 12MP 照片会把主线程顶住几百毫秒甚至几秒 —— 表现就是「点一下卡死」。
+ */
 export async function prepareImageFile(file: File, sharpness: number): Promise<string> {
+  const { maxEdge, quality } = sharpnessToQuality(sharpness);
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const longest = Math.max(bitmap.width, bitmap.height) || 1;
+      const scale = Math.min(1, maxEdge / longest);
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('画布不可用');
+      context.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close?.();
+      return canvas.toDataURL('image/jpeg', quality);
+    } catch {
+      /* 落到下面的兼容路径 */
+    }
+  }
   const dataUrl = await fileToDataUrl(file);
   return downscaleDataUrl(dataUrl, sharpness);
 }

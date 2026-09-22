@@ -1,4 +1,5 @@
 import { installMotionScheme } from './theme/motion';
+import { installPerfTelemetry } from './lib/perf-telemetry';
 import { applyRoles, buildThemes, detectSeed } from './theme/palette';
 
 /* --------------------------------------------------------------------------
@@ -46,6 +47,9 @@ import './theme/schedule.css';
 
 /* MotionScheme.expressive(): solve the springs once and publish them as CSS vars. */
 installMotionScheme();
+
+/* 真机可观测：把「主线程被顶住」的长任务报到 console（APK 宿主再转发进 logcat） */
+installPerfTelemetry();
 
 /* Apply the dynamic (or fallback) color roles before the first paint. */
 const seed = detectSeed();
