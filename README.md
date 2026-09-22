@@ -12,7 +12,7 @@
  作于2026.9.19 时年大一
 
 Material 3 Expressive 风格的移动端 Web 应用：**实时语音转文字 + 图片转文字总结 + 历史记录 + 设置/API 配置**。
-目标形态为竖屏手机 **412 × 892dp**，浏览器内运行（`dist/` 为可直接部署的 production build）。
+目标形态为竖屏手机 **1080 × 1920dp**，浏览器内运行（`dist/` 为可直接部署的 production build）。
 
 **在线体验：<https://tequed232.github.io/duofen-kebiao/>** · **发布：<https://github.com/tequed232/duofen-kebiao/releases>**
 
@@ -184,13 +184,7 @@ dist/
 结果：**62 步全部通过，0 个 console 错误、0 个 page error**；截图见 `screenshots/`（`report.json` 内含配色、尺寸与令牌核对数据）。
 线上部署（GitHub Pages）用同一套脚本跑过一遍，截图与报告在 `screenshots-live/`。
 
-## 与草图的三处有意偏差
 
-1. **深色模式开关**：题目要求"只做浅色模式"，但草图中的开关又必须可用。默认仍是浅色（设计目标），开关则用同一 seed 生成的 Expressive 深色方案真实生效并持久化，
-   不使用死控件。
-2. **图标语义**：设置列表中"深色模式""关于本软件"使用 `dark_mode` / `info`（草图里两处都写 `person`，明显是占位）。
-3. **屏幕 5 只有一个顶部应用栏**：草图把同一个 "Title" 应用栏叠了两遍，实际实现为一个（返回 / 编辑 / 删除），避免出现两条一样的标题栏。
-   旋转木马按草图为 4 张卡片的布局，但只渲染真实存在的图片（不造假的图片数据）。
 
 ## 目录
 
@@ -243,13 +237,12 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 | 名片 | 角色 | 链接 |
 | --- | --- | --- |
 | 罗xx | 作者 · 项目发起 · 界面动效 · 数据与部署 | [GitHub](https://github.com/tequed232) · [Bilibili](https://space.bilibili.com/407275151) · [抖音](https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F) |
-| 饼干 | 翻译 · 同学 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
-| 维舟（MAA-Meow） | 该项目顾问 | [GitHub](https://github.com/WhiteMoon319) |
+| 饼干233 | 翻译 · 同学 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
+| 维舟（来自MAA-Meow） | 该项目顾问 | [GitHub](https://github.com/WhiteMoon319) |
 | 米达达 | 表情包引用 | [Bilibili](https://space.bilibili.com/3546769371695776) |
 | Hanbing | 主美画师 · 同学 | [Bilibili](https://b23.tv/0rKu2FX) |
 | 椿湫 | 导师 | [GitHub](https://github.com/fxxggllj) |
 
-名片头像是各人在 GitHub / B 站的**公开头像**（已登记在 [`docs/asset-permissions.md`](./docs/asset-permissions.md)），加载失败时自动退回姓名首字；
 表情包原图不进入构建产物。名片墙上每个入口都带对应平台的**剪影图标**（GitHub / Bilibili / 抖音 / X），
 路径内联在 `web/src/components/brands.tsx`，来自 [Remix Icon](https://github.com/Remix-Design/RemixIcon)（Apache-2.0）。
 
