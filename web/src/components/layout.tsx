@@ -94,6 +94,11 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const pendingXRef = useRef(0);
   /** 拖动中跟手的小球：位置每帧写一次 CSS 变量，不触发 React 渲染 */
   const dragBallRef = useRef<HTMLSpanElement>(null);
+  /** 小球形变：速度（px/ms）驱动椭圆拉伸，松手/停下自动回圆 */
+  const speedRef = useRef(0);
+  const stretchRef = useRef(1);
+  const lastMoveRef = useRef({ x: 0, t: 0 });
+  const relaxRef = useRef<number | undefined>(undefined);
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -125,9 +130,24 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     element.style.setProperty('--pill-x', `${(x - halfCell).toFixed(1)}px`);
     element.style.setProperty('--pill-width', stretch.toFixed(3));
     element.style.setProperty('--dock-x', `${((x / geo.width) * 100).toFixed(1)}%`);
-    // 跟手的小球：同样一帧只写一个变量
-    dragBallRef.current?.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
+    // 跟手的小球：位置 + 形变各写一个变量，一帧只写一次
+    const ball = dragBallRef.current;
+    if (ball) {
+      ball.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
+      writeBallStretch(ball);
+    }
     setHoverIndex(nearest);
+  };
+
+  /** 速度 → 椭圆：拖得越快球越长（scaleX），同时压一点高度保持体积感；停下自动回圆 */
+  const writeBallStretch = (ball: HTMLElement) => {
+    const speed = speedRef.current; // px/ms
+    const target = clamp(1 + speed * 3.2, 1, 1.6);
+    // 拉长比收缩快、回弹比拉长慢 —— 观感更像流体
+    stretchRef.current = target > stretchRef.current ? target : Math.max(target, stretchRef.current - 0.045);
+    const value = stretchRef.current;
+    ball.style.setProperty('--ball-stretch', value.toFixed(3));
+    ball.style.setProperty('--ball-squash', (1 / Math.sqrt(value)).toFixed(3));
   };
 
   /** 小球首次出现时先摆到手指位置（React 渲染晚于 applyFrame 一帧） */
@@ -144,6 +164,27 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     if (frameRef.current === undefined) frameRef.current = window.requestAnimationFrame(applyFrame);
   };
 
+  /** 手指停住时速度自然衰减，小球从椭圆收回圆（只在拖动期间跑，松手即停） */
+  const startRelax = () => {
+    if (relaxRef.current !== undefined) return;
+    const step = () => {
+      if (!draggingRef.current) {
+        relaxRef.current = undefined;
+        return;
+      }
+      speedRef.current *= 0.82;
+      if (speedRef.current < 0.02) speedRef.current = 0;
+      const ball = dragBallRef.current;
+      if (ball) writeBallStretch(ball);
+      if (speedRef.current === 0 && stretchRef.current <= 1.002) {
+        relaxRef.current = undefined;
+        return;
+      }
+      relaxRef.current = window.requestAnimationFrame(step);
+    };
+    relaxRef.current = window.requestAnimationFrame(step);
+  };
+
   const onDown = (event: React.PointerEvent<HTMLElement>) => {
     if (!dockRef.current) return;
     geoRef.current = measure(); // 只在这里读布局
@@ -152,10 +193,19 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     pendingXRef.current = event.clientX;
     draggingRef.current = true;
     setDragging(true);
+    speedRef.current = 0;
+    stretchRef.current = 1;
+    lastMoveRef.current = { x: event.clientX, t: performance.now() };
     applyFrame();
+    startRelax();
 
     const onWindowMove = (moveEvent: PointerEvent) => {
       if (!draggingRef.current) return;
+      // 速度用「本次位移 / 间隔」估算（不读布局），驱动小球的椭圆拉伸
+      const now = performance.now();
+      const dt = Math.max(8, now - lastMoveRef.current.t);
+      speedRef.current = Math.abs(moveEvent.clientX - lastMoveRef.current.x) / dt;
+      lastMoveRef.current = { x: moveEvent.clientX, t: now };
       pendingXRef.current = moveEvent.clientX;
       scheduleFrame(); // 合帧：一帧最多写一次
     };
@@ -167,6 +217,12 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
           window.cancelAnimationFrame(frameRef.current);
           frameRef.current = undefined;
         }
+        if (relaxRef.current !== undefined) {
+          window.cancelAnimationFrame(relaxRef.current);
+          relaxRef.current = undefined;
+        }
+        speedRef.current = 0;
+        stretchRef.current = 1;
         const geo = geoRef.current;
         const element = dockRef.current;
         if (geo && element) {
@@ -216,7 +272,6 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         </filter>
       </svg>
       <span className="m3e-dock-refraction" aria-hidden="true" />
-      <span className="m3e-dock-specular" aria-hidden="true" />
       {/* 按住 / 拖动时跟手的小球（位置由 --ball-x 每帧写入） */}
       {dragging ? <span className="m3e-dock-ball dragging" ref={dragBallRef} aria-hidden="true" /> : null}
       {balls.map((ball) => (

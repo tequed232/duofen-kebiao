@@ -880,20 +880,9 @@ html[data-perf='low'] .screen {
   );
 }
 
-/* 跟手高光 */
-.m3e-dock-specular {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 0;
-  opacity: calc(0.5 + var(--dock-scroll, 0) * 0.4);
-  background: radial-gradient(
-    140px 80px at var(--dock-x, 50%) var(--dock-y, 50%),
-    color-mix(in srgb, #ffffff 34%, transparent),
-    transparent 70%
-  );
-}
+/* （原「跟手高光」.m3e-dock-specular 已移除：那是 M3E 时代的整片白色反光层，
+   压在底栏上会让内容看起来蒙了一层纱 —— 作者要求「能直接透过底栏看列表」，
+   玻璃质感改由透镜折射（rim）+ 描边 + 滑块表达。） */
 
 /* 选中滑块：一格的宽度，按选中序号平移；拖动时跟手且无过渡 */
 .m3e-dock-slider {
@@ -953,7 +942,7 @@ html[data-perf='low'] .m3e-dock {
 }
 
 html[data-perf='low'] .m3e-dock-refraction,
-html[data-perf='low'] .m3e-dock-specular {
+html[data-perf='low'] .m3e-dock-ball {
   display: none;
 }
 
@@ -983,6 +972,10 @@ html[data-perf='low'] .m3e-dock-slider {
       transparent 55%
     ),
     color-mix(in srgb, var(--md-sys-color-surface-container) var(--dock-tint-a), transparent);
+  /* 不做背景模糊：作者要求「能直接透过底栏看列表」，模糊会把内容糊掉。
+     想恢复磨砂观感：把下面两行换成 blur(18px) saturate(1.6)。 */
+  backdrop-filter: saturate(1.15);
+  -webkit-backdrop-filter: saturate(1.15);
   border-radius: 34px;
 }
 
@@ -1162,7 +1155,6 @@ html[data-perf='low'] .m3e-dock {
 }
 
 html[data-perf='low'] .m3e-dock-refraction,
-html[data-perf='low'] .m3e-dock-specular,
 html[data-perf='low'] .m3e-dock-slider-reflection {
   display: none;
 }
@@ -1186,9 +1178,11 @@ html[data-perf='low'] .screen {
   animation-duration: 160ms !important;
 }
 
+/* 高性能档也不再给底栏加模糊：作者要求「能直接透过底栏看列表」。
+   （原来这里是 blur(18px) saturate(1.6)；想恢复磨砂玻璃，把这两行换成它即可。） */
 html[data-perf='high'] .m3e-dock {
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: saturate(1.15);
+  -webkit-backdrop-filter: saturate(1.15);
 }
 
 
@@ -1255,14 +1249,18 @@ html[data-perf='high'] .m3e-dock {
   }
 }
 
-/* 按住 / 拖动时的跟手小球：位置由 --ball-x 每帧写入，没有吸附动画（松手才播） */
+/* 按住 / 拖动时的跟手小球：位置由 --ball-x 每帧写入，速度驱动椭圆拉伸
+   （--ball-stretch 沿运动方向拉长、--ball-squash 压高度保持体积感），停下自动回圆 */
 .m3e-dock-ball.dragging {
   left: 0;
   top: 50%;
   animation: none;
   opacity: 0.98;
-  transform: translate3d(var(--ball-x, 0px), 0, 0) scale(1);
+  transform: translate3d(var(--ball-x, 0px), 0, 0) scaleX(var(--ball-stretch, 1))
+    scaleY(var(--ball-squash, 1));
+  transform-origin: 50% 50%;
   transition: none;
+  will-change: transform;
 }
 
 /* 低性能档：不做小球动画（省电） */
