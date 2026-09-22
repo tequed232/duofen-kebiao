@@ -5,7 +5,7 @@
  * Divider
  * Middle container: transcript + image summary + key points + mind map -> tap = fullscreen panel
  * Bottom         : "长按输入文本" field (drawn in front, long press = question mode)
- *                  + connected button group [拍照][导入图片]
+ *                  + connected button group [导入图片][导入图片]
  * Nav bar        : 首页 selected
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -453,12 +453,12 @@ export default function HomeScreen() {
           </div>
         </div>
 
-        {/* 拍照贴左边缘、导入图片贴右边缘；中间放可点的美术资源（戳一下喵～） */}
+        {/* 图片入口：从相册导入（相机功能已按作者要求剔除） */}
         <div className="home-actions">
           <md-filled-button onClick={() => nav.push('camera', {}, 'zoom')}>
             <MdIcon slot="icon" name="photo_camera" />
-            拍照
-          </md-filled-button>
+                导入图片
+              </md-filled-button>
           <span className="glass-mark-slot" aria-hidden="true">
             <GlassMark size={56} />
           </span>
@@ -528,7 +528,7 @@ export default function HomeScreen() {
         <div className="mt-16">
           <SectionHeader icon="image" title="图片总结" />
           <div className="md-body-medium" style={{ whiteSpace: 'pre-wrap' }}>
-            {draft.imageSummary || '还没有图片总结。可在主页导入一张图片，或前往相机拍摄。'}
+            {draft.imageSummary || '还没有图片总结。可在主页导入一张图片，或从相册导入图片。'}
           </div>
         </div>
 

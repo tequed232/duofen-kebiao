@@ -196,7 +196,7 @@ export default function AboutScreen() {
         </div>
 
         <div className="md-body-small muted mt-16 mb-16">
-          课表数据来自教务系统导出的课表文件，由导入功能解析后保存在本机；教材信息可在课程详情里拍照识别或手动修改。
+          课表数据来自教务系统导出的课表文件，由导入功能解析后保存在本机；教材信息可在课程详情里选图识别或手动修改。
           本应用不含任何第三方图片素材：视觉元素来自 Material 3 Expressive 形状、Material Symbols Rounded 图标与 Roboto 字体。
         </div>
       </div>

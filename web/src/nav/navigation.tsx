@@ -22,7 +22,6 @@ import { uid } from '../lib/utils';
 export type TransitionKind = 'slide' | 'fade' | 'zoom';
 export type RouteName =
   | 'home'
-  | 'camera'
   | 'history'
   | 'settings'
   | 'record'

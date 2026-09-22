@@ -98,40 +98,31 @@ const TEACHER_RE = /^[\u4e00-\u9fa5]{2,4}(?:老师|教授)?$/;
 const ROOM_RE = /^[A-Za-z]?\d{1,2}[-－]\d{2,3}[A-Za-z]?(?:\[\d+人\])?$|^[A-Za-z]\d{2,4}$/;
 
 /** 把单元格/行的若干段文字归类成课程字段 */
-function classify(segments: string[]): { course: Omit<Course, 'weeks'> & { weeks: string }; consumed: Set<number> } | null {
+function classify(segments: string[]): { course: { name: string; teacher: string; room: string; weeks: string }; consumed: Set<number> } | null {
   const consumed = new Set<number>();
   let name = '';
   let teacher = '';
   let room = '';
   let weeks = '';
 
+  // 第一遍：抽走周次 / 时间 / 教室（这些有明确特征）
+  const rest: { index: number; text: string }[] = [];
   segments.forEach((segment, index) => {
     const text = segment.trim();
-    if (!text) {
-      consumed.add(index);
-      return;
-    }
-    if (/(\d{1,2}\s*[-–~,，]\s*\d{1,2}|\d{1,2})\s*周/.test(text) && !weeks) {
-      weeks = text.replace(/\s+/g, '');
-      consumed.add(index);
-      return;
-    }
-    if (!room && ROOM_RE.test(text)) {
-      room = text.replace(/\[\d+人\]$/, '');
-      consumed.add(index);
-      return;
-    }
-    if (!teacher && TEACHER_RE.test(text) && text !== name) {
-      teacher = text.replace(/老师$|教授$/, '');
-      consumed.add(index);
-      return;
-    }
-    if (!name && text.length >= 2) {
-      name = text;
-      consumed.add(index);
-    }
+    if (!text) { consumed.add(index); return; }
+    if (!weeks && /(\d{1,2}\s*[-–~,，]\s*\d{1,2}|\d{1,2})\s*周/.test(text)) { weeks = text.replace(/\s+/g, ''); consumed.add(index); return; }
+    if (detectTime(text) && !/第?\d/.test(text.replace(/\d{1,2}:\d{2}/g, ''))) { consumed.add(index); return; }
+    if (!room && ROOM_RE.test(text)) { room = text.replace(/\[\d+人\]$/, ''); consumed.add(index); return; }
+    rest.push({ index, text });
   });
 
+  // 第二遍：按出现顺序判定 —— 课程名在前，教师在其后（中文课名与教师名长度相近，只能靠顺序）
+  for (const item of rest) {
+    if (!name) { name = item.text; consumed.add(item.index); continue; }
+    if (!teacher && TEACHER_RE.test(item.text)) { teacher = item.text.replace(/老师$|教授$/, ''); consumed.add(item.index); continue; }
+    // 兜底：既不是课程名也不是教师，且还没教室 → 当作教室（「操场」「实验楼」这类非编号地点）
+    if (!room && item.text.length <= 8) { room = item.text; consumed.add(item.index); }
+  }
   if (!name) return null;
   return { course: { name, teacher, room, weeks }, consumed };
 }
@@ -270,6 +261,13 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
     if (!hasListHeader) continue;
     layout = layout === 'grid' ? 'grid' : 'list';
 
+    const columnOf = (keywords: string[]) =>
+      headerCells.findIndex((text) => keywords.some((keyword) => text.includes(keyword)));
+    const nameCol = columnOf(['课程', '名称', '科目']);
+    const teacherCol = columnOf(['教师', '老师', '任课']);
+    const roomCol = columnOf(['教室', '地点', '场地']);
+    const timeCol = columnOf(['时间', '节次', '星期', '上课']);
+
     rows.slice(1).forEach((row) => {
       const cells = Array.from(row.querySelectorAll('th,td')).map((cell) => cell);
       const texts = cells.map((cell) => (cell.textContent ?? '').replace(/\s+/g, ' ').trim());
@@ -280,8 +278,19 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
         if (joined) skipped.push(joined.slice(0, 40));
         return;
       }
-      const parsed = classify(texts.filter(Boolean));
-      if (!parsed) {
+      // 有明确表头时按列取字段（比内容猜测可靠得多）
+      const parsed = nameCol >= 0
+        ? {
+            course: {
+              name: texts[nameCol] ?? '',
+              teacher: (teacherCol >= 0 ? texts[teacherCol] ?? '' : '').replace(/老师$|教授$/, ''),
+              room: roomCol >= 0 ? (texts[roomCol] ?? '').replace(/\[\d+人\]$/, '') : '',
+              weeks: (/\d{1,2}\s*[-–~,，]?\s*\d{0,2}\s*周/.exec(timeCol >= 0 ? texts[timeCol] ?? '' : joined)?.[0] ?? '').replace(/\s+/g, ''),
+            },
+            consumed: new Set<number>(),
+          }
+        : classify(texts.filter(Boolean));
+      if (!parsed || !parsed.course.name) {
         skipped.push(joined.slice(0, 40));
         return;
       }

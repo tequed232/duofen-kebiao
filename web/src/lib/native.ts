@@ -3,7 +3,7 @@
  *
  * APK 是同一个 Web 构建跑在 WebView 里，原生侧通过 window.DuofenNative 暴露能力：
  *   - liveUpdate(title, text) / stopLiveUpdate()：Android 16 / ColorOS 流体云进度通知
- *   - requestPermissions()：一次性申请相机 / 麦克风 / 通知
+ *   - requestPermissions()：一次性申请麦克风 / 通知
  * 在浏览器里这些函数不存在，调用会安全地退化为网页自身实现（Notification API）。
  */
 
@@ -70,7 +70,7 @@ export function onNativeLiveConfirm(handler: () => void): void {
   (window as unknown as { __duofenLiveConfirm__?: () => void }).__duofenLiveConfirm__ = handler;
 }
 
-/** 请求相机 / 麦克风 / 通知权限（仅 APK） */
+/** 请求麦克风 / 通知权限（仅 APK） */
 export function nativeRequestPermissions(): boolean {
   const api = bridge();
   if (typeof api?.requestPermissions !== 'function') return false;

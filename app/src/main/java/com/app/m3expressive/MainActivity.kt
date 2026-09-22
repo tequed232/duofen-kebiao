@@ -33,7 +33,7 @@ import androidx.webkit.WebViewAssetLoader
  * 这里**没有任何自有界面**：APK 加载的是与网站完全相同的 Web 构建
  * （构建时由 syncWebAssets 把 dist/ 同步到 assets/www），因此 APK 与网页永远一致。
  * 原生侧只做三件 Web 自己做不到的事：
- *   1. 运行时权限（相机 / 麦克风 / 通知）
+ *   1. 运行时权限（麦克风 / 通知）
  *   2. 用系统内置文件资源浏览器（SAF）响应网页的 <input type=file>
  *   3. 通过 JS 桥发布 Android 16 / ColorOS 流体云进度通知
  */
@@ -217,13 +217,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun chromeClient() = object : WebChromeClient() {
-        /** 网页请求相机 / 麦克风：应用已授权就直接放行，否则先申请运行时权限 */
+        /** 网页请求麦克风：应用已授权就直接放行，否则先申请运行时权限 */
         override fun onPermissionRequest(request: PermissionRequest) {
             val missing = request.resources.mapNotNull { resource ->
                 when (resource) {
                     PermissionRequest.RESOURCE_AUDIO_CAPTURE -> Manifest.permission.RECORD_AUDIO
-                    PermissionRequest.RESOURCE_VIDEO_CAPTURE -> Manifest.permission.CAMERA
-                    else -> null
+                    PermissionRequest.RESOURCE_VIDEO_CAPTURE -> else -> null
                 }
             }.filter { ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED }
 
@@ -284,7 +283,7 @@ class MainActivity : ComponentActivity() {
         @JavascriptInterface
         fun requestPermissions() {
             runOnUiThread {
-                val wanted = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)
+                val wanted = mutableListOf(Manifest.permission.RECORD_AUDIO, )
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     wanted += Manifest.permission.POST_NOTIFICATIONS
                 }

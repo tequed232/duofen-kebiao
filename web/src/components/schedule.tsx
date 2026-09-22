@@ -626,7 +626,7 @@ export function CourseDetailSheet({
 
 /**
  * 课程详情里的「教材」：优先显示识别/填写结果，其次显示内置教材库
- * （内置库由 12 张教材封面照片整理而来）。可以拍照识别封面、手动填写或移除。
+ * （内置库由 12 张教材封面照片整理而来）。可以选图识别封面、手动填写或移除。
  */
 export function TextbookSection({ courseName }: { courseName: string }) {
   const { schedule, settings, textbooks, setTextbook, showSnackbar } = useAppState();
@@ -671,7 +671,7 @@ export function TextbookSection({ courseName }: { courseName: string }) {
     setDialogOpen(true);
   };
 
-  /** 拍照/选择封面：配置了图片转文字API 就先识别，再进对话框确认 */
+  /** 选择封面图片：从相册选图后先识别，再进对话框确认（相机功能已剔除） */
   const captureCover = async () => {
     const file = await pickFile('教材封面', 'image/*');
     if (!file) return;
@@ -780,7 +780,7 @@ export function TextbookSection({ courseName }: { courseName: string }) {
       <div className="button-group" style={{ justifyContent: 'flex-start' }}>
         <md-filled-tonal-button className="btn-s" onClick={() => void captureCover()} disabled={busy ? '' : undefined}>
           <MdIcon slot="icon" name="photo_camera" />
-          拍照识别封面
+          选图识别封面
         </md-filled-tonal-button>
         <md-outlined-button className="btn-s" onClick={() => openDialog()}>
           <MdIcon slot="icon" name="edit_note" />
@@ -986,6 +986,31 @@ export function ScheduleImportSheet({
     <ExpandableSheet open={open} onClose={onClose} sourceRef={sourceRef} icon="edit_calendar" title="课表数据">
       <div ref={sourceRef} />
       <div className="col gap-12">
+        {/* 本地缓存课表：每次导入自动留档，可一键恢复（最多 3 份） */}
+        {snapshots.length ? (
+          <div className="schedule-cache">
+            <div className="md-title-small-emphasized mb-4">本地缓存课表（最近 {snapshots.length} 份）</div>
+            <div className="col gap-6">
+              {snapshots.map((snap) => (
+                <div className="row gap-8" key={snap.id} style={{ alignItems: 'center' }}>
+                  <span className="md-body-small flex-1">
+                    {snap.source} · {snap.courses} 门课 · {relativeTime(snap.at)}
+                  </span>
+                  <md-text-button
+                    onClick={() => {
+                      setSchedule(snap.schedule);
+                      onImported(`已恢复《${snap.source}》`);
+                      onClose();
+                    }}
+                  >
+                    恢复
+                  </md-text-button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="md-body-medium muted">
           当前课表：{scheduleImported ? '已导入' : '内置（来自 学生课表.doc）'} · {schedule.owner || '未署名'} · {schedule.term} ·{' '}
           {schedule.periods.length} 节次 · {stat} 门课

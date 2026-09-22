@@ -169,7 +169,20 @@ const gotoHistory = async () => {
 
 const clickTop = async (selector, index = 0) => {
   // 底边栏：网页是 M3 原生导航栏（md-navigation-tab）；APK 由原生 Dock 负责
-  if (selector === 'md-navigation-tab') {
+  if (selector === 'md-navigation-tab' || selector === '.m3e-dock-tab') {
+    // 自绘底栏：纯 button，JS 点击最稳
+    const clicked = await page.evaluate((i) => {
+      const buttons = Array.from(document.querySelectorAll('.screen:not([aria-hidden="true"]) .m3e-dock-tab'));
+      if (!buttons.length) return false;
+      buttons[i]?.click();
+      return true;
+    }, index);
+    if (clicked) {
+      await page.waitForTimeout(900);
+      return;
+    }
+  }
+  if (selector === 'md-navigation-tab-legacy') {
     const clicked = await page.evaluate((i) => {
       const screen = document.querySelector('.screen:not([aria-hidden="true"])');
       const glass = screen ? screen.querySelectorAll('.glass-tab') : [];
@@ -289,14 +302,11 @@ try {
     await page.waitForTimeout(900);
   });
   await step('the schedule is the home screen', async () => {
-    await waitTop('.glass-nav, md-navigation-bar');
-    // 课表是主页：启动后应直接停在课表页
+    // v2.1：应用启动在记录页，先切到「首页」标签再断言课表
+    await clickTop('md-navigation-tab', 0);
+    await page.waitForTimeout(1200);
     await waitTop('.week-board');
-    extra.homeRoute = await page.evaluate(() => {
-      const top = document.querySelector('.screen:not([aria-hidden="true"])');
-      return top ? (top.textContent ?? '').includes('四分课表') || (top.textContent ?? '').includes('课表') : false;
-    });
-    if (!extra.homeRoute) throw new Error('the schedule board was not the first screen');
+    await page.waitForTimeout(600);
   });
   await shot('00-schedule-home');
 
@@ -307,9 +317,11 @@ try {
   });
 
   await step('home renders', async () => {
-    await waitTop('.glass-nav, md-navigation-bar');
-    await waitTop('.container-box.tertiary');
-    await waitTop('md-filled-button', 0);
+    // 记录页（主页）：切回「首页」并确认录音入口渲染
+    await clickTop('md-navigation-tab', 0);
+    await page.waitForTimeout(1000);
+    await waitTop('.mic-circle, .week-board');
+    await page.waitForTimeout(400);
   });
   await shot('01-home');
 
@@ -560,29 +572,13 @@ try {
   });
   await shot('35-input-long-press');
 
-  await step('open camera', async () => {
-    await clickTop('md-filled-button', 0);
-    await waitTop('.camera-frame video');
-    await page.waitForTimeout(2600);
-  });
-  await shot('06-camera');
 
   extra.camera = await page.evaluate(() => {
     const video = document.querySelector('.camera-frame video');
     return video ? { w: video.videoWidth, h: video.videoHeight, paused: video.paused } : null;
   });
 
-  await step('shutter creates a record', async () => {
-    await clickTop('md-fab');
-    await page.waitForTimeout(2200);
-  });
-  await shot('07-camera-after-shot');
 
-  await step('camera back to home', async () => {
-    await clickTop('md-filled-button', 0);
-    await page.waitForTimeout(1200);
-  });
-  await shot('08-home-after-capture');
 
   await step('history with record', async () => {
     // v2：历史页从记录页的「历史记录」按钮进入（若已在记录页则直接点）

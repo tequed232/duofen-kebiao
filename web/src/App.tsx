@@ -7,7 +7,6 @@ import { useAppState } from './state/AppState';
 import { nativeDockActive } from './lib/native';
 import { startClassReminderLoop } from './lib/classReminder';
 import HomeScreen from './screens/HomeScreen';
-import CameraScreen from './screens/CameraScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import RecordDetailScreen from './screens/RecordDetailScreen';
@@ -21,7 +20,6 @@ import LicensesScreen from './screens/LicensesScreen';
 
 const SCREENS = {
   home: HomeScreen,
-  camera: CameraScreen,
   history: HistoryScreen,
   settings: SettingsScreen,
   record: RecordDetailScreen,

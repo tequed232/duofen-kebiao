@@ -170,7 +170,7 @@ export default function ScheduleScreen() {
             <>
               <MdIconButton className="appbar-textbooks" icon="menu_book" label="查看教材" onClick={() => nav.push('textbookList', {}, 'slide')} />
               <MdIconButton className="appbar-today" icon="today" label="回到今天" onClick={goToday} />
-              <MdIconButton className="appbar-record" icon="photo_camera" label="语音与相机记录" onClick={() => nav.push('home', {}, 'slide')} />
+              <MdIconButton className="appbar-record" icon="photo_camera" label="语音与图片记录" onClick={() => nav.push('home', {}, 'slide')} />
               <MdIconButton className="appbar-import" icon="edit" label="课表数据与导入" onClick={() => setImportOpen(true)} />
             </>
           }

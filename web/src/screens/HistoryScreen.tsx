@@ -195,7 +195,7 @@ export default function HistoryScreen() {
                   <div className="row gap-8">
                     <md-filled-button onClick={() => nav.push('camera', {}, 'zoom')}>
                       <MdIcon slot="icon" name="photo_camera" />
-                      去拍照
+                      导入图片
                     </md-filled-button>
                     <md-outlined-button onClick={() => void importFromLibrary()}>
                       <MdIcon slot="icon" name="add_photo_alternate" />

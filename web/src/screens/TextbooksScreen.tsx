@@ -242,7 +242,7 @@ export default function TextbooksScreen() {
             <MdIcon name="auto_stories" size={48} />
             <span className="md-title-small-emphasized">{query ? '没有匹配的教材' : '还没有教材记录'}</span>
             <span className="md-body-small muted" style={{ textAlign: 'center' }}>
-              到「课表 → 点开任意课程 → 教材 → 拍照识别封面」，识别出的书名会自动挂到该课程上；
+              到「课表 → 点开任意课程 → 教材 → 选图识别封面」，识别出的书名会自动挂到该课程上；
               也可以点右下角「添加教材」手动补录。
             </span>
           </div>
