@@ -17,7 +17,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.window.BackEvent
-import android.window.OnBackInvokedCallback
+import android.window.OnBackAnimationCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -199,7 +199,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_DEFAULT,
-                object : OnBackInvokedCallback {
+                object : OnBackAnimationCallback {
                     override fun onBackStarted(backEvent: BackEvent) {
                         notifyWebBack("start", 0f)
                     }
