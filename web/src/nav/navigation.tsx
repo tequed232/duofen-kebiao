@@ -145,6 +145,13 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
     if (stackRef.current.length > 1) window.history.back();
   }, []);
 
+  /**
+   * 回到栈里已有的某个屏幕 —— **内存截断 + replaceState**，不再用 history.go(delta)。
+   *
+   * 为什么不用 history.go()：标签切换改用 replaceState 重写栈快照后，历史条目数与
+   * 栈深度不再一一对应，按栈算出来的 delta 会算错（实测：点首页会直接退出应用）。
+   * 渲染的唯一事实来源是内存里的 stack，所以直接截断它；历史条目留给浏览器返回键当足迹。
+   */
   const popTo = useCallback<NavValue['popTo']>(
     (route) => {
       const current = stackRef.current;
@@ -155,54 +162,69 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
           break;
         }
       }
-      if (index >= 0) {
-        window.history.go(index - (current.length - 1));
+      if (index < 0) {
+        if (current[current.length - 1].route !== route) push(route, {}, 'fade');
         return;
       }
-      if (current[current.length - 1].route !== route) push(route, {}, 'fade');
+      const removed = current[current.length - 1];
+      const next = current.slice(0, index + 1);
+      window.history.replaceState({ m3Stack: next }, '');
+      setEnteringKey(null);
+      setExiting(removed);
+      setStack(next);
+      schedule(() => setExiting(null), DURATION[removed.transition] + 100);
     },
-    [push],
+    [push, schedule],
   );
 
   /**
-   * 标签切换（底边栏唯一入口）——**规范化重写**，解决"点设置乱跳转"。
+   * 标签切换（底边栏唯一入口）——**一步到位**，不再先回首页再进目标页。
    *
    * 规则：
    *  1. 标签栈只有一种规范形态：首页 = [课表]，搜索 = [课表, 筛选]，设置 = [课表, 设置]。
-   *     无论当前在哪个屏幕（详情页、教材页、关于页…）点标签，都重置成规范形态，
-   *     而不是把新页面压在当前详情页之上（那正是"乱跳转"的来源）。
+   *     无论当前在哪个屏幕（详情页、教材页、关于页…）点标签，都重写成规范形态。
    *  2. 幂等：已经在规范形态的目标标签上再点一次，什么都不做。
-   *  3. 一律使用路由自己的原语（popTo / push），**不用 replaceState 手改历史** ——
-   *     否则 popTo 依赖的 history.go() 会算错栈，出现"点首页白屏"。
+   *  3. **不许分两步**：旧实现先 `popTo('schedule')`、再延迟 300ms `push(目标)`，
+   *     从二级页切标签会先闪回首页（用户反馈的「底栏总是回弹到主页」），
+   *     而且快速连点会把栈撑成三层。
+   *     现在直接切到目标的规范栈，并 `pushState` 留一条足迹 —— 返回键仍然能回到上一个标签，
+   *     但界面**不会**经过首页。
+   *  4. 渲染的唯一事实来源是内存里的 stack；历史条目只是给返回键用的足迹。
    */
   const selectTab = useCallback(
     (tab: 'schedule' | 'search' | 'settings') => {
-      const current = stackRef.current[stackRef.current.length - 1];
+      const current = stackRef.current;
       const target = tab === 'schedule' ? null : tab === 'search' ? 'scheduleFilter' : 'settings';
+      const routes = current.map((entry) => entry.route);
+      const canonicalRoutes = target === null ? ['schedule'] : ['schedule', target];
 
-      // 首页：回到栈底
-      if (target === null) {
-        if (stackRef.current.length === 1) return; // 幂等
-        popTo('schedule');
+      // 幂等：已经是规范形态就什么都不做
+      if (routes.length === canonicalRoutes.length && routes.every((route, index) => route === canonicalRoutes[index])) {
         return;
       }
 
-      // 已在规范形态 → 幂等返回
-      if (current.route === target && stackRef.current.length === 2) return;
-
-      // 先回到栈底，等 history.go 生效后再 push 目标页（延迟与路由自身的动画时长对齐）
       const order = ['schedule', 'scheduleFilter', 'settings'];
-      const from = order.indexOf(stackRef.current[stackRef.current.length - 1]?.route ?? 'schedule');
-      const to = order.indexOf(target);
-      const forward = to >= from;
-      popTo('schedule');
+      const from = order.indexOf(routes[routes.length - 1] ?? 'schedule');
+      const to = order.indexOf(target ?? 'schedule');
+      const direction: 'forward' | 'back' = to >= from ? 'forward' : 'back';
+      const base = current[0];
+      const next: RouteEntry[] =
+        target === null
+          ? [base]
+          : [base, { key: uid('scr'), route: target, params: {}, transition: 'slide', direction }];
+
+      // 多出来的屏幕（详情页 / 教材页…）按过渡动画退场
+      const removed = current.length > next.length ? current[current.length - 1] : null;
+      window.history.pushState({ m3Stack: next }, '');
+      setEnteringKey(next[next.length - 1].key);
+      setExiting(removed);
+      setStack(next);
       schedule(() => {
-        const top = stackRef.current[stackRef.current.length - 1];
-        if (top?.route === target) return;
-        push(target, {}, 'slide', forward ? 'forward' : 'back');
-      }, 300);
+        setEnteringKey(null);
+        setExiting(null);
+      }, DURATION[next[next.length - 1].transition] + 100);
     },
-    [popTo, push, schedule],
+    [schedule],
   );
 
 
