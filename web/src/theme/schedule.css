@@ -8,14 +8,15 @@
   padding: 0 16px 8px;
 }
 
-/* 课表页头图：权利人提供的原图（见 docs/asset-permissions.md）。
-   **整张显示、不裁切、不重编码**（权利人要求，也避免任何 AI 修改）：
-   用 contain + 居中，不再 cover / 放大 / 渐隐；图片在标题下独立成块，不压文字。 */
+/* 课表页头图：**暂时下架**（主美会另出更好的图）。
+   新图到位后：把文件放回 web/public/art/，恢复下面这段规则 + ScheduleScreen 里的
+   <div className="schedule-hero" aria-hidden="true" />，并在 docs/asset-permissions.md 登记。
+   约定：整张显示、不裁切、不重编码。 */
 .schedule-hero {
   position: relative;
   height: 176px;
   margin: 0 auto;
-  background-image: url('/art/schedule-hero.jpg');
+  background-image: var(--schedule-hero-image, none);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center top;

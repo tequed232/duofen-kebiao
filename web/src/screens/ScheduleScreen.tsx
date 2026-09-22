@@ -183,7 +183,6 @@ export default function ScheduleScreen() {
 
         <div className="screen-content" ref={scrollRef} style={{ paddingLeft: 0, paddingRight: 0 }}>
           <div className="schedule-head">
-            <div className="schedule-hero" aria-hidden="true" />
             <div className="schedule-meta md-body-small">
               <MdIcon name="calendar_month" size={16} />
               <span>

@@ -4,7 +4,8 @@
 没有记录的素材一律不得进入代码或构建产物。当前插画作者 **miratsu**（Bilibili 空间 18112887）已通过审核，但尚未明确CC授权框架，暂不引入，
 状态与私信模板见该文档；`.github/workflows/permission-reminder.yml` 会每周提醒跟进，状态更新后自动停止。
 
-构建产物里的图片只有两类：`web/public/art/schedule-hero.jpg`（课表页头图，权利人提供、**原图不裁切**，已登记）与「致谢 · 名片墙」上各人的**公开头像**（GitHub / B 站，已登记）。
+构建产物里的图片只有一类：「致谢 · 名片墙」上各人的**公开头像**（GitHub / B 站，已登记在 `docs/asset-permissions.md`）。
+课表页头图暂缺（主美会另出，到位后按台账流程登记再启用）。
 早期版本用过的插画已于 **v1.0.9** 全部下架，安装图标与界面装饰改由 **Material Symbols Rounded** 字形 + **Material 3 Expressive** 形状语汇自行绘制，配色一律取 `--md-sys-color-*` 角色。
 
 ---

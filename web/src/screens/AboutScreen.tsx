@@ -60,31 +60,19 @@ function CreditAvatar({ person }: { person: CreditPerson }) {
   );
 }
 
-/** 作品授权标记（权利人给的许可）：有凭据截图的就能点开原图，没有的只显示标记。 */
+/**
+ * 作品授权标记（权利人给的许可）：**纯展示，不可点**。
+ *
+ * 曾经点开会 `window.open` 授权原文截图，但在 WebView 里会走到不受控的新窗口 / 页面跳转
+ * （实测点它会崩），所以按作者要求禁用跳转；授权原文仍留在仓库 `docs/permissions/`，
+ * `docs/asset-permissions.md` 里也记了位置，需要看时从仓库打开。
+ */
 function CreditLicenseMark({ license }: { license: CreditLicense }) {
-  const { evidence, label, note } = license;
-  const body = (
-    <>
-      <PlatformMark brand="cc" />
-      {label}
-    </>
-  );
-  if (!evidence) {
-    return (
-      <span className="credit-license" title={note}>
-        {body}
-      </span>
-    );
-  }
   return (
-    <button
-      type="button"
-      className="credit-license"
-      title={note}
-      onClick={() => window.open(evidence, '_blank', 'noopener,noreferrer')}
-    >
-      {body}
-    </button>
+    <span className="credit-license" title={license.note}>
+      <PlatformMark brand="cc" />
+      {license.label}
+    </span>
   );
 }
 
@@ -221,7 +209,8 @@ export default function AboutScreen() {
           </div>
           <div className="md-body-small muted mt-8">
             名片按「作者 + 感谢的人」排列；头像取自各人在 GitHub / B 站等平台的公开头像（已登记授权台账），
-            加载失败时自动退回姓名首字。带 <b>CC</b> 标记的是权利人给出的作品许可，点开可看授权原文。
+            加载失败时自动退回姓名首字。带 <b>CC</b> 标记的是权利人给出的作品许可，授权原文放在仓库
+            <span className="mono"> docs/permissions/</span>。
           </div>
         </div>
 
