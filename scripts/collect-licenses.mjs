@@ -230,6 +230,7 @@ export interface LicenseEntry {
   holder: string;
   url: string;
   note?: string;
+  category?: string;
 }
 
 export interface LicenseGroup {
