@@ -12,7 +12,7 @@
 | --- | --- |
 | 仓库（公开） | https://github.com/tequed232/duofen-kebiao |
 | 在线网页版（GitHub Pages） | https://tequed232.github.io/duofen-kebiao/ ✅ 实测 HTTP 200 |
-| APK 短链（始终指向最新） | https://tequed232.github.io/duofen-kebiao/enhance.apk ✅ 实测 HTTP 200 |
+| APK 短链（始终指向最新） | https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk （**已从仓库剔除 APK**：原来 Pages 上的 `/enhance.apk` 已失效，安装包只作为 Release 附件） |
 | 项目内文档目录 | https://github.com/tequed232/duofen-kebiao/tree/main/docs |
 
 ## 二、发布版本（GitHub Releases）
@@ -27,7 +27,8 @@
 APK 直链（按版本）：
 - https://github.com/tequed232/duofen-kebiao/releases/download/v2.2/enhance-2.2.apk ✅ 实测 HTTP 200
 - https://github.com/tequed232/duofen-kebiao/releases/download/v2.1.0/enhance-2.1.apk ✅ 实测 HTTP 200
-- https://tequed232.github.io/duofen-kebiao/enhance-2.2.apk ✅ 实测 HTTP 200
+- ~~https://tequed232.github.io/duofen-kebiao/enhance-2.2.apk~~ ❌ 已失效：APK 全部从仓库剔除，只保留 Release 附件
+  （历史版本仍在 Releases 里，Pages 上不再托管任何安装包）
 
 > 更早的 v1.0.x 系列发布未在本会话逐一核对，故不在此列出。
 

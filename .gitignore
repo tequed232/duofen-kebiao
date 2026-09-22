@@ -29,3 +29,12 @@ screenshots/
 screenshots-device/
 *.log
 screenshots-live/
+
+# 安装包与压缩包：一律不进仓库，只作为 GitHub Release 附件（APK / web zip）
+# 由 scripts/check-repo-hygiene.mjs + .github/workflows/repo-hygiene.yml 双重把关
+*.apk
+*.aab
+*.zip
+*.7z
+*.tar
+*.gz

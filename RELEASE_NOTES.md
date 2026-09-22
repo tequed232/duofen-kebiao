@@ -1,8 +1,9 @@
-﻿## 多分课表 v2.6.0 —— 高性能 / 低性能双档
+## 多分课表 v2.6.0 —— 高性能 / 低性能双档
 
 ### 下载
 - 安装包：`enhance-2.6.apk`（3.19 MB，覆盖安装保留数据）
-- 短链（始终最新）：https://tequed232.github.io/duofen-kebiao/enhance.apk
+- 短链（始终最新）：https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk
+  （安装包只作为 Release 附件，已从仓库与 Pages 剔除）
 - 网页版：https://tequed232.github.io/duofen-kebiao/
 
 ### 本版新增：性能两档（同一个包内置，设置里随时切）

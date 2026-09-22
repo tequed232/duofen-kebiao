@@ -44,7 +44,6 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "folder_open": 0xe2c8,
   "font_download": 0xe167,
   "forum": 0xe0bf,
-  "gavel": 0xe90e,
   "graphic_eq": 0xe1b8,
   "groups": 0xf233,
   "help": 0xe887,

@@ -1,0 +1,25 @@
+name: Repo hygiene
+
+# 安装包 / 压缩包不进仓库：APK、web zip 只作为 Release 附件。
+# 每次推送与 PR 都检查一次，命中即失败（.gitignore 挡手滑，这里挡 git add -f 和 PR 里的二进制）。
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: No installers or archives in the repository
+        run: node scripts/check-repo-hygiene.mjs

@@ -1,14 +1,14 @@
 # 项目当前状态（供上下文清理 / 交接使用）
 
 > 这份文件的目的：把会话里的关键状态**固化到仓库**，这样即使清空对话上下文、或换人接手，也不会丢信息。
-> 最后更新：v2.6.0 之后（`Dock` 性能版 + 灵动岛改造 + 贡献者名片预览）。
+> 最后更新：v2.6.0 之后（`Dock` 性能版 + 灵动岛改造 + 贡献者名片墙接入应用 + 致歉声明移除）。
 
 ## 一、当前版本与入口
 
 | 项 | 值 |
 | --- | --- |
 | 版本 | `APP_VERSION = 'v2.6.0'`（`versionCode 20600` / `versionName 2.6.0`） |
-| APK 短链 | https://tequed232.github.io/duofen-kebiao/enhance.apk |
+| APK 短链 | https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk （**安装包只作为 Release 附件**，已从仓库剔除；旧的 Pages 短链 `/enhance.apk` 失效） |
 | 网页版 | https://tequed232.github.io/duofen-kebiao/ |
 | 发布页 | https://github.com/tequed232/duofen-kebiao/releases |
 | 仓库 | https://github.com/tequed232/duofen-kebiao |
@@ -32,27 +32,37 @@
 | 本地缓存课表 | ✅ | `web/src/lib/scheduleCache.ts`：导入自动留快照（≤3 份），可一键恢复 |
 | 教材窗口 | ✅ | 多选删除（可回档）+ 快捷添加 FAB |
 | 开源清单 | ✅ | `scripts/collect-licenses.mjs` → 设置页「开源相关」+ README 分类表 |
-| 贡献者名片 | 🟡 **仅预览** | `preview/credits.html`（1×3 作者本人 + 2×3 其他六位），**尚未接入应用** |
+| 贡献者名片墙 | ✅ 已接入应用 | 「关于 → 致谢 · 名片墙」：1×3 作者本人（跨三列）+ 2×3 其他六位；真头像（GitHub / B 站公开头像，已登记 `docs/asset-permissions.md`）+ 姓名首字兜底；数据源 `web/src/lib/meta.ts` 的 `CREDITS`；宽屏设计稿 `preview/credits.html` |
+| 致谢 / 致歉声明 | ✅ 已更新 | 删除 README 与关于页的「致歉声明」；名单同步到 README、`CONTRIBUTORS.md`、应用名片墙三处 |
+| 仓库卫生 | ✅ 已加固 | 7 个 `enhance*.apk` 全部 `git rm --cached` 剔除；`.gitignore` 忽略 `*.apk/*.aab/*.zip`；`scripts/check-repo-hygiene.mjs` + `.github/workflows/repo-hygiene.yml` 在推送/PR 上拦截（已做反向验证：塞进 APK 即 CI 红）；APK 只作为 Release 附件，短链改用 `releases/latest/download/enhance.apk` |
 
 ## 三、待办
 
 1. **灵动岛实测**：设置 → 实时通知（流体云）→「发送实况测试」，看状态栏是否出现；用
    `adb shell dumpsys notification --noredact | findstr promotedOngoing` 复核 `promotedOngoing=true`
-2. **贡献者名片上线评估**：`preview/credits.html` 预览通过后，再决定是否放进「关于 → 贡献者」
-3. **仓库拆分**（作者要求）：`duofen-kebiao-web` / `duofen-kebiao-android`（GitHub slug 只能用 ASCII）
+2. **仓库拆分**（作者要求）：`duofen-kebiao-web` / `duofen-kebiao-android`（GitHub slug 只能用 ASCII）
    - A：Android 仓库存 www 预构建快照 + 同步脚本（两端同源）
    - B：Android 仓库只放原生代码，构建时从 Web 仓库下载产物
-4. 小事：`docs/context-links.md` 版本号更新到 v2.6；清理 Pages 上的旧 APK（只留 `enhance.apk` + 最新包）
+3. **发布名片墙改动**：`npm run build` → 刷新 Pages 镜像（根目录 `index.html` / `assets/`）→ 重打 APK
+   （否则线上网页版与 APK 还停在旧的「关于」页）
+4. **待作者确认的名单口径**：liuli1719 的显示名（星爱流萤 / 小妍）、作者显示名（罗xx / 罗xx（Tequed232））；
+   另外米达达的 B 站号昵称是 `miratsu_米达达`，与素材台账里的插画作者 miratsu 是否同一人需要确认
+5. 小事：`docs/context-links.md` 版本号更新到 v2.6
+6. **APK 已从仓库剔除**（作者要求，见「已完成」表）：确认发布时用稳定别名上传
+   `--asset "enhance.apk=build/release/enhance-X.Y.Z.apk"`，短链才是
+   `releases/latest/download/enhance.apk`；历史上提交过的 APK 仍留在 git 历史里，
+   若要连历史一起瘦身需要 `git filter-repo` + 强推（`.git` 目前约 130MB）
 
 ## 四、常用命令
 
 ```bash
 npm run build                 # 网页构建（输出 dist/）
 npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈希比对（期望 55/55）
+npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）
 node scripts/check-imports.mjs     # 导入自检（防"用了没导入"导致白屏）
 node scripts/check-secrets.mjs     # 密钥扫描
 node scripts/verify.mjs            # 自动化验收（83 步，含逐屏截图）
-./gradlew assembleRelease          # 打 APK
+./gradlew assembleRelease          # 打 APK（产物在 app/build/，不进仓库）
 ```
 
 Android 真机（作者机型 realme RMX6688，Android 16 / 1080×2800 @3.5x）：

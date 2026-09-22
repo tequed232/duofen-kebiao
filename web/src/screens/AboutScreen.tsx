@@ -1,7 +1,7 @@
-﻿/**
+/**
  * 关于 (About) - 多分课表
  *
- * 应用信息、Material 3 Expressive 设计说明、数据存储说明、美术资源致谢与
+ * 应用信息、Material 3 Expressive 设计说明、数据存储说明、致谢 · 名片墙与
  * GitHub 链接都集中在这里（设置页只留一个入口）。
  */
 import { useState } from 'react';
@@ -10,7 +10,8 @@ import { MdIcon } from '../components/md';
 import { GlassMark } from '../components/glass';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
-import { ART_CREDITS, GLASS_LIBS, GITHUB_URL, APP_NAME, APP_VERSION } from '../lib/meta';
+import { CREDITS, GLASS_LIBS, GITHUB_URL, APP_NAME, APP_VERSION, type CreditLicense, type CreditPerson } from '../lib/meta';
+import { PlatformMark } from '../components/brands';
 
 const DESIGN_NOTES: { icon: string; title: string; body: string }[] = [
   {
@@ -39,6 +40,64 @@ const DESIGN_NOTES: { icon: string; title: string; body: string }[] = [
     body: '记录、设置、课表与教材都存在本机浏览器（IndexedDB），不上传服务器；内置课表已清空（原数据含教师姓名、教室与班级人数等个人信息），课表由你自行导入或手动填写。Tequed232 拥有本项目的最终解释权。',
   },
 ];
+
+/** 名片头像：加载失败（断网 / 头像被删 / 改名）就退回姓名首字，不留白块。 */
+function CreditAvatar({ person }: { person: CreditPerson }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className={person.tone === 'tertiary' ? 'credit-mark tertiary' : 'credit-mark'}>
+      {person.mark}
+      {failed ? null : (
+        <img
+          className="credit-avatar"
+          src={person.avatar}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </span>
+  );
+}
+
+/**
+ * 名片墙是 3 列：最后一行不满时，让最后一张跨列补满。
+ * 例：其余 5 人 → 3 + 2，第 5 张跨 2 列；4 人 → 第 4 张跨 3 列；整除则不跨。
+ */
+function creditSpan(person: CreditPerson, people: CreditPerson[]): number {
+  const others = people.filter((entry) => !entry.lead);
+  const remainder = others.length % 3;
+  if (remainder === 0 || others[others.length - 1] !== person) return 1;
+  return 4 - remainder;
+}
+
+/** 作品授权标记（权利人给的许可）：有凭据截图的就能点开原图，没有的只显示标记。 */
+function CreditLicenseMark({ license }: { license: CreditLicense }) {
+  const { evidence, label, note } = license;
+  const body = (
+    <>
+      <PlatformMark brand="cc" />
+      {label}
+    </>
+  );
+  if (!evidence) {
+    return (
+      <span className="credit-license" title={note}>
+        {body}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="credit-license"
+      title={note}
+      onClick={() => window.open(evidence, '_blank', 'noopener,noreferrer')}
+    >
+      {body}
+    </button>
+  );
+}
 
 export default function AboutScreen() {
   const nav = useNav();
@@ -110,7 +169,8 @@ export default function AboutScreen() {
               <span className="md-body-small muted flex-1">
                 界面里的装饰元素全部来自 Material 3 Expressive 自带的形状语汇（cookie / clover / burst /
                 sunny / pill），颜色一律取 --md-sys-color-* 角色；图标为 Material Symbols Rounded 子集，
-                字体为 Roboto。项目不包含任何第三方插画、照片或字体素材。
+                名片墙上的平台剪影（GitHub / Bilibili / 抖音 / X / CC）来自 Remix Icon（Apache-2.0），
+                字体为 Roboto。除此之外只有「致谢 · 名片墙」上各人的公开头像，项目不包含任何第三方插画或字体素材。
               </span>
             </div>
             <div className="row gap-12 mt-12" style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -124,38 +184,50 @@ export default function AboutScreen() {
         </div>
 
         <div className="mt-16">
-          <SectionHeader icon="volunteer_activism" title="致谢" />
-          {ART_CREDITS.map((credit) => (
-            <div className="about-note" key={credit.url}>
-              <div className="row gap-8">
-                <MdIcon name="palette" size={18} />
-                <span className="md-title-small-emphasized flex-1">{credit.label}</span>
+          <SectionHeader icon="volunteer_activism" title="致谢 · 名片墙" />
+          <div className="md-body-small muted">
+            感谢每一位让「{APP_NAME}」变得更好的人。点名片下方的按钮直达对方主页。
+          </div>
+          <div className="credits-wall mt-12">
+            {CREDITS.map((person) => (
+              <div
+                className={person.lead ? 'credit-card lead' : 'credit-card'}
+                key={person.displayName}
+                style={person.lead ? undefined : { gridColumn: `span ${creditSpan(person, CREDITS)}` }}
+              >
+                <div className="credit-head">
+                  <CreditAvatar person={person} />
+                  <span className="credit-who">
+                    <span className="row gap-8 credit-name-row">
+                      <span className={person.lead ? 'md-title-medium-emphasized' : 'md-title-small-emphasized'}>
+                        {person.displayName}
+                      </span>
+                      {person.lead ? <span className="credit-badge">项目作者</span> : null}
+                    </span>
+                    <span className="md-body-small muted">{person.role}</span>
+                  </span>
+                </div>
+                {person.license ? <CreditLicenseMark license={person.license} /> : null}
+                <div className="credit-links">
+                  {person.links.map((link) => (
+                    <button
+                      key={link.url}
+                      type="button"
+                      className="credit-link"
+                      title={link.url}
+                      onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                    >
+                      <PlatformMark brand={link.platform} />
+                      {link.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="md-body-small muted mt-4">{credit.note}</div>
-              <div className="row gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
-                <md-filled-tonal-button
-                  className="btn-s"
-                  onClick={() => window.open(credit.url, '_blank', 'noopener,noreferrer')}
-                >
-                  <MdIcon slot="icon" name="open_in_new" />
-                  打开空间
-                </md-filled-tonal-button>
-                <span className="md-body-small muted">{credit.url}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-16">
-          <SectionHeader icon="gavel" title="关于此前使用他人美术素材的致歉" />
-          <div className="about-note">
-            <div className="md-body-small muted">
-              本项目的早期版本曾在界面、开屏页与安装图标中使用了来自 Bilibili 创作者（空间 18112887）的插画，
-              以及一张学校教材宣传图，事前未取得作者授权，也未标明出处，对此我们深表歉意。
-              这些素材已于 <strong>v1.0.9</strong> 全部移除：Web 端不再引用任何图片文件，
-              Android 图标改用 Material Symbols 与 Material 3 Expressive 形状重新绘制。
-              若权利人认为仍有需要处理的内容，请通过仓库 Issue 联系我们，我们会第一时间删除或补办授权。
-            </div>
+            ))}
+          </div>
+          <div className="md-body-small muted mt-8">
+            名片按「作者 + 特别感谢的六位」排列；头像取自各人在 GitHub / B 站等平台的公开头像（已登记授权台账），
+            加载失败时自动退回姓名首字。带 <b>CC</b> 标记的是权利人给出的作品许可，点开可看授权原文。
           </div>
         </div>
 
@@ -197,7 +269,8 @@ export default function AboutScreen() {
 
         <div className="md-body-small muted mt-16 mb-16">
           课表数据来自教务系统导出的课表文件，由导入功能解析后保存在本机；教材信息可在课程详情里选图识别或手动修改。
-          本应用不含任何第三方图片素材：视觉元素来自 Material 3 Expressive 形状、Material Symbols Rounded 图标与 Roboto 字体。
+          本应用不含第三方插画素材：视觉元素来自 Material 3 Expressive 形状、Material Symbols Rounded 图标与 Roboto 字体，
+          图片只有致谢名片墙上各人自己的公开头像。
         </div>
       </div>
     </div>

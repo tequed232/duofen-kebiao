@@ -1,4 +1,14 @@
-﻿/** 应用元信息：名称、版本、外部链接（改名时只需要改这里）。 */
+/** 应用元信息：名称、版本、外部链接（改名时只需要改这里）。 */
+
+// 名片墙头像：由 Vite 打包成带哈希的相对路径，网页版与 APK 内嵌资源都能解析。
+// 来源与登记见 docs/asset-permissions.md（各平台公开头像）。
+import avatarBinggan from '../assets/avatars/binggan-bskeke.jpg';
+import avatarChunqiu from '../assets/avatars/chunqiu-fxxggllj.jpg';
+import avatarHanbing from '../assets/avatars/hanbing-bili.webp';
+import avatarLiuli from '../assets/avatars/liuli1719.jpg';
+import avatarLuo from '../assets/avatars/luo-tequed232.jpg';
+import avatarMidada from '../assets/avatars/midada-bili.webp';
+import avatarWeizhou from '../assets/avatars/weizhou-whitemoon319.jpg';
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
@@ -6,17 +16,136 @@ export const APP_VERSION = 'v2.6.0';
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = 'Tequed232 拥有本项目的最终解释权';
 
-/** 致谢（第三方美术素材已全部下架，只保留作者本人空间与特别感谢的人） */
-export const ART_CREDITS: { label: string; url: string; note: string }[] = [
+/**
+ * 贡献者名册 —— 关于页「致谢 · 名片墙」逐张渲染。
+ *
+ * 排列固定为「作者本人 1×3（整行）+ 其余 2×3 或补位」；头像取自各人在 GitHub / B 站的公开头像
+ * （已按仓库规则登记在 docs/asset-permissions.md），加载失败时自动退回姓名首字。
+ * 改人名 / 加链接只改这里；README 与 CONTRIBUTORS.md 的名单要保持同一口径。
+ */
+export interface CreditLink {
+  /** 平台，决定按钮上的剪影图标 */
+  platform: 'github' | 'bilibili' | 'douyin' | 'x';
+  label: string;
+  url: string;
+}
+
+export interface CreditLicense {
+  /** 许可标记文字，例如 'CC BY' / 'CC BY-NC' */
+  label: string;
+  /** 授权凭据（截图）地址；有值则标记可点，点开就是凭据原图 */
+  evidence?: string;
+  /** 补充说明（悬停提示），例如「禁止商用」 */
+  note?: string;
+}
+
+export interface CreditPerson {
+  /**
+   * 显示名。字段故意不叫 name：scripts/subset-icons.mjs 会把源码（含注释）里
+   * “键名 name / icon + 小写字符串值”的形状当成动态引用的图标名收进图标子集，
+   * 于是 liuli1719 这类用户名会让 check-icons 直接报错、构建失败。
+   */
+  displayName: string;
+  /** 副标题：角色或常用别名 */
+  role: string;
+  /** 姓名首字：头像加载失败时的兜底，也是无图环境的显示 */
+  mark: string;
+  /** 各平台公开头像（已登记在 docs/asset-permissions.md） */
+  avatar: string;
+  /** 作者本人那张：跨三列高亮显示 */
+  lead?: boolean;
+  /** 主要联系平台，决定首字底色；默认 primary-container，'tertiary' 给以 B 站为主的人 */
+  tone?: 'tertiary';
+  /** 作品授权标记（权利人自己给出的许可） */
+  license?: CreditLicense;
+  links: CreditLink[];
+}
+
+/** 寒冰的授权凭据截图（web/public/permissions/，相对文档路径：Pages 与 APK 内嵌资源都能解析） */
+export const PERMISSION_HANBING_CC_BY = './permissions/hanbing-cc-by.jpg';
+
+export const CREDITS: CreditPerson[] = [
   {
-    label: '作者 Bilibili 空间',
-    url: 'https://space.bilibili.com/407275151',
-    note: '项目作者的个人空间，欢迎来玩',
+    displayName: '罗xx',
+    role: '项目发起 · 界面动效 · 数据与部署',
+    mark: '罗',
+    avatar: avatarLuo,
+    lead: true,
+    links: [
+      { platform: 'github', label: 'GitHub', url: 'https://github.com/tequed232' },
+      { platform: 'bilibili', label: 'Bilibili', url: 'https://space.bilibili.com/407275151' },
+      {
+        platform: 'douyin',
+        label: '抖音',
+        url: 'https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F',
+      },
+    ],
   },
   {
-    label: '特别感谢 米达达',
-    url: 'https://space.bilibili.com/3546769371695776',
-    note: '感谢米达达对本项目的帮助与支持，点下面的按钮去 TA 的 B 站空间看看',
+    displayName: '饼干',
+    role: '翻译 · 同学',
+    mark: '饼',
+    avatar: avatarBinggan,
+    links: [
+      { platform: 'github', label: 'GitHub', url: 'https://github.com/BS-keke' },
+      { platform: 'bilibili', label: 'Bilibili', url: 'https://space.bilibili.com/449528062' },
+    ],
+  },
+  {
+    displayName: '维舟',
+    role: 'MAA-Meow',
+    mark: '维',
+    avatar: avatarWeizhou,
+    links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/WhiteMoon319' }],
+  },
+  {
+    displayName: '米达达',
+    role: '表情包引用',
+    mark: '米',
+    avatar: avatarMidada,
+    tone: 'tertiary',
+    license: {
+      label: 'CC BY-NC',
+      note: '权利人授权：署名 + 禁止商用',
+    },
+    links: [
+      { platform: 'bilibili', label: 'Bilibili', url: 'https://space.bilibili.com/3546769371695776' },
+      { platform: 'x', label: 'X', url: 'https://x.com/miratsu169' },
+    ],
+  },
+  {
+    displayName: 'Hanbing',
+    role: '主美画师 · 同学',
+    mark: 'H',
+    avatar: avatarHanbing,
+    tone: 'tertiary',
+    license: {
+      label: 'CC BY',
+      evidence: PERMISSION_HANBING_CC_BY,
+      note: '权利人授权：署名使用，不允许任何形式的 AI 修改（点开看授权原文）',
+    },
+    links: [
+      { platform: 'bilibili', label: 'Bilibili', url: 'https://b23.tv/0rKu2FX' },
+      {
+        platform: 'douyin',
+        label: '抖音',
+        url: 'https://www.douyin.com/user/MS4wLjABAAAAGRTiaZQLJDMyV1w46jDo9tTOIwgsnoGNofUwMh6VS3Y_orxre8OQmuztrvZdlEu9',
+      },
+    ],
+  },
+  {
+    displayName: '椿湫',
+    role: '导师',
+    mark: '椿',
+    avatar: avatarChunqiu,
+    links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/fxxggllj' }],
+  },
+  {
+    displayName: 'liuli1719',
+    role: '星爱流萤 · 同学',
+    mark: '星',
+    avatar: avatarLiuli,
+    links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/liuli1719' }],
   },
 ];
 /**

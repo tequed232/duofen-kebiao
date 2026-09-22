@@ -1,4 +1,4 @@
-﻿/* ============================================================================
+/* ============================================================================
    Component styles for the Material 3 Expressive app.
    Material Web components are themed through their documented CSS custom
    properties; everything else is a small amount of glue styling. Every color
@@ -1158,6 +1158,227 @@ md-filled-text-field {
   place-items: center;
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
+}
+
+/* --------------------------------------------- 关于页：致谢 · 名片墙 ------ */
+/* 1×3（作者本人跨三列）+ 2×3（其他六位）。手机壳固定 412dp、内容区左右各 16dp，
+   所以每张名片 ≈ (412 - 32 - 2×10) / 3 ≈ 120dp —— 字号与内边距都按这个宽度定。 */
+.credits-wall {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* 后两行等高：饼干的卡片挂两个平台按钮，不锁高会把它那一行撑得比下一行高 */
+  grid-template-rows: auto 1fr 1fr;
+  gap: 10px;
+}
+
+.credit-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 8px;
+  border-radius: 20px;
+  background: var(--md-sys-color-surface-container-low);
+  text-align: center;
+}
+
+.credit-card.lead {
+  grid-column: 1 / -1;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 24px;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  text-align: left;
+}
+
+.credit-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.credit-card:not(.lead) .credit-head {
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 首字头像：图片加载不出来时它同时也是兜底显示（见 CreditAvatar 组件） */
+.credit-mark {
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+/* 各平台公开头像（已登记），盖在首字上 */
+.credit-avatar {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+.credit-mark.tertiary {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+.credit-card.lead .credit-mark {
+  width: 52px;
+  height: 52px;
+  font-size: 22px;
+  background: var(--md-sys-color-inverse-primary);
+  color: var(--md-sys-color-primary);
+}
+
+.credit-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 深色锚点卡上 .muted 的 on-surface-variant 几乎看不见，这里改回继承色 */
+.credit-card.lead .muted {
+  color: var(--md-sys-color-on-primary-container);
+  opacity: 0.82;
+}
+
+.credit-name-row {
+  align-items: center;
+  min-width: 0;
+}
+
+.credit-name-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.credit-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 18%, transparent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.credit-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: auto;
+}
+
+.credit-card.lead .credit-links {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
+.credit-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 30%, transparent);
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-ref-typeface-brand);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.credit-card.lead .credit-link {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 16%, transparent);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.credit-link:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+.credit-card.lead .credit-link:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 26%, transparent);
+}
+
+/* 平台剪影（Remix Icon，内联 path）：颜色跟随按钮文字，深色锚点卡上自动变白 */
+.brand-mark {
+  flex: 0 0 auto;
+  display: block;
+}
+
+/* 作品授权标记：CC 标记 + 许可名；有授权截图的可点 */
+.credit-license {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-ref-typeface-brand);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+button.credit-license {
+  cursor: pointer;
+}
+
+button.credit-license:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
+}
+
+button.credit-license:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.credit-card.lead .credit-license {
+  border-color: color-mix(in srgb, var(--md-sys-color-on-primary-container) 40%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 14%, transparent);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.credit-link:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.credit-card.lead .credit-link:focus-visible {
+  outline-color: var(--md-sys-color-inverse-primary);
 }
 
 /* ------------------------------------------------ 可点美术资源（喵～） ----- */

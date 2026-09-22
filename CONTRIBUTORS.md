@@ -1,12 +1,30 @@
-﻿# 贡献者 · Contributors
+# 贡献者 · Contributors
 
 感谢每一位让 **多分课表** 变得更好的人。
 
-| 贡献者 | 主要贡献 |
-| --- | --- |
-| [@tequed232](https://github.com/tequed232) | 项目发起；Material 3 Expressive 界面与动效、课表与教材数据、Android 宿主与流体云、Anubis / Cloudflare 部署 |
-| [@liuli1719](https://github.com/liuli1719)（小妍） | 界面走查与体验反馈，贡献者名单共建 |
-| [@fxxggllj](https://github.com/fxxggllj) | 代码走查与构建验证（Liquid Glass 底边栏 / Android 封装） |
+这份名单同时出现在三处，**必须保持同一口径**：应用「关于 → 致谢 · 名片墙」、本文件、README。
+应用侧的数据源是 [`web/src/lib/meta.ts`](./web/src/lib/meta.ts) 的 `CREDITS`（名片墙 = 作者本人 1×3 整行 + 其余三列排布，
+最后一行不满时最后一张跨列补满）。名单里用**网名 / 昵称**；真名只出现在课表数据中（按教务导出的原文保留，不改）。
+
+| 名片 | 角色 | 主要贡献 | 链接 |
+| --- | --- | --- | --- |
+| 罗xx | 作者 | 项目发起；Material 3 Expressive 界面与动效、课表与教材数据、Android 宿主与流体云、Anubis / Cloudflare 部署 | [GitHub](https://github.com/tequed232) · [Bilibili](https://space.bilibili.com/407275151) · [抖音](https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F) |
+| 饼干 | 翻译 · 同学 | 项目文案与界面翻译 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
+| 维舟（MAA-Meow） | 同学 · 协助 | 协助（MAA-Meow） | [GitHub](https://github.com/WhiteMoon319) |
+| 米达达 | 表情包引用 | 表情包被项目引用，特此致谢 | [Bilibili](https://space.bilibili.com/3546769371695776) |
+| Hanbing | 主美画师 · 同学 | 主视觉与美术绘制 | [Bilibili](https://b23.tv/0rKu2FX) |
+| 椿湫 | 导师 | 项目指导（**网名**；课表数据里按教务原文保留真名） | [GitHub](https://github.com/fxxggllj) |
+| liuli1719（星爱流萤） | 同学 | 界面走查与体验反馈，贡献者名单共建 | [GitHub](https://github.com/liuli1719) |
+
+> 名片头像是各人在 GitHub / B 站的**公开头像**，已登记在 [`docs/asset-permissions.md`](./docs/asset-permissions.md)；
+> 加载失败时自动退回姓名首字。表情包原图不进入构建产物。
+
+作品许可（名片上的 CC 标记，点开可看授权原文）：
+
+- **寒冰（Hanbing）**：**CC BY** —— 署名使用，**不允许任何形式的 AI 修改**（凭据 `docs/permissions/hanbing-cc-by.jpg`）。
+- **米达达（miratsu）**：**CC BY-NC** —— 署名 + **禁止商用**。
+
+平台剪影图标（GitHub / Bilibili / 抖音 / X / CC）来自 [Remix Icon](https://github.com/Remix-Design/RemixIcon)（Apache-2.0）。
 
 ## 怎么加入这份名单
 
@@ -23,4 +41,5 @@ Co-authored-by: 你的名字 <你的邮箱>
 > 邮箱必须已绑定到你的 GitHub 账号；不确定就用 GitHub 提供的匿名地址
 > `你的用户名@users.noreply.github.com`，它一定能关联到你的账号。
 
-只想在文档里露个名，也可以直接在这个文件里加一行并提 PR。
+只想在文档里露个名，也可以直接在这个文件里加一行并提 PR；要上应用里的名片墙，
+就同时改 `web/src/lib/meta.ts` 的 `CREDITS`（或提个 Issue 让作者加）。

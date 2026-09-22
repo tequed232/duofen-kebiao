@@ -1,29 +1,11 @@
-﻿## 素材授权台账
+## 素材授权台账
 
 任何第三方素材进入本仓库之前，都必须先在 [`docs/asset-permissions.md`](./docs/asset-permissions.md) 留下**书面授权记录**；
 没有记录的素材一律不得进入代码或构建产物。当前插画作者 **miratsu**（Bilibili 空间 18112887）已通过审核，但尚未明确CC授权框架，暂不引入，
 状态与私信模板见该文档；`.github/workflows/permission-reminder.yml` 会每周提醒跟进，状态更新后自动停止。
 
----
-
-## ⚠️ 致歉声明（Apology）
-
-本项目早期版本（**v1.0.8 及以前**）在界面、开屏页与 Android 安装图标中，使用了**未经授权**的第三方美术素材：
-
-- 来自 Bilibili 创作者（空间号 **18112887**）的插画作品；
-
-我们在未取得作者许可、也未标明出处的情况下使用了这些素材，**对此深表歉意**。这是我们版权意识不足造成的错误，
-与上述作者及学校无关。
-
-**处理结果（v1.0.9 起）：**
-
-- 上述素材已从仓库、Web 构建产物与 APK 中**全部删除**（`web/public/art/` 已移除，代码中不再引用任何图片文件）；
-- 安装图标改用 **Material Symbols Rounded** 字形 + **Material 3 主色**重新绘制；
-- 界面装饰元素改用 **Material 3 Expressive** 自带的形状语汇（cookie / clover / burst / sunny / pill）；
-- 项目自此**只使用 Material 3 官方资源**（Material Symbols 图标、Roboto 字体、M3 配色与形状），颜色一律取 `--md-sys-color-*` 角色。
-
-若相关权利人认为仍有需要处理的内容，请通过本仓库的 Issue 联系我们，我们会**第一时间删除或补办授权**。
-在此再次向被侵权的作者致歉。
+构建产物里的图片只有两类：`web/public/art/cc0-header.jpg`（CC0，已登记）与「致谢 · 名片墙」上各人的**公开头像**（GitHub / B 站，已登记）。
+早期版本用过的插画已于 **v1.0.9** 全部下架，安装图标与界面装饰改由 **Material Symbols Rounded** 字形 + **Material 3 Expressive** 形状语汇自行绘制，配色一律取 `--md-sys-color-*` 角色。
 
 ---
 # 多分课表（使用DeepSeek Harness，Google Gemini，M3ECanvas制作，本人仅有一点点审美技巧和Python开发经验 ）
@@ -57,13 +39,25 @@ git add -A; git commit -m "Publish web build"; git push
 $out = "protocol=https`nhost=github.com`n" | git credential fill
 $env:GITHUB_TOKEN = ($out | Select-String '^password=').Line.Substring(9)
 
-node --use-system-ca scripts/github-release.mjs --tag v1.0.2 --target main `
-  --name "v1.0.2 · Material 3 Expressive 语音图片笔记" --notes RELEASE_NOTES.md `
-  --asset "m3-expressive-web-1.0.2.zip=build/release/m3-expressive-web-1.0.2.zip" `
-  --asset "m3-expressive-android-1.0.2.apk=build/release/m3-expressive-android-1.0.2.apk"
+# 版本化资产 + 稳定别名：别名让 releases/latest/download/enhance.apk 永远指向最新
+node --use-system-ca scripts/github-release.mjs --tag v2.7.0 --target main `
+  --name "v2.7.0 · Material 3 Expressive" --notes RELEASE_NOTES.md `
+  --asset "enhance-2.7.apk=build/release/enhance-2.7.apk" `
+  --asset "enhance.apk=build/release/enhance-2.7.apk" `
+  --asset "enhance-web-2.7.zip=build/release/enhance-web-2.7.zip" `
+  --asset "enhance-web.zip=build/release/enhance-web-2.7.zip"
 ```
 
 > `--use-system-ca` 是必要的：本机 Node 默认信任链校验不到中间证书（`UNABLE_TO_VERIFY_LEAF_SIGNATURE`）。
+
+**安装包与压缩包不进仓库**（APK / web zip 只是 Release 附件，Pages 上不再托管 APK）：
+
+- `.gitignore` 忽略 `*.apk` / `*.aab` / `*.zip` 等；
+- `npm run check:hygiene`（`scripts/check-repo-hygiene.mjs`）与 `.github/workflows/repo-hygiene.yml`
+  在每次推送与 PR 上检查，被跟踪的安装包/压缩包会让 CI 变红（防 `git add -f` 与 PR 里塞二进制）；
+- 下载短链（始终最新）：
+  `https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk`
+  （旧链接 `tequed232.github.io/duofen-kebiao/enhance.apk` 随本次剔除失效）。
 
 线上部署同样用 `scripts/verify.mjs` 回归：
 
@@ -241,7 +235,27 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 
 ## 贡献者
 
-见 [CONTRIBUTORS.md](./CONTRIBUTORS.md)：感谢 [@liuli1719](https://github.com/liuli1719)（小妍）的界面走查与体验反馈，以及 [@fxxggllj](https://github.com/fxxggllj) 的代码走查与构建验证。
+应用「关于 → 致谢 · 名片墙」与 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 是**同一份名单**（数据源：`web/src/lib/meta.ts` 的 `CREDITS`），
+名片墙为 1×3（作者本人整行）+ 其余三列排布（最后一行不满时最后一张跨列补满）：
+
+| 名片 | 角色 | 链接 |
+| --- | --- | --- |
+| 罗xx | 作者 · 项目发起 · 界面动效 · 数据与部署 | [GitHub](https://github.com/tequed232) · [Bilibili](https://space.bilibili.com/407275151) · [抖音](https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F) |
+| 饼干 | 翻译 · 同学 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
+| 维舟（MAA-Meow） | 同学 · 协助 | [GitHub](https://github.com/WhiteMoon319) |
+| 米达达 | 表情包引用 | [Bilibili](https://space.bilibili.com/3546769371695776) |
+| Hanbing | 主美画师 · 同学 | [Bilibili](https://b23.tv/0rKu2FX) |
+| 椿湫 | 导师 | [GitHub](https://github.com/fxxggllj) |
+| liuli1719（星爱流萤） | 同学 · 界面走查与体验反馈 | [GitHub](https://github.com/liuli1719) |
+
+名片头像是各人在 GitHub / B 站的**公开头像**（已登记在 [`docs/asset-permissions.md`](./docs/asset-permissions.md)），加载失败时自动退回姓名首字；
+表情包原图不进入构建产物。名片墙上每个入口都带对应平台的**剪影图标**（GitHub / Bilibili / 抖音 / X），
+路径内联在 `web/src/components/brands.tsx`，来自 [Remix Icon](https://github.com/Remix-Design/RemixIcon)（Apache-2.0）。
+
+**作品许可**（名片上的 CC 标记，点开可看授权原文）：
+
+- **寒冰（Hanbing）**：**CC BY** —— 署名使用，**不允许任何形式的 AI 修改**；凭据 `docs/permissions/hanbing-cc-by.jpg`。
+- **米达达（miratsu）**：**CC BY-NC** —— 署名 + **禁止商用**（作品不打包进构建产物，只署名与链接）。
 
 ---
 
