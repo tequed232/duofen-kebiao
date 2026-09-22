@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
@@ -61,9 +61,10 @@ android {
         applicationId = "com.app.m3expressive"
         minSdk = 26
         targetSdk = 35
-        // 与网页同源：versionCode/versionName 由 web/src/lib/meta.ts 决定
-        versionCode = 20600   // v2.6.0 → 20600（单调递增）
-        versionName = "2.6.0"
+        // 与网页同源：versionCode/versionName 由 web/src/lib/meta.ts 的 APP_VERSION 决定。
+        // 之前这里是硬编码的 20600 / "2.6.0"（和 webVersion() 算出来的值并存 = 两处真相，会漂移）。
+        versionCode = webVersionCode
+        versionName = webVersionName
 
         ndk {
             // 天玑 9400（MT6991）为 arm64-v8a
