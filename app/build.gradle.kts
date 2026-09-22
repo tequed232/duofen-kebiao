@@ -62,8 +62,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // 与网页同源：versionCode/versionName 由 web/src/lib/meta.ts 决定
-        versionCode = 20001   // 显式钉住：必须高于线上 20000，否则系统判为降级拒绝安装
-        versionName = "enhance 1.5"
+        versionCode = webVersionCode   // 由 meta.ts 的 v2.1.0 推导（=20100），高于线上 20001
+        versionName = webVersionName
 
         ndk {
             // 天玑 9400（MT6991）为 arm64-v8a

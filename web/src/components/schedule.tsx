@@ -10,6 +10,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { MdIcon, MdIconButton, MdTextField, useMdDialog } from './md';
 import { analyzeImage } from '../lib/api';
+import { listSnapshots, relativeTime, saveSnapshot, type ScheduleSnapshot } from '../lib/scheduleCache';
 import { guessPublisher, matchCourseByText } from '../lib/textbooks';
 import { ExpandableSheet } from './overlays';
 import {
@@ -921,6 +922,17 @@ export function ScheduleImportSheet({
   const [pasted, setPasted] = useState('');
   const [busy, setBusy] = useState(false);
   const [termStart, setTermStart] = useState(settings.termStart || schedule.termStart);
+  /** 本地缓存课表（快照）：导入时自动留档，可一键恢复 */
+  const [snapshots, setSnapshots] = useState<ScheduleSnapshot[]>([]);
+
+  const refreshSnapshots = () => {
+    void listSnapshots().then(setSnapshots);
+  };
+
+  useEffect(() => {
+    if (open) refreshSnapshots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (open) setTermStart(settings.termStart || schedule.termStart);
@@ -934,6 +946,9 @@ export function ScheduleImportSheet({
     setBusy(true);
     try {
       const parsed = await parseScheduleFile(file);
+      // 本地缓存：留一份快照，之后可一键恢复（最多 3 份）
+      await saveSnapshot(parsed, file.name);
+      refreshSnapshots();
       setSchedule(parsed);
       onImported(`已导入 ${file.name}：${parsed.periods.length} 个节次`);
     } catch (error) {
