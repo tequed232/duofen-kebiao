@@ -222,7 +222,9 @@ class MainActivity : ComponentActivity() {
             val missing = request.resources.mapNotNull { resource ->
                 when (resource) {
                     PermissionRequest.RESOURCE_AUDIO_CAPTURE -> Manifest.permission.RECORD_AUDIO
-                    PermissionRequest.RESOURCE_VIDEO_CAPTURE -> else -> null
+                    // 相机功能已按作者要求剔除：视频采集请求一律不授权
+                    PermissionRequest.RESOURCE_VIDEO_CAPTURE -> null
+                    else -> null
                 }
             }.filter { ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED }
 
