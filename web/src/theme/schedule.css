@@ -970,13 +970,19 @@ html[data-perf='low'] .m3e-dock-slider {
    4. 降低透明度/低性能：降级为不透明表面（对应系统辅助功能中的"降低透明度"）
    5. 不与其它玻璃叠放：本项目仅顶栏与底栏，两处互不重叠 */
 .m3e-dock {
+  /* 底色**透明度调到最大**（作者要求）：这一层保留 ——
+     同心 34px 圆角、滑块、折射贴图、边缘高光、描边都不动，只把两层填充的 alpha 归零，
+     于是变成"看得见玻璃、看不见底"，内容直接透出来。
+     想恢复原来的观感：把 --dock-tint-a 调回 56%、--dock-sheen-a 调回 6% 即可（各一行）。 */
+  --dock-tint-a: 0%;
+  --dock-sheen-a: 0%;
   background:
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent),
+      color-mix(in srgb, var(--md-sys-color-primary) var(--dock-sheen-a), transparent),
       transparent 55%
     ),
-    color-mix(in srgb, var(--md-sys-color-surface-container) 56%, transparent);
+    color-mix(in srgb, var(--md-sys-color-surface-container) var(--dock-tint-a), transparent);
   border-radius: 34px;
 }
 
