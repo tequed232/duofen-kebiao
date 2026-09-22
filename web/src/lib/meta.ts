@@ -8,10 +8,15 @@ import avatarHanbing from '../assets/avatars/hanbing-bili.webp';
 import avatarLuo from '../assets/avatars/luo-tequed232.jpg';
 import avatarMidada from '../assets/avatars/midada-bili.webp';
 import avatarWeizhou from '../assets/avatars/weizhou-whitemoon319.jpg';
+import appIcon192 from '../assets/app-icon-192.png';
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
 export const APP_VERSION = 'v3.0.0';
+/** 应用图标（作者提供的插画，整幅等比、不裁切）。
+ *  必须走打包器导入而不是写 `/icon-192.png`：APK 里页面是从 `/assets/www/` 提供的，
+ *  绝对路径会 404（启动页与关于页曾经因此「没改」）。 */
+export const APP_ICON = appIcon192;
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = 'Tequed232 拥有本项目的最终解释权';
 

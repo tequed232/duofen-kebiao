@@ -7,10 +7,9 @@
 import { useState } from 'react';
 import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdIcon } from '../components/md';
-import { GlassMark } from '../components/glass';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
-import { CREDITS, GLASS_LIBS, GITHUB_URL, APP_NAME, APP_VERSION, type CreditLicense, type CreditPerson } from '../lib/meta';
+import { CREDITS, GLASS_LIBS, GITHUB_URL, APP_NAME, APP_VERSION, APP_ICON, type CreditLicense, type CreditPerson } from '../lib/meta';
 import { PlatformMark } from '../components/brands';
 
 const DESIGN_NOTES: { icon: string; title: string; body: string }[] = [
@@ -89,9 +88,8 @@ export default function AboutScreen() {
 
       <div className="screen-content">
         <div className="about-hero">
-          <div className="about-mark">
-            <MdIcon name="calendar_month" size={34} />
-          </div>
+          {/* 应用图标（作者提供的插画；整幅等比显示，不裁切） */}
+          <img className="about-mark" src={APP_ICON} alt={`${APP_NAME} 图标`} />
           <div className="col" style={{ gap: 2 }}>
             <span className="md-headline-small-emphasized">{APP_NAME}</span>
             <span className="md-body-small muted">
@@ -147,11 +145,15 @@ export default function AboutScreen() {
               </span>
             </div>
             <div className="row gap-12 mt-12" style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <GlassMark size={96} />
+              <img
+                className="about-mark-lg"
+                src={APP_ICON}
+                alt={`${APP_NAME} 图标`}
+              />
             </div>
             <div className="md-body-small muted mt-8">
-              应用标识与底边栏采用 Liquid Glass 质感（半透明玻璃药丸 + 冰彩渐变），由项目自行以矢量方式绘制，
-              不包含任何外部图片素材；配色仍取自 M3 颜色角色。
+              应用图标为作者提供的插画（整幅等比显示，不裁切）；底边栏采用 Liquid Glass 质感
+              （半透明玻璃药丸 + 透镜折射 + 边缘色散），由项目以矢量与 SVG 滤镜自行实现，配色取自 M3 颜色角色。
             </div>
           </div>
         </div>

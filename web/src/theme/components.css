@@ -964,14 +964,14 @@ md-filled-text-field {
   margin-top: 8px;
 }
 
+/* 关于页头部的应用图标：与启动页同一张插画 */
 .about-mark {
   width: 64px;
   height: 64px;
   border-radius: 20px;
-  display: grid;
-  place-items: center;
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 6px 18px color-mix(in srgb, #000 22%, transparent);
 }
 
 /* --------------------------------------------- 关于页：致谢 · 名片墙 ------ */
@@ -1353,12 +1353,14 @@ button.credit-license:focus-visible {
   background: color-mix(in srgb, var(--md-sys-color-primary) 12%, var(--md-sys-color-surface-container-high));
 }
 
-.splash-shapes {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-  color: var(--md-sys-color-primary);
+/* 关于页「设计说明」里的大号应用图标（与启动页同一张插画） */
+.about-mark-lg {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  object-fit: cover;
+  display: block;
+  box-shadow: 0 8px 22px color-mix(in srgb, #000 24%, transparent);
 }
 
 /* ============================================ Liquid Glass 底边栏 ========= */
