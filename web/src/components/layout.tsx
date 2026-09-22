@@ -65,66 +65,106 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
   /**
-   * 底栏（Dock）：位置即结果 + 拖拽跟手 + Liquid Glass。
+   * 底栏（Dock）：位置即结果 + 流体跟手 + 液态玻璃。
    *
-   * 切换的唯一事实来源是**指针位置**：不再给按钮绑 onClick（那是"跳两次/跳回主页"的来源）。
-   * 指针落在第 i 格 → 切到第 i 个标签；拖动经过第 i 格 → 实时切到第 i 个标签；
-   * 松手停在第 i 格 → 停在第 i 个标签。全程幂等，重复落在同一格不会重复触发。
+   * 三条原则（按作者要求）：
+   *  1. **点到什么就是什么**：指针落在哪一格就切到哪一格，不会"跳回主页"（切换只由位置决定）。
+   *  2. **不抽搐**：拖动时色块**连续跟手**（无过渡），但**页面切换带阻尼**（在新格里稳定 90ms 才切），
+   *     因此手指在格子边界来回抖动时不会疯狂切页。
+   *  3. **流体 + 散射 + 反射**：色块跟手移动时按速度横向拉伸（流体感），
+   *     并叠加模糊边缘（散射）与顶部高光/内侧反光（反射）。
    */
-  // 直接拿路由的 selectTab：不依赖各屏传下来的 onSelect，消除"传错/传漏"的可能
   const navSelectTab = useNav().selectTab;
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
   const draggingRef = useRef(false);
-  /** 已提交的标签序号：幂等的关键（避免同一次点击被重复提交） */
   const committedRef = useRef(activeIndex);
+  const pendingRef = useRef<number | null>(null);
+  const dwellTimer = useRef<number | undefined>(undefined);
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     committedRef.current = activeIndex;
   }, [activeIndex]);
 
-  /** 指针 x → 标签序号（0..2），同时把滑块位置写到 CSS 变量 */
-  const indexAt = (clientX: number) => {
+  useEffect(() => () => window.clearTimeout(dwellTimer.current), []);
+
+  /** 指针 x → 标签序号，并把色块位置与速度写到 CSS 变量（色块由 CSS 连续跟手） */
+  const indexAt = (clientX: number, clientY?: number) => {
     const element = dockRef.current;
     if (!element) return activeIndex;
     const rect = element.getBoundingClientRect();
     if (!rect.width) return activeIndex;
     const ratio = Math.min(0.9999, Math.max(0, (clientX - rect.left) / rect.width));
     element.style.setProperty('--dock-drag', String(ratio));
+    if (clientY !== undefined) {
+      const localY = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+      element.style.setProperty('--dock-y', `${localY * 100}%`);
+    }
     return Math.min(TABS.length - 1, Math.floor(ratio * TABS.length));
   };
 
-  /** 幂等提交：只有真正换了标签才通知外部 */
-  const commit = (index: number) => {
+  /** 立即切换（命中新格子时调用，带回调） */
+  const commitNow = (index: number) => {
     if (index === committedRef.current) return;
     const tab = TABS[index];
     if (!tab) return;
     committedRef.current = index;
-    // 优先走路由的规范实现；父组件传入的 onSelect 作为兜底
     if (typeof navSelectTab === 'function') navSelectTab(tab.id);
     else onSelect(tab.id);
+  };
+
+  /** 拖动中的切换：带 90ms 稳定判定，避免边界抖动导致连续切页（抽搐） */
+  const commitWithDwell = (index: number) => {
+    if (index === committedRef.current) return;
+    if (pendingRef.current === index) return;
+    pendingRef.current = index;
+    window.clearTimeout(dwellTimer.current);
+    dwellTimer.current = window.setTimeout(() => {
+      if (pendingRef.current !== null) commitNow(pendingRef.current);
+      pendingRef.current = null;
+    }, 130);
+  };
+
+  /** 速度驱动的流体形变：位移越快，色块横向拉伸越明显 */
+  const trackVelocity = (clientX: number) => {
+    const element = dockRef.current;
+    if (!element) return;
+    const now = performance.now();
+    const last = (element as HTMLElement & { __lastX?: number; __lastT?: number });
+    const dx = last.__lastX === undefined ? 0 : clientX - last.__lastX;
+    const dt = last.__lastT === undefined ? 16 : Math.max(1, now - last.__lastT);
+    last.__lastX = clientX;
+    last.__lastT = now;
+    const speed = Math.min(1, Math.abs(dx / dt) * 1.6);
+    element.style.setProperty('--dock-velocity', speed.toFixed(3));
   };
 
   const onDown = (event: React.PointerEvent<HTMLElement>) => {
     if (!dockRef.current) return;
     draggingRef.current = true;
     setDragging(true);
-    commit(indexAt(event.clientX));
+    pendingRef.current = null;
+    const index = indexAt(event.clientX, event.clientY);
+    commitNow(index); // 点按：立刻就是它
 
-    // 用 window 级监听跟随拖动：**不用 setPointerCapture** ——
-    // 底栏会随页面切换被卸载，捕获一旦残留，后续点击就会被送给已卸载的节点，
-    // 表现为"有时点不动、有时跳两次、有时跳回主页"。
     const onWindowMove = (moveEvent: PointerEvent) => {
       if (!draggingRef.current) return;
-      commit(indexAt(moveEvent.clientX));
+      trackVelocity(moveEvent.clientX);
+      commitWithDwell(indexAt(moveEvent.clientX, moveEvent.clientY));
     };
     const onWindowUp = (upEvent: PointerEvent) => {
       if (draggingRef.current) {
         draggingRef.current = false;
         setDragging(false);
-        commit(indexAt(upEvent.clientX));
-        dockRef.current?.style.removeProperty('--dock-drag');
+        window.clearTimeout(dwellTimer.current);
+        pendingRef.current = null;
+        commitNow(indexAt(upEvent.clientX, upEvent.clientY)); // 松手：停在哪就是哪
+        const element = dockRef.current;
+        if (element) {
+          element.style.removeProperty('--dock-drag');
+          element.style.setProperty('--dock-velocity', '0');
+        }
       }
       window.removeEventListener('pointermove', onWindowMove);
       window.removeEventListener('pointerup', onWindowUp);
@@ -135,76 +175,44 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     window.addEventListener('pointercancel', onWindowUp);
   };
 
-  const onMove = () => {
-    /* 拖动跟随改由 window 级监听处理 */
-  };
-
-  const onUp = () => {
-    /* 结束拖动改由 window 级监听处理 */
-  };
-
-  /** 键盘无障碍：方向键 / Enter 仍可切换（不走指针路径） */
   const onKeyDown = (event: React.KeyboardEvent<HTMLElement>, index: number) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      if (typeof navSelectTab === 'function') navSelectTab(TABS[index].id);
-      else onSelect(TABS[index].id);
+      commitNow(index);
     }
   };
-
-  /** 运动响应：指针位置 + 滚动冲量共同驱动高光（Apple 的 motion-reactive specular） */
-  useEffect(() => {
-    const element = dockRef.current;
-    if (!element) return undefined;
-    let decay = 0;
-    let raf: number | undefined;
-    const onPointerMove = (event: PointerEvent) => {
-      const rect = element.getBoundingClientRect();
-      element.style.setProperty('--dock-x', `${((event.clientX - rect.left) / rect.width) * 100}%`);
-      element.style.setProperty('--dock-y', `${((event.clientY - rect.top) / rect.height) * 100}%`);
-    };
-    const onScroll = () => {
-      decay = 1;
-      if (raf === undefined) {
-        const tick = () => {
-          decay *= 0.86;
-          element.style.setProperty('--dock-scroll', decay.toFixed(3));
-          // 滚动时高光随之偏移，玻璃看起来"在动"
-          element.style.setProperty('--dock-x', `${50 + decay * 28}%`);
-          raf = decay > 0.02 ? window.requestAnimationFrame(tick) : undefined;
-        };
-        raf = window.requestAnimationFrame(tick);
-      }
-    };
-    element.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      element.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('scroll', onScroll);
-      if (raf !== undefined) window.cancelAnimationFrame(raf);
-    };
-  }, []);
 
   return (
     <nav
       className={`m3e-dock${dragging ? ' dragging' : ''}`}
       aria-label="主导航"
       ref={dockRef}
-      style={{ '--m3e-active': String(activeIndex) } as React.CSSProperties}
+      style={{ '--m3e-active': String(activeIndex), '--dock-velocity': '0' } as React.CSSProperties}
       onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerCancel={onUp}
+      onPointerMove={(event) => {
+        // 悬停高光：不按住也跟手
+        const element = dockRef.current;
+        if (!element) return;
+        const rect = element.getBoundingClientRect();
+        element.style.setProperty('--dock-x', `${((event.clientX - rect.left) / rect.width) * 100}%`);
+        element.style.setProperty('--dock-y', `${((event.clientY - rect.top) / rect.height) * 100}%`);
+      }}
     >
       <svg className="m3e-dock-svg" aria-hidden="true" width="0" height="0">
         <filter id="m3e-dock-refraction" x="-20%" y="-20%" width="140%" height="140%">
           <feTurbulence type="fractalNoise" baseFrequency="0.008 0.02" numOctaves="2" seed="7" result="noise" />
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
         </filter>
+        <filter id="m3e-dock-scatter" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="2.2" result="soft" />
+          <feComposite in="SourceGraphic" in2="soft" operator="over" />
+        </filter>
       </svg>
       <span className="m3e-dock-refraction" aria-hidden="true" />
       <span className="m3e-dock-specular" aria-hidden="true" />
-      <span className="m3e-dock-slider" aria-hidden="true" />
+      <span className="m3e-dock-slider" aria-hidden="true">
+        <span className="m3e-dock-slider-reflection" aria-hidden="true" />
+      </span>
       {TABS.map((tab, index) => (
         <button
           key={tab.id}

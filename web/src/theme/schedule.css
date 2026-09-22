@@ -1122,3 +1122,59 @@ html[data-perf='low'] .m3e-dock {
 .phone > .screen-inner {
   padding-bottom: calc(68px + 26px + var(--safe-bottom)) !important;
 }
+
+
+/* ==================== 底栏色块：流体跟手 + 散射 + 反射 ====================
+   · 跟手：拖动时 left 由 --dock-drag 直接决定（无过渡）→ 连续、不抽搐
+   · 流体：按拖动速度 --dock-velocity 横向拉伸（transform-origin 居中）
+   · 散射：模糊边缘 + 外发光（feGaussianBlur 层）
+   · 反射：顶部高光 + 内侧反光条（slider-reflection）
+   · 防抖：只对 transform/left/filter 做动画，并声明 will-change，避免重排抖动 */
+.m3e-dock-slider {
+  will-change: transform, left;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--md-sys-color-secondary-container) 96%, #ffffff 4%),
+      color-mix(in srgb, var(--md-sys-color-secondary-container) 88%, transparent)
+    );
+  filter: url(#m3e-dock-scatter) saturate(1.08);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 42%, transparent),
+    0 2px 10px color-mix(in srgb, var(--md-sys-color-secondary) 26%, transparent);
+}
+
+.m3e-dock.dragging .m3e-dock-slider {
+  transform: scaleX(calc(1 + var(--dock-velocity, 0) * 0.22));
+  transform-origin: 50% 50%;
+}
+
+/* 反射：色块内部的顶部反光带（跟手位置） */
+.m3e-dock-slider-reflection {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      90px 46px at var(--dock-x, 50%) 18%,
+      color-mix(in srgb, #ffffff 46%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(180deg, color-mix(in srgb, #ffffff 22%, transparent), transparent 42%);
+  mix-blend-mode: screen;
+}
+
+/* 散射：色块外圈的柔光扩散 */
+.m3e-dock.dragging .m3e-dock-slider {
+  filter: url(#m3e-dock-scatter) saturate(1.12) brightness(1.04);
+}
+
+/* 低性能设备：关掉流体滤镜，保流畅 */
+html[data-perf='low'] .m3e-dock-slider {
+  filter: none;
+}
+
+html[data-perf='low'] .m3e-dock-slider-reflection {
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 22%, transparent), transparent 42%);
+}
