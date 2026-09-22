@@ -20,9 +20,8 @@ interface LensHost {
   blur: SVGFEGaussianBlurElement;
   image: SVGFEImageElement;
   disp: SVGFEDisplacementMapElement;
-  /** 同一张贴图、更小的位移量：给 backdrop-filter 用（对真实内容做透镜） */
+  /** 同一张贴图、更小的位移量：给 backdrop-filter 用（对真实内容做透镜 + 色散） */
   backdropFilter: SVGFilterElement;
-  backdropDisp: SVGFEDisplacementMapElement;
   key: string;
 }
 
@@ -77,19 +76,13 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     const backdropImage = document.createElementNS(SVG_NS, 'feImage');
     backdropImage.setAttribute('result', 'map');
     backdropImage.setAttribute('preserveAspectRatio', 'none');
-    const backdropDisp = document.createElementNS(SVG_NS, 'feDisplacementMap');
-    backdropDisp.setAttribute('in', 'SourceGraphic');
-    backdropDisp.setAttribute('in2', 'map');
-    backdropDisp.setAttribute('xChannelSelector', 'R');
-    backdropDisp.setAttribute('yChannelSelector', 'G');
-    backdropDisp.setAttribute('result', 'lens');
-    /* 边缘色散：把透镜后的画面拆成 R / G / B 三个通道，R 与 B 各偏 0.9px 反向位移，
-       再用 screen 叠回去 —— 通道错位就是真实玻璃边缘的色散（色边），
-       这是 Apple 材质里我们也缺的最后一项。位移量固定很小，只在边缘会看出来。 */
-    const dispersion = 0.9;
-    const channel = (which: 'r' | 'g' | 'b', dx: number, name: string) => {
+    /* 边缘色散：**不是**把 R/B 整体平移（那会让整块画面都蒙上色边，看着发紫），
+       而是让三个通道用略微不同的位移量去采样同一张透镜贴图 ——
+       只有被掰弯的边缘才会出现色边，中心（位移为 0）完全干净。
+       物理上也对：不同波长折射率不同 → 位移量不同。 */
+    const channelMatrix = (which: 'r' | 'g' | 'b') => {
       const matrix = document.createElementNS(SVG_NS, 'feColorMatrix');
-      matrix.setAttribute('in', 'lens');
+      matrix.setAttribute('in', 'SourceGraphic');
       matrix.setAttribute('type', 'matrix');
       matrix.setAttribute(
         'values',
@@ -99,15 +92,25 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
             ? '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0'
             : '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0',
       );
-      matrix.setAttribute('result', `${name}-only`);
-      if (dx === 0) return [matrix];
-      const offset = document.createElementNS(SVG_NS, 'feOffset');
-      offset.setAttribute('in', `${name}-only`);
-      offset.setAttribute('dx', String(dx));
-      offset.setAttribute('dy', '0');
-      offset.setAttribute('result', name);
-      return [matrix, offset];
+      matrix.setAttribute('result', `${which}-only`);
+      return matrix;
     };
+    const channelDisp = (which: 'r' | 'g' | 'b', offset: number) => {
+      const node = document.createElementNS(SVG_NS, 'feDisplacementMap');
+      node.setAttribute('in', `${which}-only`);
+      node.setAttribute('in2', 'map');
+      node.setAttribute('xChannelSelector', 'R');
+      node.setAttribute('yChannelSelector', 'G');
+      node.setAttribute('data-offset', String(offset)); // 实际 scale 在 update() 里按贴图比例算
+      node.setAttribute('result', which);
+      return node;
+    };
+    const rMatrix = channelMatrix('r');
+    const gMatrix = channelMatrix('g');
+    const bMatrix = channelMatrix('b');
+    const rDisp = channelDisp('r', 1.6);
+    const gDisp = channelDisp('g', 0);
+    const bDisp = channelDisp('b', -1.6);
     const blendR = document.createElementNS(SVG_NS, 'feBlend');
     blendR.setAttribute('in', 'r');
     blendR.setAttribute('in2', 'g');
@@ -117,19 +120,11 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     blendB.setAttribute('in', 'rg');
     blendB.setAttribute('in2', 'b');
     blendB.setAttribute('mode', 'screen');
-    backdropFilter.append(
-      backdropImage,
-      backdropDisp,
-      ...channel('r', dispersion, 'r'),
-      ...channel('g', 0, 'g'),
-      ...channel('b', -dispersion, 'b'),
-      blendR,
-      blendB,
-    );
+    backdropFilter.append(backdropImage, rMatrix, rDisp, gMatrix, gDisp, bMatrix, bDisp, blendR, blendB);
     svg.appendChild(backdropFilter);
     document.body.appendChild(svg);
 
-    const host: LensHost = { filter, blur, image, disp, backdropFilter, backdropDisp, key: '' };
+    const host: LensHost = { filter, blur, image, disp, backdropFilter, key: '' };
     hostRef.current = host;
     element.style.setProperty('--lg-map-url', `url(#${id})`);
     /* --lg-backdrop 是给 CSS 的「玻璃链」：透镜 + 轻磨砂，直接贴到 backdrop-filter 上 */
@@ -154,13 +149,18 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       disp.setAttribute('scale', map.scale.toFixed(2));
       blur.setAttribute('stdDeviation', String(Math.max(0.6, params.strength)));
       /* backdrop 那份：贴图相同、位移收窄到 30% 且封顶 14px ——
-         这是「内容被玻璃边缘掰弯」的可见量级；再大就会出现撕裂感而不是透镜感。 */
+         这是「内容被玻璃边缘掰弯」的可见量级；再大就会出现撕裂感而不是透镜感。
+         三个通道的位移各差 ±offset，差量就是色散的强度（0 即无色边）。 */
+      const backdropScale = Math.min(14, map.scale * 0.3);
       backdropFilter.setAttribute('width', String(width));
       backdropFilter.setAttribute('height', String(height));
       backdropImage.setAttribute('width', String(width));
       backdropImage.setAttribute('height', String(height));
       backdropImage.setAttribute('href', map.mapUrl);
-      backdropDisp.setAttribute('scale', Math.min(14, map.scale * 0.3).toFixed(2));
+      for (const node of [rDisp, gDisp, bDisp]) {
+        const offset = Number(node.getAttribute('data-offset') ?? 0);
+        node.setAttribute('scale', Math.max(0, backdropScale + offset).toFixed(2));
+      }
       element.style.setProperty('--lg-edge-url', `url("${map.edgeUrl}")`);
       element.dataset.lens = 'ready';
     };
