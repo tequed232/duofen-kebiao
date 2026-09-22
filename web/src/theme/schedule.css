@@ -842,30 +842,95 @@ html[data-ui-scale='large'] .stage {
   line-height: 13px;
 }
 
-.m3e-dock-pill {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 54px;
-  height: 54px;
-  transform: translate(-50%, -50%) scale(0.86);
-  border-radius: 999px;
-  background: var(--md-sys-color-secondary-container);
-  opacity: 0;
-  transition: opacity 160ms linear, transform 200ms cubic-bezier(0.05, 0.7, 0.1, 1);
-  pointer-events: none;
-}
 
 .m3e-dock-tab.active {
   color: var(--md-sys-color-on-secondary-container);
 }
 
-.m3e-dock-tab.active .m3e-dock-pill {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-}
 
 .m3e-dock-tab > :not(.m3e-dock-pill) {
   position: relative;
   z-index: 1;
+}
+
+
+/* ==================== 过渡动画：纯左右平移（作者要求，非卡片式） ====================
+   全部导航只做水平位移，不做缩放/淡入位移混合：
+     forward（前进）：新页从右侧 100% 滑入，旧页向左 100% 滑出
+     back（返回）  ：新页从左侧 100% 滑入，旧页向右 100% 滑出
+   关闭动效时（data-transition=none / 低性能设备）不做任何动画。 */
+@keyframes pure-slide-in-right {
+  from { transform: translate3d(100%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes pure-slide-out-left {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-100%, 0, 0); }
+}
+
+@keyframes pure-slide-in-left {
+  from { transform: translate3d(-100%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes pure-slide-out-right {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(100%, 0, 0); }
+}
+
+/* 入场 / 出场：三种 transition 名称统一走纯平移（fade/zoom 也平移，避免卡片感） */
+.screen.enter-slide,
+.screen.enter-fade,
+.screen.enter-zoom {
+  animation: pure-slide-in-right 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.screen.exit-slide,
+.screen.exit-fade,
+.screen.exit-zoom {
+  animation: pure-slide-out-left 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.screen.dir-back.enter-slide,
+.screen.dir-back.enter-fade,
+.screen.dir-back.enter-zoom {
+  animation-name: pure-slide-in-left;
+}
+
+.screen.dir-back.exit-slide,
+.screen.dir-back.exit-fade,
+.screen.dir-back.exit-zoom {
+  animation-name: pure-slide-out-right;
+}
+
+/* 关闭动效：瞬时切换 */
+html[data-transition='none'] .screen,
+html[data-perf='low'] .screen {
+  animation: none !important;
+}
+
+
+/* 底栏滑动滑块：与页面平移同向、同节奏（320ms，同一条缓动曲线） */
+.m3e-dock-slider {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px) / 3);
+  border-radius: 999px;
+  background: var(--md-sys-color-secondary-container);
+  transform: translate3d(calc(var(--m3e-active, 0) * 100%), 0, 0);
+  transition: transform 320ms cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+html[data-transition='none'] .m3e-dock-slider,
+html[data-perf='low'] .m3e-dock-slider {
+  transition: none;
+}
+
+.m3e-dock-tab.active {
+  color: var(--md-sys-color-on-secondary-container);
 }

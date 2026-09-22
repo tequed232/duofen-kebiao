@@ -38,6 +38,8 @@ export interface RouteEntry {
   route: RouteName;
   params: Record<string, string>;
   transition: TransitionKind;
+  /** 纯平移方向：前进=新页从右进、旧页往左出；返回=反向 */
+  direction: 'forward' | 'back';
 }
 
 const DURATION: Record<TransitionKind, number> = {
@@ -49,7 +51,7 @@ const DURATION: Record<TransitionKind, number> = {
 interface NavValue {
   stack: RouteEntry[];
   current: RouteEntry;
-  push: (route: RouteName, params?: Record<string, string>, transition?: TransitionKind) => void;
+  push: (route: RouteName, params?: Record<string, string>, transition?: TransitionKind, direction?: 'forward' | 'back') => void;
   pop: () => void;
   popTo: (route: RouteName) => void;
   /** 标签切换的唯一实现（底边栏用）：规范化重置栈，幂等，不堆历史 */
@@ -72,7 +74,7 @@ export function useRouteParams(): Record<string, string> {
 
 export function NavProvider({ initial = 'home', children }: { initial?: RouteName; children: ReactNode }) {
   const initialEntry = useMemo<RouteEntry>(
-    () => ({ key: uid('scr'), route: initial, params: {}, transition: 'fade' }),
+    () => ({ key: uid('scr'), route: initial, params: {}, transition: 'fade', direction: 'forward' }),
     [initial],
   );
   const [stack, setStack] = useState<RouteEntry[]>([initialEntry]);
@@ -124,11 +126,11 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
   }, [initialEntry, schedule]);
 
   const push = useCallback<NavValue['push']>(
-    (route, params = {}, transition = 'slide') => {
+    (route, params = {}, transition = 'slide', direction: 'forward' | 'back' = 'forward') => {
       // 同路由去重：重复点击底边栏标签不再重复入栈（此前"点两下跳到不知道哪里"）
       const top = stackRef.current[stackRef.current.length - 1];
       if (top && top.route === route) return;
-      const entry: RouteEntry = { key: uid('scr'), route, params, transition };
+      const entry: RouteEntry = { key: uid('scr'), route, params, transition, direction };
       const next = [...stackRef.current, entry];
       window.history.pushState({ m3Stack: next }, '');
       setExiting(null);
@@ -189,11 +191,15 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
       if (current.route === target && stackRef.current.length === 2) return;
 
       // 先回到栈底，等 history.go 生效后再 push 目标页（延迟与路由自身的动画时长对齐）
+      const order = ['schedule', 'scheduleFilter', 'settings'];
+      const from = order.indexOf(stackRef.current[stackRef.current.length - 1]?.route ?? 'schedule');
+      const to = order.indexOf(target);
+      const forward = to >= from;
       popTo('schedule');
       schedule(() => {
         const top = stackRef.current[stackRef.current.length - 1];
         if (top?.route === target) return;
-        push(target, {}, 'slide');
+        push(target, {}, 'slide', forward ? 'forward' : 'back');
       }, 300);
     },
     [popTo, push, schedule],
@@ -203,7 +209,7 @@ export function NavProvider({ initial = 'home', children }: { initial?: RouteNam
 
   const replace = useCallback<NavValue['replace']>((route, params = {}) => {
     const current = stackRef.current;
-    const entry: RouteEntry = { key: uid('scr'), route, params, transition: 'fade' };
+    const entry: RouteEntry = { key: uid('scr'), route, params, transition: 'fade', direction: 'forward' };
     const next = [...current.slice(0, -1), entry];
     window.history.replaceState({ m3Stack: next }, '');
     setStack(next);
@@ -240,7 +246,7 @@ export function NavHost({ screens }: { screens: Record<RouteName, ComponentType>
         const Screen = screens[entry.route];
         const isTop = entry.key === stack[stack.length - 1].key;
         const isExiting = exiting?.key === entry.key;
-        const classes = ['screen'];
+        const classes = ['screen', `dir-${entry.direction ?? 'forward'}`];
         if (isExiting) classes.push(`exit-${entry.transition}`);
         else if (entry.key === enteringKey) classes.push(`enter-${entry.transition}`);
         return (

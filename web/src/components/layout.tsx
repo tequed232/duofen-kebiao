@@ -63,10 +63,12 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 ];
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
-  // 朴素自绘底栏：只用 <button> + CSS。不依赖 md-navigation-bar 的 Lit 事件，
-  // 也不依赖原生桥 —— 因此"可见"与"可点"都由这一份代码保证。
+  // 纯自绘底栏：一个滑动滑块 + 三个按钮。滑块随选中项左右平移（与页面平移同节奏），
+  // 不依赖任何 Lit 组件或原生桥 —— 可见、可点、动画同步都由这一份代码保证。
+  const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   return (
-    <nav className="m3e-dock" aria-label="主导航">
+    <nav className="m3e-dock" aria-label="主导航" style={{ '--m3e-active': String(activeIndex) } as React.CSSProperties}>
+      <span className="m3e-dock-slider" aria-hidden="true" />
       {TABS.map((tab) => (
         <button
           key={tab.id}
@@ -76,7 +78,6 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
           aria-current={tab.id === active ? 'page' : undefined}
           onClick={() => onSelect(tab.id)}
         >
-          <span className="m3e-dock-pill" aria-hidden="true" />
           <MdIcon name={tab.id === active ? (tab.activeIcon ?? tab.icon) : tab.icon} size={24} />
           <span className="m3e-dock-label">{tab.label}</span>
         </button>
