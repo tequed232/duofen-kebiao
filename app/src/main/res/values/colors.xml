@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 取自插画蓝发的底色（CC0 素材，见 docs/asset-permissions.md） -->
-    <color name="ic_launcher_background">#4A63B8</color>
+    <!-- 应用图标底色：直接取自作者提供插画的左上角（深蓝夜空 #13161F）。
+         图标源图与生成脚本见 docs/asset-permissions.md。 -->
+    <color name="ic_launcher_background">#13161F</color>
 </resources>
