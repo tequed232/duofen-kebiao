@@ -1161,13 +1161,11 @@ md-filled-text-field {
 }
 
 /* --------------------------------------------- 关于页：致谢 · 名片墙 ------ */
-/* 1×3（作者本人跨三列）+ 2×3（其他六位）。手机壳固定 412dp、内容区左右各 16dp，
-   所以每张名片 ≈ (412 - 32 - 2×10) / 3 ≈ 120dp —— 字号与内边距都按这个宽度定。 */
+/* 3 列网格：作者跨 3 列（整行）、画师跨 2 列，其余各 1 列，正好铺满不留空洞。
+   手机壳固定 412dp、内容区左右各 16dp，所以 1 列 ≈ (412 - 32 - 2×10) / 3 ≈ 120dp。 */
 .credits-wall {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  /* 后两行等高：饼干的卡片挂两个平台按钮，不锁高会把它那一行撑得比下一行高 */
-  grid-template-rows: auto 1fr 1fr;
   gap: 10px;
 }
 
@@ -1183,10 +1181,11 @@ md-filled-text-field {
   text-align: center;
 }
 
-.credit-card.lead {
-  grid-column: 1 / -1;
-  align-items: stretch;
-  gap: 10px;
+/* 宽卡（作者 span 3 / 画师 span 2）：头像在左，名字 / 角色 / 许可 / 平台按钮都在右侧 */
+.credit-card.wide {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   padding: 12px 14px;
   border-radius: 24px;
   background: var(--md-sys-color-primary-container);
@@ -1194,16 +1193,18 @@ md-filled-text-field {
   text-align: left;
 }
 
-.credit-head {
+.credit-body {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.credit-card:not(.lead) .credit-head {
-  flex-direction: column;
-  gap: 6px;
+.credit-card.wide .credit-body {
+  align-items: flex-start;
+  gap: 5px;
 }
 
 /* 首字头像：图片加载不出来时它同时也是兜底显示（见 CreditAvatar 组件） */
@@ -1240,7 +1241,7 @@ md-filled-text-field {
   color: var(--md-sys-color-on-tertiary-container);
 }
 
-.credit-card.lead .credit-mark {
+.credit-card.wide .credit-mark {
   width: 52px;
   height: 52px;
   font-size: 22px;
@@ -1248,16 +1249,8 @@ md-filled-text-field {
   color: var(--md-sys-color-primary);
 }
 
-.credit-who {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  max-width: 100%;
-}
-
 /* 深色锚点卡上 .muted 的 on-surface-variant 几乎看不见，这里改回继承色 */
-.credit-card.lead .muted {
+.credit-card.wide .muted {
   color: var(--md-sys-color-on-primary-container);
   opacity: 0.82;
 }
@@ -1269,6 +1262,10 @@ md-filled-text-field {
   flex-wrap: wrap;
   row-gap: 4px;
   min-width: 0;
+}
+
+.credit-card.wide .credit-name-row {
+  justify-content: flex-start;
 }
 
 .credit-name-row > span {
@@ -1303,7 +1300,7 @@ md-filled-text-field {
   margin-top: auto;
 }
 
-.credit-card.lead .credit-links {
+.credit-card.wide .credit-links {
   justify-content: flex-start;
   margin-top: 0;
 }
@@ -1325,7 +1322,7 @@ md-filled-text-field {
   cursor: pointer;
 }
 
-.credit-card.lead .credit-link {
+.credit-card.wide .credit-link {
   border-color: transparent;
   background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 16%, transparent);
   color: var(--md-sys-color-on-primary-container);
@@ -1344,7 +1341,7 @@ md-filled-text-field {
   background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
 }
 
-.credit-card.lead .credit-link:hover {
+.credit-card.wide .credit-link:hover {
   background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 26%, transparent);
 }
 
@@ -1385,7 +1382,7 @@ button.credit-license:focus-visible {
   outline-offset: 2px;
 }
 
-.credit-card.lead .credit-license {
+.credit-card.wide .credit-license {
   border-color: color-mix(in srgb, var(--md-sys-color-on-primary-container) 40%, transparent);
   background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 14%, transparent);
   color: var(--md-sys-color-on-primary-container);
@@ -1396,7 +1393,7 @@ button.credit-license:focus-visible {
   outline-offset: 2px;
 }
 
-.credit-card.lead .credit-link:focus-visible {
+.credit-card.wide .credit-link:focus-visible {
   outline-color: var(--md-sys-color-inverse-primary);
 }
 

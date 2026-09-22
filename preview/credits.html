@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>多分课表 · 贡献者名片（预览）</title>
+<title>多分课表 · 贡献者名片（宽屏设计稿）</title>
 <style>
-  /* Material 3 Expressive 观感，与 App 同一套色板（Green 主题回退值） */
+  /* Material 3 Expressive 观感，与应用同一套色板（Green 主题回退值） */
   :root {
     --primary: #12512E;
     --on-primary: #FFFFFF;
@@ -36,7 +36,8 @@
   header h1 { font-size: 26px; font-weight: 600; letter-spacing: .2px; }
   header p { margin-top: 6px; color: var(--on-surface-variant); font-size: 14px; line-height: 1.6; }
 
-  /* 网格：3 列；我的名片跨 3 列（1×3），其他 6 人 2×3 */
+  /* 3 列网格：作者跨 3 列（整行）、画师跨 2 列，其余各 1 列 —— 正好铺满不留空洞。
+     应用里手机壳固定 412dp，1 列 ≈ 120dp；这里是同一套比例的宽屏版。 */
   .grid {
     max-width: 1080px;
     margin: 0 auto;
@@ -46,29 +47,26 @@
   }
 
   .card {
-    position: relative;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 10px;
     padding: 18px;
     border-radius: 26px;
     background: var(--surface-container);
     box-shadow: var(--shadow);
-    text-decoration: none;
     color: inherit;
-    transition: transform .18s cubic-bezier(.05,.7,.1,1), background .18s linear;
+    text-align: center;
+    min-width: 0;
   }
 
-  .card:hover { transform: translateY(-2px); background: var(--surface-container-high); }
-  .card:active { transform: translateY(0) scale(.995); }
-
-  /* 我的名片：1×3 —— 横排布局，视觉更突出 */
-  .card.me {
-    grid-column: span 3;
+  /* 宽卡（作者 span 3 / 画师 span 2）：头像在左，名字 / 角色 / 许可 / 平台按钮都在右侧 */
+  .card.wide {
     flex-direction: row;
     align-items: center;
-    gap: 20px;
-    padding: 22px 24px;
+    gap: 18px;
+    padding: 20px 22px;
+    text-align: left;
     background: linear-gradient(135deg,
       color-mix(in srgb, var(--primary-container) 70%, var(--surface-container)),
       var(--surface-container));
@@ -93,24 +91,44 @@
     object-fit: cover; border-radius: inherit;
     display: block;
   }
+  .card.wide .avatar { width: 72px; height: 72px; border-radius: 24px; font-size: 30px; }
 
-  .links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .body { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
+  .card.wide .body { align-items: flex-start; }
+
+  .name-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
+  .card.wide .name-row { justify-content: flex-start; }
+  .name { font-size: 17px; font-weight: 600; }
+  .card.wide .name { font-size: 20px; }
+  .role { font-size: 13px; color: var(--on-surface-variant); }
+  .badge {
+    flex: 0 0 auto;
+    padding: 3px 10px; border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+    color: var(--primary);
+    font-size: 12px; font-weight: 700;
+  }
+  .card.wide .badge { background: var(--primary); color: var(--on-primary); }
+
+  .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 4px; }
+  .card.wide .links { justify-content: flex-start; }
   .link-btn {
-    display: inline-flex; align-items: center;
-    padding: 5px 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 13px;
     border-radius: 999px;
     border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
     color: var(--primary);
-    font-size: 12px; font-weight: 500;
+    font-size: 13px; font-weight: 500;
     text-decoration: none;
     white-space: nowrap;
   }
   .link-btn:hover { background: color-mix(in srgb, var(--primary) 8%, transparent); }
-  .card.me .link-btn {
+  .card.wide .link-btn {
     border-color: transparent;
-    background: var(--primary);
-    color: var(--on-primary);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
   }
+  /* 单列名片里两个文字按钮挤不下时只留剪影 */
+  .link-btn.icon-only { font-size: 0; gap: 0; width: 32px; height: 32px; padding: 0; justify-content: center; }
 
   /* 平台剪影（Remix Icon 内联 path，颜色跟随文字） */
   .brand { flex: 0 0 auto; display: block; }
@@ -118,7 +136,7 @@
   /* 作品许可标记（CC）；带授权截图的那条是 <a>，可点开原图 */
   .lic {
     display: inline-flex; align-items: center; gap: 4px;
-    align-self: flex-start;
+    align-self: center;
     padding: 4px 10px; border-radius: 999px;
     border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
     background: color-mix(in srgb, var(--primary) 6%, transparent);
@@ -126,37 +144,8 @@
     font-size: 12px; font-weight: 600;
     text-decoration: none; white-space: nowrap;
   }
+  .card.wide .lic { align-self: flex-start; }
   .lic:hover { background: color-mix(in srgb, var(--primary) 14%, transparent); }
-
-  /* 多平台名片：只留剪影，按钮排成一行 */
-  .link-btn.icon-only { font-size: 0; gap: 0; width: 32px; height: 32px; padding: 0; justify-content: center; }
-
-  .card.me .avatar { width: 72px; height: 72px; border-radius: 24px; font-size: 30px; }
-
-  .who { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
-  .badge {
-    flex: 0 0 auto;
-    padding: 2px 10px; border-radius: 999px;
-    background: var(--secondary-container); color: var(--on-secondary-container);
-    font-size: 12px; font-weight: 600;
-  }
-  .name { font-size: 17px; font-weight: 600; }
-  .card.me .name { font-size: 20px; }
-  .role { font-size: 13px; color: var(--on-surface-variant); }
-  .link { font-size: 12px; color: var(--primary); word-break: break-all; }
-
-  .tag {
-    align-self: flex-start;
-    margin-top: 2px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    background: var(--secondary-container);
-    color: var(--on-secondary-container);
-  }
-
-  .card.me .meta { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 
   footer {
     max-width: 1080px;
@@ -168,108 +157,102 @@
 
   @media (max-width: 720px) {
     .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .card.me { grid-column: span 2; flex-direction: column; align-items: flex-start; }
+    .card.wide { flex-direction: column; align-items: flex-start; }
   }
   @media (max-width: 460px) {
     .grid { grid-template-columns: minmax(0, 1fr); }
-    .card.me { grid-column: span 1; }
   }
 </style>
 </head>
 <body>
   <header>
-    <h1>多分课表 · 贡献者名片</h1>
-    <p>把这份名单放进「关于 → 致谢 · 名片墙」的设计稿：作者本人 1×3（整行），其他 6 位 2×3。
-      <b>应用内已接入同一份名单</b>（412dp 手机壳里的实机版式见 <code>build/preview-credits-cards.html</code>）。</p>
+    <h1>多分课表 · 贡献者名片（宽屏设计稿）</h1>
+    <p>栏位规则：<b>作者跨 3 列（整行）、画师跨 2 列、其余各 1 列</b>，正好铺满不留空洞。
+      应用里手机壳固定 412dp（1 列 ≈ 120dp），实机版式见 <code>build/about-credits-wall.png</code>。</p>
   </header>
 
   <main class="grid">
-    <!-- 我：1×3（多平台入口，所以卡片本身是 div，链接各自是 a，避免 a 套 a） -->
-    <div class="card me">
+    <!-- 作者：3 列 -->
+    <div class="card wide" style="grid-column: span 3">
       <span class="avatar">罗<img src="../web/src/assets/avatars/luo-tequed232.jpg" alt="" onerror="this.remove()"></span>
-      <span class="meta">
-        <span class="name">罗xx（Tequed232）</span>
-        <span class="role">作者 · 项目发起 · 界面动效 · 数据与部署</span>
+      <span class="body">
+        <span class="name-row"><span class="name">罗xx（Tequed232）</span><span class="badge">项目作者</span></span>
+        <span class="role">项目发起 · 界面动效 · 数据与部署</span>
+        <span class="links">
+          <a class="link-btn" href="https://github.com/tequed232" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="link-btn" href="https://space.bilibili.com/407275151" target="_blank" rel="noopener noreferrer">Bilibili</a>
+          <a class="link-btn" href="https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F" target="_blank" rel="noopener noreferrer">抖音</a>
+        </span>
       </span>
-      <span class="links">
-        <a class="link-btn" href="https://github.com/tequed232" target="_blank" rel="noopener noreferrer">GitHub</a>
-        <a class="link-btn" href="https://space.bilibili.com/407275151" target="_blank" rel="noopener noreferrer">Bilibili</a>
-        <a class="link-btn" href="https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F" target="_blank" rel="noopener noreferrer">抖音</a>
-      </span>
-      <span class="tag">拥有本项目的最终解释权</span>
     </div>
 
-    <!-- 以下 6 位：2×3 -->
+    <!-- 画师：2 列（最大的一块非整行卡片） -->
+    <div class="card wide" style="grid-column: span 2">
+      <span class="avatar">Han<img src="../web/src/assets/avatars/hanbing-bili.webp" alt="" onerror="this.remove()"></span>
+      <span class="body">
+        <span class="name-row"><span class="name">Hanbing</span></span>
+        <span class="role">主美画师 · 同学</span>
+        <span class="links">
+          <a class="link-btn" href="https://b23.tv/0rKu2FX" target="_blank" rel="noopener noreferrer">Bilibili</a>
+          <a class="link-btn" href="https://www.douyin.com/user/MS4wLjABAAAAGRTiaZQLJDMyV1w46jDo9tTOIwgsnoGNofUwMh6VS3Y_orxre8OQmuztrvZdlEu9" target="_blank" rel="noopener noreferrer">抖音</a>
+        </span>
+        <a class="lic" href="../web/public/permissions/hanbing-cc-by.jpg" target="_blank" rel="noopener noreferrer" title="权利人授权：署名使用，不允许任何形式的 AI 修改（点开看授权原文）"><span class="cc-mark"></span>CC BY</a>
+      </span>
+    </div>
+
+    <!-- 以下各 1 列 -->
     <div class="card">
       <span class="avatar">饼<img src="../web/src/assets/avatars/binggan-bskeke.jpg" alt="" onerror="this.remove()"></span>
-      <span class="who">
-        <span class="name">饼干</span>
+      <span class="body">
+        <span class="name-row"><span class="name">饼干</span></span>
         <span class="role">翻译 · 同学</span>
+        <span class="links">
+          <a class="link-btn" href="https://github.com/BS-keke" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="link-btn" href="https://space.bilibili.com/449528062" target="_blank" rel="noopener noreferrer">Bilibili</a>
+        </span>
       </span>
-      <span class="links">
-        <a class="link-btn" href="https://github.com/BS-keke" target="_blank" rel="noopener noreferrer">GitHub</a>
-        <a class="link-btn" href="https://space.bilibili.com/449528062" target="_blank" rel="noopener noreferrer">Bilibili</a>
-      </span>
-      <span class="tag">翻译</span>
     </div>
 
     <div class="card">
       <span class="avatar">维<img src="../web/src/assets/avatars/weizhou-whitemoon319.jpg" alt="" onerror="this.remove()"></span>
-      <span class="who">
+      <span class="body">
         <span class="name-row"><span class="name">维舟</span><span class="badge">该项目顾问</span></span>
         <span class="role">MAA-Meow</span>
+        <span class="links">
+          <a class="link-btn" href="https://github.com/WhiteMoon319" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </span>
       </span>
-      <span class="links">
-        <a class="link-btn" href="https://github.com/WhiteMoon319" target="_blank" rel="noopener noreferrer">GitHub</a>
-      </span>
-      <span class="tag">伙伴</span>
     </div>
 
     <div class="card">
       <span class="avatar">米<img src="../web/src/assets/avatars/midada-bili.webp" alt="" onerror="this.remove()"></span>
-      <span class="who">
-        <span class="name">米达达</span>
+      <span class="body">
+        <span class="name-row"><span class="name">米达达</span></span>
         <span class="role">表情包引用</span>
+        <span class="lic" title="权利人授权：署名 + 禁止商用"><span class="cc-mark"></span>CC BY-NC</span>
+        <span class="links">
+          <a class="link-btn" href="https://space.bilibili.com/3546769371695776" target="_blank" rel="noopener noreferrer">Bilibili</a>
+          <a class="link-btn" href="https://x.com/miratsu169" target="_blank" rel="noopener noreferrer">X</a>
+        </span>
       </span>
-      <span class="links">
-        <a class="link-btn" href="https://space.bilibili.com/3546769371695776" target="_blank" rel="noopener noreferrer">Bilibili</a>
-        <a class="link-btn" href="https://x.com/miratsu169" target="_blank" rel="noopener noreferrer">X</a>
-      </span>
-      <span class="lic" title="权利人授权：署名 + 禁止商用"><span class="cc-mark"></span>CC BY-NC</span>
-      <span class="tag">素材致谢</span>
     </div>
 
     <div class="card">
-      <span class="avatar">Han<img src="../web/src/assets/avatars/hanbing-bili.webp" alt="" onerror="this.remove()"></span>
-      <span class="who">
-        <span class="name">Hanbing</span>
-        <span class="role">主美画师 · 同学</span>
-      </span>
-      <span class="links">
-        <a class="link-btn" href="https://b23.tv/0rKu2FX" target="_blank" rel="noopener noreferrer">Bilibili</a>
-        <a class="link-btn" href="https://www.douyin.com/user/MS4wLjABAAAAGRTiaZQLJDMyV1w46jDo9tTOIwgsnoGNofUwMh6VS3Y_orxre8OQmuztrvZdlEu9" target="_blank" rel="noopener noreferrer">抖音</a>
-      </span>
-      <a class="lic" href="../web/public/permissions/hanbing-cc-by.jpg" target="_blank" rel="noopener noreferrer" title="权利人授权：署名使用，不允许任何形式的 AI 修改（点开看授权原文）"><span class="cc-mark"></span>CC BY</a>
-      <span class="tag">美术</span>
-    </div>
-
-    <!-- liuli1719 暂不在名单里；最后一张跨 2 列补满（其余 5 位 → 3 + 2） -->
-    <div class="card" style="grid-column: span 2">
       <span class="avatar">椿<img src="../web/src/assets/avatars/chunqiu-fxxggllj.jpg" alt="" onerror="this.remove()"></span>
-      <span class="who">
-        <span class="name">椿湫</span>
+      <span class="body">
+        <span class="name-row"><span class="name">椿湫</span></span>
         <span class="role">导师</span>
+        <span class="links">
+          <a class="link-btn" href="https://github.com/fxxggllj" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </span>
       </span>
-      <span class="links">
-        <a class="link-btn" href="https://github.com/fxxggllj" target="_blank" rel="noopener noreferrer">GitHub</a>
-      </span>
-      <span class="tag">指导</span>
     </div>
   </main>
+
   <footer>
     点名片上的按钮会在新标签页打开对方的 GitHub / B 站 / 抖音 / X 主页；<b>CC 标记</b>是权利人给出的作品许可，带凭据的那条点开就是授权原文。<br>
-    <b>本文件是宽屏版预览</b>：应用里的「关于 → 致谢 · 名片墙」已经接入同一份名单
-    （数据源 <code>web/src/lib/meta.ts</code> 的 <code>CREDITS</code>，412dp 下为 1×3 + 2×3）。
+    <b>本文件是宽屏设计稿</b>：应用里的「关于 → 致谢 · 名片墙」用同一份名单与同一套栏位规则
+    （数据源 <code>web/src/lib/meta.ts</code> 的 <code>CREDITS</code>）。
     头像取自各人 GitHub / B 站公开头像，已登记 <code>docs/asset-permissions.md</code>；加载失败自动退回姓名首字。
     平台剪影来自 <a href="https://github.com/Remix-Design/RemixIcon">Remix Icon</a>（Apache-2.0）。
     Tequed232 拥有本项目的最终解释权。
@@ -303,8 +286,8 @@
       document.querySelectorAll('.cc-mark').forEach(function (el) {
         el.innerHTML = svgOf(BRAND.cc, 13);
       });
-      // 其余名片 ≥2 个平台就只留剪影（排成一行）；作者那张够宽，保留文字
-      document.querySelectorAll('.card:not(.me) .links').forEach(function (row) {
+      // 单列名片里 ≥2 个平台按钮时只留剪影（与应用一致）
+      document.querySelectorAll('.card:not(.wide) .links').forEach(function (row) {
         var links = row.querySelectorAll('a.link-btn');
         if (links.length > 1) Array.prototype.forEach.call(links, function (a) { a.classList.add('icon-only'); });
       });

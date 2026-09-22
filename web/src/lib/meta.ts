@@ -53,8 +53,11 @@ export interface CreditPerson {
   badge?: string;
   /** 各平台公开头像（已登记在 docs/asset-permissions.md） */
   avatar: string;
-  /** 作者本人那张：跨三列高亮显示 */
-  lead?: boolean;
+  /**
+   * 跨列数（名片墙是 3 列网格）：作者 3 列（整行，高亮锚点卡）、画师 2 列，
+   * 其余不写＝1 列。宽卡（≥2）把小组件放到头像右侧；排布要让每行刚好铺满。
+   */
+  span?: 2 | 3;
   /** 主要联系平台，决定首字底色；默认 primary-container，'tertiary' 给以 B 站为主的人 */
   tone?: 'tertiary';
   /** 作品授权标记（权利人自己给出的许可） */
@@ -71,7 +74,7 @@ export const CREDITS: CreditPerson[] = [
     role: '项目发起 · 界面动效 · 数据与部署',
     mark: '罗',
     avatar: avatarLuo,
-    lead: true,
+    span: 3,
     badge: '项目作者',
     links: [
       { platform: 'github', label: 'GitHub', url: 'https://github.com/tequed232' },
@@ -80,6 +83,27 @@ export const CREDITS: CreditPerson[] = [
         platform: 'douyin',
         label: '抖音',
         url: 'https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F',
+      },
+    ],
+  },
+  {
+    displayName: 'Hanbing',
+    role: '主美画师 · 同学',
+    mark: 'H',
+    avatar: avatarHanbing,
+    tone: 'tertiary',
+    span: 2,
+    license: {
+      label: 'CC BY',
+      evidence: PERMISSION_HANBING_CC_BY,
+      note: '权利人授权：署名使用，不允许任何形式的 AI 修改（点开看授权原文）',
+    },
+    links: [
+      { platform: 'bilibili', label: 'Bilibili', url: 'https://b23.tv/0rKu2FX' },
+      {
+        platform: 'douyin',
+        label: '抖音',
+        url: 'https://www.douyin.com/user/MS4wLjABAAAAGRTiaZQLJDMyV1w46jDo9tTOIwgsnoGNofUwMh6VS3Y_orxre8OQmuztrvZdlEu9',
       },
     ],
   },
@@ -114,26 +138,6 @@ export const CREDITS: CreditPerson[] = [
     links: [
       { platform: 'bilibili', label: 'Bilibili', url: 'https://space.bilibili.com/3546769371695776' },
       { platform: 'x', label: 'X', url: 'https://x.com/miratsu169' },
-    ],
-  },
-  {
-    displayName: 'Hanbing',
-    role: '主美画师 · 同学',
-    mark: 'H',
-    avatar: avatarHanbing,
-    tone: 'tertiary',
-    license: {
-      label: 'CC BY',
-      evidence: PERMISSION_HANBING_CC_BY,
-      note: '权利人授权：署名使用，不允许任何形式的 AI 修改（点开看授权原文）',
-    },
-    links: [
-      { platform: 'bilibili', label: 'Bilibili', url: 'https://b23.tv/0rKu2FX' },
-      {
-        platform: 'douyin',
-        label: '抖音',
-        url: 'https://www.douyin.com/user/MS4wLjABAAAAGRTiaZQLJDMyV1w46jDo9tTOIwgsnoGNofUwMh6VS3Y_orxre8OQmuztrvZdlEu9',
-      },
     ],
   },
   {

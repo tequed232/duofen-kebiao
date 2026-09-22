@@ -60,17 +60,6 @@ function CreditAvatar({ person }: { person: CreditPerson }) {
   );
 }
 
-/**
- * 名片墙是 3 列：最后一行不满时，让最后一张跨列补满。
- * 例：其余 5 人 → 3 + 2，第 5 张跨 2 列；4 人 → 第 4 张跨 3 列；整除则不跨。
- */
-function creditSpan(person: CreditPerson, people: CreditPerson[]): number {
-  const others = people.filter((entry) => !entry.lead);
-  const remainder = others.length % 3;
-  if (remainder === 0 || others[others.length - 1] !== person) return 1;
-  return 4 - remainder;
-}
-
 /** 作品授权标记（权利人给的许可）：有凭据截图的就能点开原图，没有的只显示标记。 */
 function CreditLicenseMark({ license }: { license: CreditLicense }) {
   const { evidence, label, note } = license;
@@ -189,48 +178,50 @@ export default function AboutScreen() {
             感谢每一位让「{APP_NAME}」变得更好的人。点名片下方的按钮直达对方主页。
           </div>
           <div className="credits-wall mt-12">
-            {CREDITS.map((person) => (
-              <div
-                className={person.lead ? 'credit-card lead' : 'credit-card'}
-                key={person.displayName}
-                style={person.lead ? undefined : { gridColumn: `span ${creditSpan(person, CREDITS)}` }}
-              >
-                <div className="credit-head">
+            {CREDITS.map((person) => {
+              const span = person.span ?? 1;
+              const wide = span > 1;
+              return (
+                <div
+                  className={wide ? 'credit-card wide' : 'credit-card'}
+                  key={person.displayName}
+                  style={{ gridColumn: `span ${span}` }}
+                >
                   <CreditAvatar person={person} />
-                  <span className="credit-who">
+                  <div className="credit-body">
                     <span className="row gap-8 credit-name-row">
-                      <span className={person.lead ? 'md-title-medium-emphasized' : 'md-title-small-emphasized'}>
+                      <span className={wide ? 'md-title-medium-emphasized' : 'md-title-small-emphasized'}>
                         {person.displayName}
                       </span>
                       {person.badge ? (
-                        <span className={person.lead ? 'credit-badge' : 'credit-badge soft'}>{person.badge}</span>
+                        <span className={wide ? 'credit-badge' : 'credit-badge soft'}>{person.badge}</span>
                       ) : null}
                     </span>
                     <span className="md-body-small muted">{person.role}</span>
-                  </span>
+                    {person.license ? <CreditLicenseMark license={person.license} /> : null}
+                    <div className="credit-links">
+                      {person.links.map((link) => {
+                        /* 1 列的小名片挤不下两个文字按钮时只留剪影；宽卡一律保留文字 */
+                        const compact = !wide && person.links.length > 1;
+                        return (
+                          <button
+                            key={link.url}
+                            type="button"
+                            className={compact ? 'credit-link icon-only' : 'credit-link'}
+                            title={`${link.label} · ${link.url}`}
+                            aria-label={link.label}
+                            onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                          >
+                            <PlatformMark brand={link.platform} size={compact ? 14 : 12} />
+                            {compact ? null : link.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                {person.license ? <CreditLicenseMark license={person.license} /> : null}
-                <div className="credit-links">
-                  {person.links.map((link) => {
-                    /* 其余名片 ≥2 个平台就只留剪影（一行放得下）；单平台的、以及够宽的作者卡保留文字按钮 */
-                    const compact = !person.lead && person.links.length > 1;
-                    return (
-                      <button
-                        key={link.url}
-                        type="button"
-                        className={compact ? 'credit-link icon-only' : 'credit-link'}
-                        title={`${link.label} · ${link.url}`}
-                        aria-label={link.label}
-                        onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
-                      >
-                        <PlatformMark brand={link.platform} size={compact ? 14 : 12} />
-                        {compact ? null : link.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="md-body-small muted mt-8">
             名片按「作者 + 感谢的人」排列；头像取自各人在 GitHub / B 站等平台的公开头像（已登记授权台账），
