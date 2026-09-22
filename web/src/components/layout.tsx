@@ -79,7 +79,9 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const navSelectTab = useNav().selectTab;
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
-  /* 液态玻璃透镜：按 dock 实际尺寸生成位移贴图（BEZEL / STRENGTH / ZOOM 见 lens.ts） */
+  /* 液态玻璃透镜：按 dock 实际尺寸生成位移贴图（BEZEL / STRENGTH / ZOOM 见 lens.ts）。
+     真机核对手续：先关掉开发者选项里的「指针位置」「显示布局边界」再截图，
+     否则那些调试叠层会被误认成应用的渲染问题。 */
   useLens(dockRef, LENS_PLAYER);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
@@ -94,11 +96,6 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const pendingXRef = useRef(0);
   /** 拖动中跟手的小球：位置每帧写一次 CSS 变量，不触发 React 渲染 */
   const dragBallRef = useRef<HTMLSpanElement>(null);
-  /** 小球形变：速度（px/ms）驱动椭圆拉伸，松手/停下自动回圆 */
-  const speedRef = useRef(0);
-  const stretchRef = useRef(1);
-  const lastMoveRef = useRef({ x: 0, t: 0 });
-  const relaxRef = useRef<number | undefined>(undefined);
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -128,26 +125,14 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     const stretch = Math.min(1.37, 1 + (offset * 0.25) / 54);
     const halfCell = geo.cell / 2;
     element.style.setProperty('--pill-x', `${(x - halfCell).toFixed(1)}px`);
-    element.style.setProperty('--pill-width', stretch.toFixed(3));
+    // 变量协议：--pill-x 是位移（px），--pill-stretch 是拉伸比例（1→1.37，scaleX 用）。
+    // 以前这里写的是一份「比例」但 CSS 当长度用（width: var(--pill-width)），导致拉伸失效。
+    element.style.setProperty('--pill-stretch', stretch.toFixed(3));
     element.style.setProperty('--dock-x', `${((x / geo.width) * 100).toFixed(1)}%`);
-    // 跟手的小球：位置 + 形变各写一个变量，一帧只写一次
-    const ball = dragBallRef.current;
-    if (ball) {
-      ball.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
-      writeBallStretch(ball);
-    }
+    // 跟手的小球：只写位置（形状不再跟速度拉伸 —— 拖动期间的"流体椭圆"交给滑块那套，
+    // 小球保持正圆，避免两个椭圆同时出现，也省掉每帧的混合/过渡开销）
+    dragBallRef.current?.style.setProperty('--ball-x', `${x.toFixed(1)}px`);
     setHoverIndex(nearest);
-  };
-
-  /** 速度 → 椭圆：拖得越快球越长（scaleX），同时压一点高度保持体积感；停下自动回圆 */
-  const writeBallStretch = (ball: HTMLElement) => {
-    const speed = speedRef.current; // px/ms
-    const target = clamp(1 + speed * 3.2, 1, 1.6);
-    // 拉长比收缩快、回弹比拉长慢 —— 观感更像流体
-    stretchRef.current = target > stretchRef.current ? target : Math.max(target, stretchRef.current - 0.045);
-    const value = stretchRef.current;
-    ball.style.setProperty('--ball-stretch', value.toFixed(3));
-    ball.style.setProperty('--ball-squash', (1 / Math.sqrt(value)).toFixed(3));
   };
 
   /** 小球首次出现时先摆到手指位置（React 渲染晚于 applyFrame 一帧） */
@@ -164,27 +149,6 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     if (frameRef.current === undefined) frameRef.current = window.requestAnimationFrame(applyFrame);
   };
 
-  /** 手指停住时速度自然衰减，小球从椭圆收回圆（只在拖动期间跑，松手即停） */
-  const startRelax = () => {
-    if (relaxRef.current !== undefined) return;
-    const step = () => {
-      if (!draggingRef.current) {
-        relaxRef.current = undefined;
-        return;
-      }
-      speedRef.current *= 0.82;
-      if (speedRef.current < 0.02) speedRef.current = 0;
-      const ball = dragBallRef.current;
-      if (ball) writeBallStretch(ball);
-      if (speedRef.current === 0 && stretchRef.current <= 1.002) {
-        relaxRef.current = undefined;
-        return;
-      }
-      relaxRef.current = window.requestAnimationFrame(step);
-    };
-    relaxRef.current = window.requestAnimationFrame(step);
-  };
-
   const onDown = (event: React.PointerEvent<HTMLElement>) => {
     if (!dockRef.current) return;
     geoRef.current = measure(); // 只在这里读布局
@@ -193,19 +157,10 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     pendingXRef.current = event.clientX;
     draggingRef.current = true;
     setDragging(true);
-    speedRef.current = 0;
-    stretchRef.current = 1;
-    lastMoveRef.current = { x: event.clientX, t: performance.now() };
     applyFrame();
-    startRelax();
 
     const onWindowMove = (moveEvent: PointerEvent) => {
       if (!draggingRef.current) return;
-      // 速度用「本次位移 / 间隔」估算（不读布局），驱动小球的椭圆拉伸
-      const now = performance.now();
-      const dt = Math.max(8, now - lastMoveRef.current.t);
-      speedRef.current = Math.abs(moveEvent.clientX - lastMoveRef.current.x) / dt;
-      lastMoveRef.current = { x: moveEvent.clientX, t: now };
       pendingXRef.current = moveEvent.clientX;
       scheduleFrame(); // 合帧：一帧最多写一次
     };
@@ -217,12 +172,6 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
           window.cancelAnimationFrame(frameRef.current);
           frameRef.current = undefined;
         }
-        if (relaxRef.current !== undefined) {
-          window.cancelAnimationFrame(relaxRef.current);
-          relaxRef.current = undefined;
-        }
-        speedRef.current = 0;
-        stretchRef.current = 1;
         const geo = geoRef.current;
         const element = dockRef.current;
         if (geo && element) {
