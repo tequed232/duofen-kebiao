@@ -169,8 +169,6 @@ export default function ScheduleScreen() {
           actions={
             <>
               <MdIconButton className="appbar-textbooks" icon="menu_book" label="查看教材" onClick={() => nav.push('textbookList', {}, 'slide')} />
-              <MdIconButton className="appbar-today" icon="today" label="回到今天" onClick={goToday} />
-              <MdIconButton className="appbar-record" icon="photo_camera" label="语音与图片记录" onClick={() => nav.push('home', {}, 'slide')} />
               <MdIconButton className="appbar-import" icon="edit" label="课表数据与导入" onClick={() => setImportOpen(true)} />
             </>
           }
@@ -252,6 +250,11 @@ export default function ScheduleScreen() {
           </div>
         </div>
       </div>
+
+      {/* 回到今天：右下角常驻，单手拇指够得到（原来在顶栏最右边，够不着） */}
+      <md-fab className="schedule-today-fab" variant="primary" label="回到今天" onClick={goToday}>
+        <MdIcon slot="icon" name="today" />
+      </md-fab>
 
       <CourseDetailSheet
         open={detailOpen}
