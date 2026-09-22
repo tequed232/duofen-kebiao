@@ -1,3 +1,24 @@
+## 多分课表 v3.0.1 —— 内容安全区修复
+
+### 下载
+- 安装包：`enhance-3.0.1.apk`（覆盖安装保留数据）
+- 短链（始终最新）：https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk
+  （安装包只作为 Release 附件，已从仓库与 Pages 剔除）
+- 网页版：https://tequed232.github.io/duofen-kebiao/
+
+### 本版修复：内容安全区（首页 / 搜索 / 设置 / 关于 / 教材）
+- **症状**：逐页滚到底时，最后一屏内容被底栏压住、在首页还会被「回到今天」FAB 压住，看起来就是"内容显示不全"。
+- **根因**：让位规则写的是 `.phone > .screen-inner > .screen-content`，而真实 DOM 是
+  `.phone > .screen > .screen-inner > .screen-content`（中间还有一层 `.screen`）——
+  选择器从未命中，计算出来的下内边距一直是基础规则的 12px。
+- **修复**：改成后代选择器 `.phone .screen-content`；首页当天列表只额外让开 FAB，
+  与全局的底栏让位分工，避免重复留白。
+- **实测**（浏览器逐页 + 真机复核）：滚到底时最后一块内容与底栏的余量
+  课表 +16 / 搜索 +16 / 设置 +16 / 关于 +32 px；首页最后一张课程卡片落在 726，FAB 从 744 起。
+- 版本号同步 v3.0.1（`APP_VERSION` 单一来源 → APK `versionName 3.0.1` / `versionCode 30001`）。
+
+---
+
 ## 多分课表 v3.0.0 —— 液态玻璃重构（透镜折射 / 边缘色散 / 散射 dock）
 
 ### 下载

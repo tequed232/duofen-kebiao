@@ -8,12 +8,11 @@
   padding: 0 16px 8px;
 }
 
-/* 首页「当天课程」列表：底部要同时让开两个常驻控件 ——
-   「回到今天」FAB（56）与底栏（68），否则只有一节课、内容滚到底时卡片会被它们压住
-   （实测：卡片 772~856，FAB 744~800、底栏从 814 起，分别重叠 28 / 42px）。 */
+/* 首页「当天课程」列表：底栏的让位由 .phone .screen-content 统一负责（见上），
+   这里只额外让开「回到今天」FAB（56 高）——两个一起让才不会重复留白。 */
 .schedule-day-list {
   padding: 0 16px;
-  padding-bottom: calc(56px + 68px + 16px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
+  padding-bottom: calc(56px + 16px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
 }
 
 /* 课表页头图：**暂时下架**（主美会另出更好的图）。
@@ -1108,8 +1107,12 @@ html[data-perf='low'] .m3e-dock {
   padding-bottom: 0;
 }
 
-.phone > .screen > .screen-content,
-.phone > .screen-inner > .screen-content {
+/* 内容安全区（底栏）：**用后代选择器**。
+   真实 DOM 是 .phone > .screen > .screen-inner > .screen-content，
+   之前写成 .phone > .screen-inner > .screen-content（少了中间那层 .screen），
+   于是整条规则从未命中 —— 计算出来的下内边距还是基础规则的 12px，
+   最后一屏内容被底栏压住 66px、被 FAB 压住 136px（作者看到的就是「内容显示不全」）。 */
+.phone .screen-content {
   padding-bottom: calc(68px + 26px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
 }
 
@@ -1142,8 +1145,7 @@ html[data-perf='low'] .m3e-dock {
   padding-bottom: 0 !important;
 }
 
-.phone > .screen > .screen-content,
-.phone > .screen-inner > .screen-content {
+.phone .screen-content {
   padding-bottom: calc(68px + 26px + var(--safe-bottom)) !important;
 }
 
