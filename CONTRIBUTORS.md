@@ -4,7 +4,7 @@
 
 这份名单同时出现在三处，**必须保持同一口径**：应用「关于 → 致谢 · 名片墙」、本文件、README。
 应用侧的数据源是 [`web/src/lib/meta.ts`](./web/src/lib/meta.ts) 的 `CREDITS`（名片墙 = 作者本人 1×3 整行 + 其余三列排布，
-最后一行不满时最后一张跨列补满）。名单里用**网名 / 昵称**；真名只出现在课表数据中（按教务导出的原文保留，不改）。
+最后一行不满时最后一张跨列补满）。名单里用**网名 / 昵称**署名。
 
 | 名片 | 角色 | 主要贡献 | 链接 |
 | --- | --- | --- | --- |
@@ -13,7 +13,7 @@
 | 维舟（MAA-Meow） | 同学 · 协助 | 协助（MAA-Meow） | [GitHub](https://github.com/WhiteMoon319) |
 | 米达达 | 表情包引用 | 表情包被项目引用，特此致谢 | [Bilibili](https://space.bilibili.com/3546769371695776) |
 | Hanbing | 主美画师 · 同学 | 主视觉与美术绘制 | [Bilibili](https://b23.tv/0rKu2FX) |
-| 椿湫 | 导师 | 项目指导（**网名**；课表数据里按教务原文保留真名） | [GitHub](https://github.com/fxxggllj) |
+| 椿湫 | 导师 | 项目指导 | [GitHub](https://github.com/fxxggllj) |
 | liuli1719（星爱流萤） | 同学 | 界面走查与体验反馈，贡献者名单共建 | [GitHub](https://github.com/liuli1719) |
 
 > 名片头像是各人在 GitHub / B 站的**公开头像**，已登记在 [`docs/asset-permissions.md`](./docs/asset-permissions.md)；
