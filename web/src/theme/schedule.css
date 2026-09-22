@@ -1027,35 +1027,38 @@ html[data-perf='low'] .m3e-dock-slider {
   border-radius: inherit;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.95;
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  opacity: 0.9;
+  /* 散射不能压过折射：折射只发生在边缘，而这一层最重的模糊带正好也在边缘 ——
+     20px 会把"被掰弯"的观感抹平（作者反馈「只看到毛玻璃、看不出折射」），
+     降到 11px 并把带宽收窄，让边缘既散得开、又留得住形变。 */
+  backdrop-filter: blur(11px) saturate(1.4);
+  -webkit-backdrop-filter: blur(11px) saturate(1.4);
   background:
     linear-gradient(
       to bottom,
-      color-mix(in srgb, #ffffff 12%, transparent) 0%,
-      transparent 30%
+      color-mix(in srgb, #ffffff 10%, transparent) 0%,
+      transparent 26%
     ),
     linear-gradient(
       to top,
-      color-mix(in srgb, #ffffff 7%, transparent) 0%,
-      transparent 18%
+      color-mix(in srgb, #ffffff 6%, transparent) 0%,
+      transparent 15%
     );
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000 0%,
-    color-mix(in srgb, #000 52%, transparent) 30%,
-    transparent 50%,
-    transparent 72%,
-    color-mix(in srgb, #000 60%, transparent) 100%
+    color-mix(in srgb, #000 42%, transparent) 22%,
+    transparent 40%,
+    transparent 76%,
+    color-mix(in srgb, #000 55%, transparent) 100%
   );
   mask-image: linear-gradient(
     to bottom,
     #000 0%,
-    color-mix(in srgb, #000 52%, transparent) 30%,
-    transparent 50%,
-    transparent 72%,
-    color-mix(in srgb, #000 60%, transparent) 100%
+    color-mix(in srgb, #000 42%, transparent) 22%,
+    transparent 40%,
+    transparent 76%,
+    color-mix(in srgb, #000 55%, transparent) 100%
   );
 }
 

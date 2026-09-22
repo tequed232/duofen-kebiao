@@ -108,9 +108,9 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     const rMatrix = channelMatrix('r');
     const gMatrix = channelMatrix('g');
     const bMatrix = channelMatrix('b');
-    const rDisp = channelDisp('r', 1.6);
+    const rDisp = channelDisp('r', 1.0);
     const gDisp = channelDisp('g', 0);
-    const bDisp = channelDisp('b', -1.6);
+    const bDisp = channelDisp('b', -1.0);
     const blendR = document.createElementNS(SVG_NS, 'feBlend');
     blendR.setAttribute('in', 'r');
     blendR.setAttribute('in2', 'g');
@@ -127,8 +127,9 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     const host: LensHost = { filter, blur, image, disp, backdropFilter, key: '' };
     hostRef.current = host;
     element.style.setProperty('--lg-map-url', `url(#${id})`);
-    /* --lg-backdrop 是给 CSS 的「玻璃链」：透镜 + 轻磨砂，直接贴到 backdrop-filter 上 */
-    element.style.setProperty('--lg-backdrop', `url(#${backdropId}) blur(4px) saturate(1.6)`);
+    /* --lg-backdrop 是给 CSS 的「玻璃链」：透镜 + 轻磨砂，直接贴到 backdrop-filter 上。
+       磨砂要**轻**（2px）：折射只在边缘发生，模糊一大就把掰弯的观感抹平了。 */
+    element.style.setProperty('--lg-backdrop', `url(#${backdropId}) blur(2px) saturate(1.6)`);
 
     const update = () => {
       if (lowPerf() || !element.isConnected) return;
@@ -148,10 +149,10 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       image.setAttribute('href', map.mapUrl);
       disp.setAttribute('scale', map.scale.toFixed(2));
       blur.setAttribute('stdDeviation', String(Math.max(0.6, params.strength)));
-      /* backdrop 那份：贴图相同、位移收窄到 30% 且封顶 14px ——
+      /* backdrop 那份：贴图相同、位移收窄到 30% 且封顶 18px ——
          这是「内容被玻璃边缘掰弯」的可见量级；再大就会出现撕裂感而不是透镜感。
          三个通道的位移各差 ±offset，差量就是色散的强度（0 即无色边）。 */
-      const backdropScale = Math.min(14, map.scale * 0.3);
+      const backdropScale = Math.min(26, map.scale * 0.4);
       backdropFilter.setAttribute('width', String(width));
       backdropFilter.setAttribute('height', String(height));
       backdropImage.setAttribute('width', String(width));

@@ -4,7 +4,7 @@ import { MdIcon, MdIconButton } from './md';
 import { useNav } from '../nav/navigation';
 import { useAppState } from '../state/AppState';
 import { isNativeShell, haptic } from '../lib/native';
-import { LENS_PLAYER } from '../lib/lens';
+import { LENS_DOCK } from '../lib/lens';
 import { useLens } from '../lib/useLens';
 
 /* ------------------------------------------------------------- app bar --- */
@@ -82,7 +82,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   /* 液态玻璃透镜：按 dock 实际尺寸生成位移贴图（BEZEL / STRENGTH / ZOOM 见 lens.ts）。
      真机核对手续：先关掉开发者选项里的「指针位置」「显示布局边界」再截图，
      否则那些调试叠层会被误认成应用的渲染问题。 */
-  useLens(dockRef, LENS_PLAYER);
+  useLens(dockRef, LENS_DOCK);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -98,6 +98,8 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const accelHoldRef = useRef(0);
   const shapeFrameRef = useRef<number | undefined>(undefined);
   const lastMoveRef = useRef({ x: 0, t: 0 });
+  /** 是否已经拖动过（轻点不算拖动：碰撞触感与形变都只该在拖动时出现） */
+  const movedRef = useRef(false);
   /** 是否已经贴住边界（用于"刚撞上"的那一次触感） */
   const inWallRef = useRef(false);
 
@@ -128,19 +130,21 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     // 参考实现：54 → 上限 74（约 1.37 倍），用 scaleX 实现（不触发 layout）
     const stretch = Math.min(1.37, 1 + (offset * 0.25) / 54);
     const halfCell = geo.cell / 2;
-    /* 物理：色块撞到 dock 内边界时**先夹在边界内、再压扁** ——
-       顶边那一侧横向收紧、纵向鼓起，越贴边压得越扁（上限 30%），松手由 CSS 回弹曲线弹回。 */
     const pad = 6;
     const cellWidth = geo.cell - 4; // 滑块宽度（含 4px 间隙）
     const rawLeft = x - halfCell;
     const limit = Math.max(pad, geo.width - pad - cellWidth);
     const left = Math.min(Math.max(rawLeft, pad), limit);
-    const overflow = Math.abs(rawLeft - left);
-    const squash = Math.min(0.32, overflow / 70);
+    /* 撞墙的判定：色块已经被夹住（走不动了）**并且**手指偏离色块中心超过半格 ——
+       也就是"还在往里推"。只看色块被夹住是不行的：点最右边的标签时色块本来就会停在行程终点，
+       那会误报成撞墙（真机上就是这么误报的）。 */
+    const clamped = Math.abs(rawLeft - left) > 0.5;
+    const push = Math.max(0, Math.abs(x - (left + halfCell)) - halfCell);
+    const squash = Math.min(0.32, push / 60);
+    const inWall = movedRef.current && clamped && push > 1;
     element.style.setProperty('--pill-x', `${left.toFixed(1)}px`);
     /* 碰壁触感：只在"刚撞上"的那一帧响一次（inWallRef 记录状态），
        不然每帧都命中边界会连成一片嗡嗡声。 */
-    const inWall = overflow > 1;
     if (inWall && !inWallRef.current) haptic('wall');
     inWallRef.current = inWall;
     // 变量协议：--pill-x 是位移（px），--pill-stretch 是流体拉伸比例（1→1.37，scaleX 用）。
@@ -215,12 +219,14 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     accelRef.current = 0;
     accelHoldRef.current = 0;
     inWallRef.current = false;
+    movedRef.current = false;
     lastMoveRef.current = { x: event.clientX, t: performance.now() };
     applyFrame();
     startShapeLoop();
 
     const onWindowMove = (moveEvent: PointerEvent) => {
       if (!draggingRef.current) return;
+      movedRef.current = true; // 真的拖起来了（撞墙触感与形变都以此为前提）
       // 速度 → 加速度：都用「本次位移 / 间隔」估算，不读布局
       const now = performance.now();
       const dt = Math.max(8, now - lastMoveRef.current.t);

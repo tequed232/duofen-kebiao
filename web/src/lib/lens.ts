@@ -27,6 +27,8 @@ export interface LensParams {
 
 export const LENS_PLAYER: LensParams = { bezel: 0.58, strength: 1.2, zoom: 0.02, edge: 0.2 };
 export const LENS_PANEL: LensParams = { bezel: 0.9, strength: 2.5, zoom: 0.025, edge: 0.3 };
+/** 底栏专用：比播放条那套更厚更狠 —— 底栏很扁（68 高），bezel 窄了根本看不出掰弯 */
+export const LENS_DOCK: LensParams = { bezel: 0.85, strength: 1.6, zoom: 0.025, edge: 0.26 };
 
 export interface LensMap {
   mapUrl: string;
