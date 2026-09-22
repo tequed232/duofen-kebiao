@@ -63,54 +63,28 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 ];
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
-  // 甩掉历史包袱：原生宿主里底边栏由 NativeDock（酷安布局）负责，网页不再绘制；
-  // 浏览器里用 Material 3 标准底栏。
-  // 注意：md-navigation-bar 是 Lit 元素，事件必须用 addEventListener 绑定
-  //（React 的 onXxx 属性它不认，之前因此导致"点标签没反应"）。
-  const ref = useRef<HTMLElement & { activeIndex: number }>(null);
-  const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return undefined;
-    element.activeIndex = activeIndex;
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ index: number }>).detail;
-      const tab = TABS[detail?.index ?? 0];
-      if (tab) onSelect(tab.id);
-    };
-    element.addEventListener('navigation-bar-item-activated', handler);
-    return () => element.removeEventListener('navigation-bar-item-activated', handler);
-  }, [activeIndex, onSelect]);
-
+  // 朴素自绘底栏：只用 <button> + CSS。不依赖 md-navigation-bar 的 Lit 事件，
+  // 也不依赖原生桥 —— 因此"可见"与"可点"都由这一份代码保证。
   return (
-    // 整条底栏兜底可点：即使 md-navigation-tab 的事件在某些 WebView 里没触发，
-    // 按点击的横向位置换算标签也能切换 —— 保证"点哪儿都能用"。
-    <div
-      className="app-nav-bar"
-      onClick={(event) => {
-        const target = event.currentTarget as HTMLElement;
-        const rect = target.getBoundingClientRect();
-        if (!rect.width) return;
-        const index = Math.min(
-          TABS.length - 1,
-          Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * TABS.length)),
-        );
-        const tab = TABS[index];
-        if (tab && tab.id !== active) onSelect(tab.id);
-      }}
-    >
-      <md-navigation-bar ref={ref as never}>
-        {TABS.map((tab) => (
-          <md-navigation-tab key={tab.id} label={tab.label} onClick={() => onSelect(tab.id)}>
-            <MdIcon slot="icon" name={tab.icon} />
-            {tab.activeIcon ? <MdIcon slot="active-icon" name={tab.activeIcon} /> : null}
-          </md-navigation-tab>
-        ))}
-      </md-navigation-bar>
-    </div>
+    <nav className="m3e-dock" aria-label="主导航">
+      {TABS.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          className={`m3e-dock-tab${tab.id === active ? ' active' : ''}`}
+          aria-label={tab.label}
+          aria-current={tab.id === active ? 'page' : undefined}
+          onClick={() => onSelect(tab.id)}
+        >
+          <span className="m3e-dock-pill" aria-hidden="true" />
+          <MdIcon name={tab.id === active ? (tab.activeIcon ?? tab.icon) : tab.icon} size={24} />
+          <span className="m3e-dock-label">{tab.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
+
 export function SectionHeader({
   icon,
   title,
