@@ -58,6 +58,14 @@ export default function App() {
   const [splash, setSplash] = useState(true);
   const [entering, setEntering] = useState(false);
 
+  // 性能模式：high 全特效 / low 关特效 / auto 交给自动检测（perf.ts 按掉帧情况降级）
+  useEffect(() => {
+    const root = document.documentElement;
+    if (settings.perfMode === 'high') root.dataset.perf = 'high';
+    else if (settings.perfMode === 'low') root.dataset.perf = 'low';
+    else root.dataset.perf = root.dataset.perfAuto ?? 'high';
+  }, [settings.perfMode]);
+
   // 安全区覆盖：-1 表示自动（跟随系统 env() / APK 注入的原生 inset）。
   // Web 与 APK 共用这两个变量，因此两端留白逻辑完全一致。
   useEffect(() => {

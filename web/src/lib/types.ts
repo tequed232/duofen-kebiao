@@ -65,6 +65,8 @@ export interface AppSettings {
   uiScale: 'small' | 'normal' | 'large';
   /** 上端安全区（dp）：-1 = 自动跟随系统状态栏/刘海 */
   insetTop: number;
+  /** 性能模式：high = 全特效；low = 关闭玻璃滤镜与流体拉伸；auto = 自动检测 */
+  perfMode: 'auto' | 'high' | 'low';
   /** 下端安全区（dp）：-1 = 自动跟随系统手势条 */
   insetBottom: number;
   /** 提前多少分钟提醒（可调） */
@@ -92,6 +94,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   classReminder: true,
   uiScale: 'normal',
   insetTop: -1,
+  perfMode: 'auto',
   insetBottom: -1,
   classReminderLead: 10,
   transition: 'm3',

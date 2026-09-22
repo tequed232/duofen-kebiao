@@ -25,6 +25,7 @@ export default function SettingsScreen() {
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
+  const [perfDialogOpen, setPerfDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 卡扣（每 5%）落位时给数值一个短促的反馈 */
   const [snapPulse, setSnapPulse] = useState({ speech: false, camera: false });
@@ -111,6 +112,22 @@ export default function SettingsScreen() {
                   : settings.uiScale === 'large'
                     ? '大：整页 108%'
                     : '标准：100%（当前）'}
+              </div>
+              <MdIcon slot="end" name="chevron_right" />
+            </md-list-item>
+
+            {/* ------------------------------- 性能模式：高性能 / 自动 / 低性能 */}
+            <md-list-item type="button" className="rounded-middle" onClick={() => setPerfDialogOpen(true)}>
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="speed" />
+              </div>
+              <div slot="headline">性能模式</div>
+              <div slot="supporting-text">
+                {settings.perfMode === 'high'
+                  ? '高性能：液态玻璃模糊/折射/散射 + 流体拉伸 + 弹性过渡（观感最佳）'
+                  : settings.perfMode === 'low'
+                    ? '低性能：无滤镜、无流体拉伸、瞬时切换（最省电、最稳）'
+                    : '自动：出现掉帧时自动降级（默认）'}
               </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
@@ -367,6 +384,33 @@ export default function SettingsScreen() {
       
 
       
+
+      <MdDialog
+        open={perfDialogOpen}
+        headline="性能模式"
+        onClosed={() => setPerfDialogOpen(false)}
+        actions={<md-text-button onClick={() => setPerfDialogOpen(false)}>取消</md-text-button>}
+      >
+        同一个安装包内置两档，随时可切（Web 与安卓共用同一份构建，两端一致）：
+        <div className="col gap-8 mt-12">
+          {([
+            ['high', '高性能：玻璃模糊 + 折射 + 散射 + 流体拉伸 + 弹性过渡'],
+            ['auto', '自动（推荐）：掉帧时自动降级'],
+            ['low', '低性能：无滤镜、无流体拉伸、瞬时切换'],
+          ] as const).map(([value, label]) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setPerfDialogOpen(false);
+                updateSettings({ perfMode: value }, { message: `性能模式：${label.split('：')[0]}` });
+              }}
+            >
+              {settings.perfMode === value ? '✓ ' : ''}
+              {label}
+            </md-outlined-button>
+          ))}
+        </div>
+      </MdDialog>
 
       <MdDialog
         open={scaleDialogOpen}

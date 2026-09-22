@@ -100,6 +100,7 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "settings_backup_restore": 0xe8ba,
   "shapes": 0xe602,
   "share": 0xe80d,
+  "speed": 0xe9e4,
   "stop": 0xe047,
   "stop_circle": 0xef71,
   "storage": 0xe1db,

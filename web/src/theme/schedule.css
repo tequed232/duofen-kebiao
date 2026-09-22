@@ -1214,3 +1214,44 @@ html[data-perf='low'] .m3e-dock-slider-reflection {
 .m3e-dock-tab.hovered {
   color: var(--md-sys-color-on-surface);
 }
+
+
+/* ==================== 性能两档差异（html[data-perf]） ====================
+   高性能：液态玻璃模糊/折射/散射 + 流体拉伸 + 弹性过渡
+   低性能：不透明表面、无滤镜、无流体拉伸、瞬时切换 */
+html[data-perf='low'] .m3e-dock {
+  background: var(--md-sys-color-surface-container-high);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 2px 8px color-mix(in srgb, #000 24%, transparent);
+}
+
+html[data-perf='low'] .m3e-dock-refraction,
+html[data-perf='low'] .m3e-dock-specular,
+html[data-perf='low'] .m3e-dock-slider-reflection {
+  display: none;
+}
+
+html[data-perf='low'] .m3e-dock-slider {
+  transition: transform 160ms linear;
+}
+
+html[data-perf='low'] .m3e-dock.dragging .m3e-dock-slider {
+  width: calc((100% - 12px - 8px) / 3);
+  transition: none;
+}
+
+html[data-perf='low'] .app-bar {
+  background: var(--md-sys-color-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-perf='low'] .screen {
+  animation-duration: 160ms !important;
+}
+
+html[data-perf='high'] .m3e-dock {
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+}

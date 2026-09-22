@@ -62,8 +62,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // 与网页同源：versionCode/versionName 由 web/src/lib/meta.ts 决定
-        versionCode = 20500   // v2.5.0 → 20500（显式钉住，单调递增）
-        versionName = "2.5.0"
+        versionCode = 20600   // v2.6.0 → 20600（单调递增）
+        versionName = "2.6.0"
 
         ndk {
             // 天玑 9400（MT6991）为 arm64-v8a
