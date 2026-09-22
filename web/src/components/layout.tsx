@@ -63,11 +63,104 @@ const TABS: { id: NavTabId; label: string; icon: string }[] = [
 ];
 
 export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
-  // 纯自绘底栏：一个滑动滑块 + 三个按钮。滑块随选中项左右平移（与页面平移同节奏），
-  // 不依赖任何 Lit 组件或原生桥 —— 可见、可点、动画同步都由这一份代码保证。
+  // 自绘底栏 + 液态玻璃（折射）效果。
+  //
+  // 交互原则（作者要求）：**位置即结果** —— 手指/指针落在哪一格，就是哪一格；
+  // 拖动经过哪一格，就实时切到哪一格；松手停在哪里，就留在哪里。
+  // 因此切换**完全由指针坐标决定**，不依赖每个按钮的 click（避免点击被吞或"点A到B"）。
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
+  const dockRef = useRef<HTMLElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const draggingRef = useRef(false);
+
+  /** 指针 x → 标签序号（0..2），并同步滑块位置 */
+  const indexAt = (clientX: number) => {
+    const element = dockRef.current;
+    if (!element) return activeIndex;
+    const rect = element.getBoundingClientRect();
+    if (!rect.width) return activeIndex;
+    const ratio = Math.min(0.9999, Math.max(0, (clientX - rect.left) / rect.width));
+    element.style.setProperty('--dock-drag', String(ratio));
+    return Math.min(TABS.length - 1, Math.floor(ratio * TABS.length));
+  };
+
+  const commit = (index: number) => {
+    const tab = TABS[index];
+    if (tab && tab.id !== active) onSelect(tab.id);
+  };
+
+  const onDown = (event: React.PointerEvent<HTMLElement>) => {
+    const element = dockRef.current;
+    if (!element) return;
+    element.setPointerCapture?.(event.pointerId);
+    draggingRef.current = true;
+    setDragging(true);
+    commit(indexAt(event.clientX)); // 落在哪一格就立刻切到哪一格
+  };
+
+  const onMove = (event: React.PointerEvent<HTMLElement>) => {
+    if (!draggingRef.current) return;
+    commit(indexAt(event.clientX)); // 拖动经过哪一格就实时切到哪一格
+  };
+
+  const onUp = (event: React.PointerEvent<HTMLElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    setDragging(false);
+    commit(indexAt(event.clientX)); // 松手停在哪就在哪
+    const element = dockRef.current;
+    element?.style.removeProperty('--dock-drag');
+  };
+
+  useEffect(() => {
+    const element = dockRef.current;
+    if (!element) return undefined;
+    let decay = 0;
+    let raf: number | undefined;
+    const onPointerMove = (event: PointerEvent) => {
+      const rect = element.getBoundingClientRect();
+      element.style.setProperty('--dock-x', `${((event.clientX - rect.left) / rect.width) * 100}%`);
+      element.style.setProperty('--dock-y', `${((event.clientY - rect.top) / rect.height) * 100}%`);
+    };
+    const onScroll = () => {
+      decay = 1;
+      if (raf === undefined) {
+        const tick = () => {
+          decay *= 0.86;
+          element.style.setProperty('--dock-scroll', decay.toFixed(3));
+          raf = decay > 0.02 ? window.requestAnimationFrame(tick) : undefined;
+        };
+        raf = window.requestAnimationFrame(tick);
+      }
+    };
+    element.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      element.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('scroll', onScroll);
+      if (raf !== undefined) window.cancelAnimationFrame(raf);
+    };
+  }, []);
+
   return (
-    <nav className="m3e-dock" aria-label="主导航" style={{ '--m3e-active': String(activeIndex) } as React.CSSProperties}>
+    <nav
+      className={`m3e-dock${dragging ? ' dragging' : ''}`}
+      aria-label="主导航"
+      ref={dockRef}
+      style={{ '--m3e-active': String(activeIndex) } as React.CSSProperties}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+    >
+      <svg className="m3e-dock-svg" aria-hidden="true" width="0" height="0">
+        <filter id="m3e-dock-refraction" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.02" numOctaves="2" seed="7" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
+      <span className="m3e-dock-refraction" aria-hidden="true" />
+      <span className="m3e-dock-specular" aria-hidden="true" />
       <span className="m3e-dock-slider" aria-hidden="true" />
       {TABS.map((tab) => (
         <button

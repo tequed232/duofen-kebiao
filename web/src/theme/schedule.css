@@ -785,9 +785,6 @@ html[data-ui-scale='large'] .stage {
 }
 
 
-/* ==================== 底栏醒目化（真机可见性保障） ====================
-   真机上一度"看不到底栏"：它用了 surfaceContainer，在深色主题下与页面背景几乎同色。
-   这里给它明确的层色 + 顶部分隔线 + 安全区留白，并保证最小高度，任何主题下都清晰可辨。 */
 .app-nav-bar {
   position: relative;
   z-index: 30;
@@ -804,54 +801,12 @@ html[data-ui-scale='large'] .stage {
 }
 
 
-/* ==================== M3E 底栏（自绘，保证可见可点） ==================== */
-.m3e-dock {
-  position: relative;
-  z-index: 40;
-  flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin: 6px 12px calc(10px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
-  padding: 6px;
-  border-radius: 999px;
-  background: var(--md-sys-color-surface-container-high);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  box-shadow: 0 4px 14px color-mix(in srgb, #000 26%, transparent);
-}
-
-.m3e-dock-tab {
-  position: relative; /* 胶囊以本标签为参照，居中在图标+文字后面 */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  height: 56px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  font: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.m3e-dock-tab .m3e-dock-label {
-  font-size: 11px;
-  line-height: 13px;
-}
 
 
-.m3e-dock-tab.active {
-  color: var(--md-sys-color-on-secondary-container);
-}
 
 
-.m3e-dock-tab > :not(.m3e-dock-pill) {
-  position: relative;
-  z-index: 1;
-}
+
+
 
 
 /* ==================== 过渡动画：纯左右平移（作者要求，非卡片式） ====================
@@ -911,26 +866,169 @@ html[data-perf='low'] .screen {
 }
 
 
-/* 底栏滑动滑块：与页面平移同向、同节奏（320ms，同一条缓动曲线） */
+
+
+
+
+/* 拖动中：滑块位置由 --dock-drag（0..1 比例）直接决定，跟随手指且无过渡 */
+
+/* 拖动中把滑块宽度按比例定位：用 calc 基于容器宽度的百分比换算 */
+
+/* 拖动经过的标签临时高亮（--dock-hover 为最近的标签序号） */
+
+
+
+
+
+
+
+/* 关闭动效 / 低性能设备：不做模糊与折射，保证流畅 */
+
+
+
+/* 顶栏也做玻璃：内容从它下面滚过时有真实的模糊过渡 */
+.app-bar {
+  background: color-mix(in srgb, var(--md-sys-color-surface) 74%, transparent);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+}
+
+/* ============================================================================
+ * 底栏（M3E + 液态玻璃折射）—— 唯一权威定义
+ *   布局：3 等分网格，一个绝对定位滑块随选中项左右平移
+ *   玻璃：backdrop-filter 真实模糊 + 饱和度；SVG 位移折射层；跟手高光；按压形变
+ *   交互：位置即结果（指针落在哪一格就切哪一格），拖动跟手
+ * ========================================================================== */
+.m3e-dock {
+  position: relative;
+  z-index: 40;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: stretch;
+  gap: 4px;
+  height: 68px;
+  margin: 6px 12px calc(10px + max(env(safe-area-inset-bottom, 0px), var(--native-inset-bottom, 0px)));
+  padding: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  border: 1px solid color-mix(in srgb, #ffffff 20%, transparent);
+  box-shadow:
+    0 8px 24px color-mix(in srgb, #000 30%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #ffffff 38%, transparent);
+  transform: scale(calc(1 - var(--dock-press, 0) * 0.02));
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+  touch-action: none; /* 允许在底栏上自由拖动（作者要求：随意滑动） */
+}
+
+/* SVG 滤镜定义本身不参与网格布局（否则会占掉一个格子，把标签挤到下一行） */
+.m3e-dock-svg {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* 折射层：斜向光带经 SVG 位移滤镜掰弯 */
+.m3e-dock-refraction {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: calc(0.35 + var(--dock-scroll, 0) * 0.35);
+  filter: url(#m3e-dock-refraction);
+  background: linear-gradient(
+    115deg,
+    transparent 12%,
+    color-mix(in srgb, #ffffff 26%, transparent) 38%,
+    transparent 52%,
+    color-mix(in srgb, #ffffff 14%, transparent) 72%,
+    transparent 88%
+  );
+}
+
+/* 跟手高光 */
+.m3e-dock-specular {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: calc(0.5 + var(--dock-scroll, 0) * 0.4);
+  background: radial-gradient(
+    140px 80px at var(--dock-x, 50%) var(--dock-y, 50%),
+    color-mix(in srgb, #ffffff 34%, transparent),
+    transparent 70%
+  );
+}
+
+/* 选中滑块：一格的宽度，按选中序号平移；拖动时跟手且无过渡 */
 .m3e-dock-slider {
   position: absolute;
   top: 6px;
   bottom: 6px;
   left: 6px;
-  width: calc((100% - 12px) / 3);
+  width: calc((100% - 12px - 8px) / 3);
   border-radius: 999px;
   background: var(--md-sys-color-secondary-container);
-  transform: translate3d(calc(var(--m3e-active, 0) * 100%), 0, 0);
-  transition: transform 320ms cubic-bezier(0.2, 0, 0, 1);
+  z-index: 1;
   pointer-events: none;
-  z-index: 0;
+  transform: translate3d(calc(var(--m3e-active, 0) * (100% + 4px)), 0, 0);
+  transition: transform 320ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3e-dock.dragging .m3e-dock-slider {
+  transition: none;
+  left: calc(6px + var(--dock-drag, 0) * (100% - 12px - (100% - 12px - 8px) / 3));
+  transform: none;
+}
+
+/* 三个标签：图标在上、文字在下 */
+.m3e-dock-tab {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 160ms linear;
+}
+
+.m3e-dock-tab.active {
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.m3e-dock-label {
+  font-size: 11px;
+  line-height: 13px;
+}
+
+/* 关闭动效 / 低性能设备：不做模糊与折射 */
+html[data-transition='none'] .m3e-dock,
+html[data-perf='low'] .m3e-dock {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--md-sys-color-surface-container-high);
+}
+
+html[data-perf='low'] .m3e-dock-refraction,
+html[data-perf='low'] .m3e-dock-specular {
+  display: none;
 }
 
 html[data-transition='none'] .m3e-dock-slider,
 html[data-perf='low'] .m3e-dock-slider {
   transition: none;
-}
-
-.m3e-dock-tab.active {
-  color: var(--md-sys-color-on-secondary-container);
 }
