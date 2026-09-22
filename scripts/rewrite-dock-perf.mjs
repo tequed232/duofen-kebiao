@@ -1,69 +1,31 @@
-﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { MdIcon, MdIconButton } from './md';
-import { useNav } from '../nav/navigation';
-import { useAppState } from '../state/AppState';
-import { isNativeShell } from '../lib/native';
+/**
+ * 底栏（Dock）性能重写：消除真机抽搐。
+ *
+ * 【抽搐的三处元凶】
+ *   1. pointermove 里每帧调用 getBoundingClientRect() → 强制同步重排（forced reflow）
+ *   2. 用 width 做"流体拉伸" → 每帧触发 layout
+ *   3. 移动/变形的元素上挂着 SVG 滤镜（feGaussianBlur、feDisplacementMap）
+ *      → WebView 每帧重算滤镜链，真机上直接掉帧
+ *
+ * 【重写做法】只走合成器（compositor）路径：
+ *   · pointerdown 时**一次性缓存**底栏矩形与三个标签的中心（之后不再读取布局）
+ *   · pointermove 用 requestAnimationFrame **合帧**，一帧只写一次 CSS 变量
+ *   · 拉伸改用 transform: scaleX()（不再改 width）→ 只有 transform 变化，无 layout
+ *   · 滑块上不再挂 SVG 滤镜；柔光改用廉价的渐变 + box-shadow
+ *   · 只在拖动时临时降级最重的玻璃层（拖动一结束立刻恢复）
+ *
+ * Usage: node scripts/rewrite-dock-perf.mjs
+ */
+import { readFile, writeFile } from 'node:fs/promises';
 
-/* ------------------------------------------------------------- app bar --- */
+/* ------------------------------------------------------------ 组件：缓存几何 + 合帧 */
+const F = 'web/src/components/layout.tsx';
+let layout = await readFile(F, 'utf8');
+const start = layout.indexOf('export function AppNavBar(');
+let end = layout.indexOf('\nexport ', start + 10);
+if (end < 0) end = layout.length;
 
-export function TopAppBar({
-  title,
-  onBack,
-  backLabel = '返回',
-  actions,
-  leading,
-  scrolled = false,
-  titleId,
-}: {
-  title: ReactNode;
-  onBack?: () => void;
-  backLabel?: string;
-  actions?: ReactNode;
-  leading?: ReactNode;
-  scrolled?: boolean;
-  titleId?: string;
-}) {
-  return (
-    <header className={['app-bar', scrolled ? 'scrolled' : ''].join(' ').trim()}>
-      {onBack ? <MdIconButton icon="arrow_back" label={backLabel} onClick={onBack} /> : null}
-      {leading}
-      <h1 id={titleId} className="app-bar-title md-title-large-emphasized">
-        {title}
-      </h1>
-      {actions ? <div className="app-bar-actions">{actions}</div> : null}
-    </header>
-  );
-}
-
-/** Track whether a scrollable element has been scrolled (app bar elevation change). */
-export function useScrolled<T extends HTMLElement>(threshold = 4) {
-  const ref = useRef<T>(null);
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    const onScroll = () => setScrolled(element.scrollTop > threshold);
-    element.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => element.removeEventListener('scroll', onScroll);
-  }, [threshold]);
-  return { ref, scrolled };
-}
-
-/* -------------------------------------------------------- navigation bar --- */
-
-export type NavTabId = 'schedule' | 'search' | 'settings';
-
-/** 课表是主页（第一个标签、默认选中），记录 / 历史 / 设置排在其后 */
-/** v2 框架（m3e-canvas）：底边栏三项 —— 首页（课表）/ 搜索 / 设置 */
-const TABS: { id: NavTabId; label: string; icon: string }[] = [
-  { id: 'schedule', label: '首页', icon: 'home' },
-  { id: 'search', label: '搜索', icon: 'search' },
-  { id: 'settings', label: '设置', icon: 'settings' },
-];
-
-export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
+layout = layout.slice(0, start) + `export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (tab: NavTabId) => void }) {
   /**
    * 底栏（Dock）—— 位置即结果 + 流体跟手 + 液态玻璃。
    *
@@ -113,9 +75,9 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     // 参考实现：54 → 上限 74（约 1.37 倍），用 scaleX 实现（不触发 layout）
     const stretch = Math.min(1.37, 1 + (offset * 0.25) / 54);
     const halfCell = geo.cell / 2;
-    element.style.setProperty('--pill-x', `${(x - halfCell).toFixed(1)}px`);
+    element.style.setProperty('--pill-x', \`\${(x - halfCell).toFixed(1)}px\`);
     element.style.setProperty('--pill-width', stretch.toFixed(3));
-    element.style.setProperty('--dock-x', `${((x / geo.width) * 100).toFixed(1)}%`);
+    element.style.setProperty('--dock-x', \`\${((x / geo.width) * 100).toFixed(1)}%\`);
     setHoverIndex(nearest);
   };
 
@@ -175,7 +137,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
 
   return (
     <nav
-      className={`m3e-dock${dragging ? ' dragging' : ''}`}
+      className={\`m3e-dock\${dragging ? ' dragging' : ''}\`}
       aria-label="主导航"
       ref={dockRef}
       style={{ '--m3e-active': String(activeIndex) } as React.CSSProperties}
@@ -218,170 +180,65 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     </nav>
   );
 }
+` + layout.slice(end);
+await writeFile(F, layout, 'utf8');
 
-export function SectionHeader({
-  icon,
-  title,
-  trailing,
-}: {
-  icon?: string;
-  title: ReactNode;
-  trailing?: ReactNode;
-}) {
-  return (
-    <div className="section-header">
-      {icon ? <MdIcon name={icon} size={20} /> : null}
-      <span className="section-title md-title-small-emphasized flex-1">{title}</span>
-      {trailing}
-    </div>
-  );
+/* ---------------------------------------------------------------- CSS：只动 transform */
+const C = 'web/src/theme/schedule.css';
+let css = await readFile(C, 'utf8');
+if (!css.includes('--pill-width')) {
+  css += `
+
+/* ==================== 底栏性能版（保留参考实现的 width 拉伸观感）====================
+   · 移动与拉伸仍是 translate3d + width（与参考实现一致）
+   · 但**不在指针回调里读布局**（几何在按下时缓存一次）→ 消除强制重排
+   · 滑块上不挂 SVG 滤镜 → 消除每帧滤镜重算
+   · 拖动时临时降级折射层，松手立刻恢复 */
+.m3e-dock {
+  contain: layout paint style;
 }
 
-export function EmptyState({
-  icon,
-  title,
-  description,
-  action,
-}: {
-  icon: string;
-  title: string;
-  description: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="empty-state">
-      <div className="empty-icon">
-        <MdIcon name={icon} size={36} />
-      </div>
-      <div className="md-title-medium emphasized" style={{ color: 'var(--md-sys-color-on-surface)' }}>
-        {title}
-      </div>
-      <div className="md-body-medium" style={{ maxWidth: 280 }}>
-        {description}
-      </div>
-      {action}
-    </div>
-  );
+.m3e-dock-slider {
+  left: 6px;
+  width: calc((100% - 12px - 8px) / 3);
+  transform: translate3d(calc(var(--m3e-active, 0) * (100% + 4px)), 0, 0);
+  transition: transform 350ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  will-change: transform;
+  /* 柔光：两层廉价阴影近似原来的散射，不再使用 feGaussianBlur */
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 42%, transparent),
+    0 2px 10px color-mix(in srgb, var(--md-sys-color-secondary) 26%, transparent),
+    0 6px 22px color-mix(in srgb, var(--md-sys-color-secondary) 18%, transparent);
+  filter: none;
 }
 
-export function Chip({
-  children,
-  icon,
-  onRemove,
-  solid = false,
-  onClick,
-}: {
-  children: ReactNode;
-  icon?: string;
-  onRemove?: () => void;
-  solid?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <span className={['chip', solid ? 'solid' : '', onClick ? 'tap' : ''].join(' ').trim()} onClick={onClick}>
-      {icon ? <MdIcon name={icon} size={16} /> : null}
-      <span className="md-label-large">{children}</span>
-      {onRemove ? (
-        <MdIcon
-          name="close"
-          size={16}
-          className="chip-close"
-          style={{}}
-        />
-      ) : null}
-    </span>
-  );
+.m3e-dock.dragging .m3e-dock-slider {
+  width: calc((100% - 12px - 8px) / 3);
+  transform: translate3d(var(--pill-x, 0px), 0, 0) scaleX(var(--pill-width, 1));
+  transform-origin: 50% 50%;
+  transition: none; /* 跟手：不加过渡，避免回弹抖动 */
 }
 
-export function ImageTile({
-  src,
-  alt,
-  height,
-  radius,
-  onClick,
-  className,
-  placeholderIcon = 'image',
-  children,
-  style,
-}: {
-  src?: string;
-  alt: string;
-  height?: number | string;
-  radius?: number;
-  onClick?: () => void;
-  className?: string;
-  placeholderIcon?: string;
-  children?: ReactNode;
-  style?: React.CSSProperties;
-}) {
-  const commonStyle: React.CSSProperties = {
-    height: typeof height === 'number' ? `${height}px` : height,
-    borderRadius: radius !== undefined ? `${radius}px` : undefined,
-    ...style,
-  };
-  if (src) {
-    return (
-      <div
-        className={['media-thumb', onClick ? 'tap' : '', className ?? ''].join(' ').trim()}
-        style={commonStyle}
-        onClick={onClick}
-        role={onClick ? 'button' : undefined}
-        tabIndex={onClick ? 0 : undefined}
-      >
-        <img src={src} alt={alt} />
-        {children}
-      </div>
-    );
-  }
-  return (
-    <div
-      className={['image-placeholder', onClick ? 'tap' : '', className ?? ''].join(' ').trim()}
-      style={commonStyle}
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      aria-label={`${alt}（暂无图片）`}
-    >
-      <MdIcon name={placeholderIcon} size={48} />
-      {children}
-    </div>
-  );
+/* 拖动时降级最重的玻璃层，松手立即恢复（减少 WebView 每帧合成压力） */
+.m3e-dock.dragging .m3e-dock-refraction {
+  display: none;
 }
 
-export function LoadingRow({ label }: { label: string }) {
-  return (
-    <div className="loading-inline md-body-medium">
-      <md-circular-progress indeterminate />
-      <span>{label}</span>
-    </div>
-  );
+.m3e-dock.dragging .m3e-dock-specular {
+  opacity: calc(0.5 + var(--dock-scroll, 0) * 0.4);
 }
 
-/** localStorage-backed long-press helper for the Home input field. */
-export function useLongPress(onLongPress: () => void, onShortPress?: () => void, duration = 550) {
-  const timer = useRef<number | undefined>(undefined);
-  const longFired = useRef(false);
-
-  const start = useCallback(() => {
-    longFired.current = false;
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      longFired.current = true;
-      onLongPress();
-    }, duration);
-  }, [duration, onLongPress]);
-
-  const end = useCallback(() => {
-    window.clearTimeout(timer.current);
-    if (!longFired.current) onShortPress?.();
-  }, [onShortPress]);
-
-  const cancel = useCallback(() => window.clearTimeout(timer.current), []);
-
-  return {
-    onPointerDown: start,
-    onPointerUp: end,
-    onPointerLeave: cancel,
-    onPointerCancel: cancel,
-  };
+html[data-perf='low'] .m3e-dock-slider {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 42%, transparent);
 }
+`;
+  await writeFile(C, css, 'utf8');
+}
+
+console.log({
+  缓存几何: layout.includes('geoRef'),
+  合帧: layout.includes('scheduleFrame'),
+  只改transform: layout.includes('--pill-width'),
+  拖动不读布局: !/onWindowMove[\s\S]{0,200}getBoundingClientRect/.test(layout),
+  样式已加: css.includes('--pill-width'),
+});
