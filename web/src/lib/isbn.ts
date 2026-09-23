@@ -51,6 +51,16 @@ export interface IsbnHit {
 }
 
 /**
+ * ISBN 里允许出现的字符：数字，加上 OCR 常见误读字母（映射见 normalizeIsbnText：
+ * O/Q→0、I/l/|→1、S→5、B→8、Z→2），以及分组用的空格与连字符。
+ *
+ * 为什么必须把误读字母放进字符类：`normalizeIsbnText` 只在**匹配到之后**才起作用；
+ * 字符类里没有字母时，`978-7-O4-O39663-8` 会因中间的 O 直接断开、匹配失败 ——
+ * 那张「OCR 误读还原」表就永远够不到。校验位那一步仍会把噪音挡在外面。
+ */
+const ISBN_CHARS = '0-9OoQIl|SsBbZz';
+
+/**
  * 从一段文字里找出所有**校验通过**的 ISBN。
  * 先按连续数字串找 13 位、再找 10 位；命中后掩掉该片段，避免重复计入。
  */
@@ -58,8 +68,14 @@ export function extractIsbns(text: string): IsbnHit[] {
   const hits: IsbnHit[] = [];
   const seen = new Set<string>();
 
-  // 13 位：允许中间有连字符/空格（OCR 常把条码数字分开读）
-  const pattern13 = /(?:97[89])[\d\s-]{10,17}\d/g;
+  // 13 位：`97[89]` 之后恰好再跟 10 个数字，数字之间允许空格/连字符。
+  //
+  // 为什么按「恰好 10 个」写，而不是 `[\d\s-]{9,17}` 这类模糊量词：
+  //   ① 模糊量词的贪心会**跨过空格把两个书号吞成一个**：'9780306406157 978-0-306-40615-7'
+  //      被整体匹配成 18 位，长度校验不过被丢弃，而 matchAll 已经越过第二串，两串全丢；
+  //   ② 量词下限写成 10 时，裸 13 位串（条码区常见）永远差一位匹配不上。
+  // 结构式匹配没有这两个问题：到第 13 个数字就收，扫描位置正确前移。
+  const pattern13 = new RegExp(`97[89](?:[\\s-]?[${ISBN_CHARS}]){10}`, 'g');
   for (const match of text.matchAll(pattern13)) {
     const digits = normalizeIsbnText(match[0]);
     if (digits.length !== 13) continue;
@@ -90,7 +106,9 @@ export function formatIsbn13(isbn: string): string {
   // 中国大陆出版物组号为 7，其后出版者号长度不定；这里按常见 2~3 位呈现
   const prefix = digits.slice(0, 3);
   const group = digits.slice(3, 4);
-  const rest = digits.slice(4, 12);
+  const rest = digits.slice(4, 12); // 8 位：出版者号 + 书名号
   const check = digits.slice(12);
-  return `${prefix}-${group}-${rest.slice(0, 2)}-${rest.slice(2, 7)}-${check}`;
+  // 用 rest.slice(2) 而不是 rest.slice(2, 7)：后者只取 5 位，8 位里会**静默丢一位**，
+  // 格式化出来的「978-7-04-03966-8」其实只有 12 位数字。
+  return `${prefix}-${group}-${rest.slice(0, 2)}-${rest.slice(2)}-${check}`;
 }
