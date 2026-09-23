@@ -30,7 +30,7 @@ wrangler pages deploy dist --project-name duofen-kebiao
 ```
 
 - Cloudflare Pages 会分配 `https://duofen-kebiao.pages.dev`，可再绑自定义域名；
-- 仓库里的 `deploy/cloudflare/_headers` 会被 Pages 读取，用来给 `assets/*` 设置长缓存、给 HTML 设置 `no-cache`；
+- 仓库里的 `web/public/_headers` 会随构建进入 `dist/`，被 Cloudflare Pages 读取，用来给 `assets/*` 设置长缓存、给 HTML 设置 `no-cache`；
 - 想走 CI：在 Cloudflare Pages 里连这个 GitHub 仓库，构建命令 `npm run build`，输出目录 `dist`。
 
 ## 前端一致性

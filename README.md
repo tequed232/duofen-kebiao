@@ -22,7 +22,7 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 
 ### 课表（自主嵌入）
 
-- `scripts/import-schedule.mjs` 解析学校教务系统导出的 `学生课表.doc`（RTF 表格），生成 Web 的 `web/src/data/schedule.ts` —— 应用启动即自带课表；也可以在应用内用「课表数据」面板导入自己的导出文件覆盖它（导入结果存本机 IndexedDB）。
+- 内置课表由教务系统导出的 `学生课表.doc`（RTF 表格）解析而来，结果固化在 Web 的 `web/src/data/schedule.ts` —— 应用启动即自带课表；也可以在应用内用「课表数据」面板导入自己的导出文件覆盖它（导入结果存本机 IndexedDB）。
 - **4×4 容器 + 左右翻页**：容器是四行（**上午 / 中午 / 下午 / 晚上**）× 四列的表格，一周按 **7 天** 计算，左右**拖动跟手翻页**（第 1 页 周一–周四，第 2 页 周五–周日 + 下周一），底部有页码圆点与左右翻页按钮；点击某天选中该日，下方列出当天课程。
 - **识别课表月份**：解析出的周次会换算成具体日期，顶部显示「2026年9月 · 9月17日 周四」与**课表覆盖 2026年8月 – 2027年1月**；点按该按钮弹出月份/日期选择器（列出学期内每个月的教学周区间，也可按具体日期跳转），选择后自动定位到对应教学周与星期。课程详情里还会列出该课的具体上课日期（共 N 次课、跨哪几个月）。
 - **周次**：按学期开始日期（可改）计算当前教学周，表格只显示该周实际开设的课程；◀ ▶ 切换周次。
@@ -71,7 +71,7 @@ web/src/
   components/              md.tsx（Material Web 封装）、layout / overlays / content
   screens/                 7 个屏幕
   nav/ state/ lib/ theme/  导航、全局状态、IndexedDB / 课表解析 / 教材识别、设计令牌
-scripts/                   subset-icons.mjs、check-icons.mjs、import-schedule.mjs、rtf-dump.mjs、
+scripts/                   subset-icons.mjs、check-icons.mjs、rtf-dump.mjs、
                            verify.mjs、github-release.mjs、serve-dist.mjs
 legacy/index.html          上一版单文件页面（保留备查）
 vite.config.ts             root=web，outDir=dist
@@ -126,15 +126,20 @@ $out = "protocol=https`nhost=github.com`n" | git credential fill
 $env:GITHUB_TOKEN = ($out | Select-String '^password=').Line.Substring(9)
 
 # 版本化资产 + 稳定别名：别名让 releases/latest/download/enhance.apk 永远指向最新
-node --use-system-ca scripts/github-release.mjs --tag v2.7.0 --target main `
-  --name "v2.7.0 · Material 3 Expressive" --notes RELEASE_NOTES.md `
-  --asset "enhance-2.7.apk=build/release/enhance-2.7.apk" `
-  --asset "enhance.apk=build/release/enhance-2.7.apk" `
-  --asset "enhance-web-2.7.zip=build/release/enhance-web-2.7.zip" `
-  --asset "enhance-web.zip=build/release/enhance-web-2.7.zip"
+node --use-system-ca scripts/github-release.mjs --tag v3.0.1 --target main `
+  --name "v3.0.1 · Material 3 Expressive" --notes RELEASE_NOTES.md `
+  --asset "enhance-3.0.1.apk=app/build/outputs/apk/release/app-release.apk" `
+  --asset "enhance.apk=app/build/outputs/apk/release/app-release.apk" `
+  --asset "enhance-web-3.0.1.zip=build/release/enhance-web-3.0.1.zip" `
+  --asset "enhance-web.zip=build/release/enhance-web-3.0.1.zip"
 ```
 
 > `--use-system-ca` 是必要的：本机 Node 默认信任链校验不到中间证书（`UNABLE_TO_VERIFY_LEAF_SIGNATURE`）。
+> APK 取的是 Gradle 的实际输出路径 `app/build/outputs/apk/release/app-release.apk`；web zip 需自己打包后放进 `build/release/`。
+
+### Release 签名
+
+release 构建默认**回退 debug 签名**，只够自用。要换成正式签名，把 `keystore.properties.example` 复制成仓库根的 `keystore.properties` 并填好四项（`storeFile` 相对仓库根解析），构建时会自动启用；该文件已在 `.gitignore` 中忽略。
 
 ### 仓库卫生
 
@@ -169,9 +174,9 @@ $env:OUT_DIR='screenshots-live'; node scripts/verify.mjs https://tequed232.githu
 ```
 
 > 语音 / 相机 / 记录相关步骤已随功能删除一并移除（见 `test(verify)` 提交）。
-> 另外 `build/smoke-screens.mjs` 会逐屏冒烟（课表 / 筛选 / 教材 / 关于 / 开源相关 / 教材识别接口 / 回到今天），0 报错才算通过。
+> 逐步结果（含逐屏截图路径）都会写进 `screenshots/report.json`，0 报错才算通过。
 
-结果：**62 步全部通过，0 个 console 错误、0 个 page error**；截图见 `screenshots/`（`report.json` 内含配色、尺寸与令牌核对数据）。线上部署（GitHub Pages）用同一套脚本跑过一遍，截图与报告在 `screenshots-live/`。
+结果：全部步骤通过、**0 个 console 错误、0 个 page error**（逐步结果见 `screenshots/report.json`）；截图见 `screenshots/`（`report.json` 内含配色、尺寸与令牌核对数据）。线上部署（GitHub Pages）用同一套脚本跑过一遍，截图与报告在 `screenshots-live/`。
 
 ## 反爬防火墙（Anubis）与持续监控
 
@@ -292,7 +297,7 @@ _打包、类型与样式处理_
 
 ### 测试与验证
 
-_自动化验收（91 步）与逐屏视觉校验_
+_自动化验收与逐屏视觉校验_
 
 | 名称 | 版本 | 许可 | 版权 / 开发者 |
 | --- | --- | --- | --- |

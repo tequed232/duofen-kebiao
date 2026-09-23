@@ -1,19 +1,19 @@
 # 项目当前状态
 
 > 这份文件的目的：把会话里的关键状态**固化到仓库**，这样即使清空对话上下文、或换人接手，也不会丢信息。
-> 最后更新：v2.6.0 之后（`Dock` 性能版 + 灵动岛改造 + 贡献者名片墙接入应用 + 致歉声明移除）。
+> 最后更新：v3.0.1（内容安全区修复）。
 
 ## 当前版本与入口
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | `APP_VERSION = 'v2.6.0'`（`versionCode 20600` / `versionName 2.6.0`） |
+| 版本 | `APP_VERSION = 'v3.0.1'`（`versionCode 30001` / `versionName 3.0.1`） |
 | APK 短链 | https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk （**安装包只作为 Release 附件**，已从仓库剔除；旧的 Pages 短链 `/enhance.apk` 失效） |
 | 网页版 | https://tequed232.github.io/duofen-kebiao/ |
 | 发布页 | https://github.com/tequed232/duofen-kebiao/releases |
 | 仓库 | https://github.com/tequed232/duofen-kebiao |
 
-> 注意：`versionCode` 在 `app/build.gradle.kts` 里**显式钉住**（不靠 `meta.ts` 解析），因为版本串一旦含字母就会解析失败退回 `6`，导致系统判为降级而**拒绝安装**。
+> 注意：`versionCode` / `versionName` 由 `app/build.gradle.kts` 的 `webVersion()` 从 `web/src/lib/meta.ts` 的 `APP_VERSION` 解析得出，**单一来源**。以前这里是硬编码的 `20600` / `2.6.0`，与解析值并存成了两处真相，已删除。
 
 ## 已完成并验证的功能
 
@@ -43,8 +43,7 @@
    - 方案 B：Android 仓库只放原生代码，构建时从 Web 仓库下载产物
 3. **发布名片墙改动**：合并到 `main` 后由 CI（`.github/workflows/pages.yml`）构建并发布到 `gh-pages`；再重打 APK（否则 APK 还停在旧的「关于」页）。
 4. **待作者确认的名单口径**：liuli1719 的显示名（星爱流萤 / 小妍）、作者显示名（罗xx / 罗xx（Tequed232））；另外米达达的 B 站号昵称是 `miratsu_米达达`，与素材台账里的插画作者 miratsu 是否同一人需要确认。
-5. 小事：`docs/context-links.md` 版本号更新到 v2.6。
-6. **APK 已从仓库剔除**（作者要求，见「已完成」表）：确认发布时用稳定别名上传 `--asset "enhance.apk=build/release/enhance-X.Y.Z.apk"`，短链才是 `releases/latest/download/enhance.apk`；历史上提交过的 APK 仍留在 git 历史里，若要连历史一起瘦身需要 `git filter-repo` + 强推（`.git` 目前约 130MB）。
+5. **APK 已从仓库剔除**（作者要求，见「已完成」表）：确认发布时用稳定别名上传 `--asset "enhance.apk=app/build/outputs/apk/release/app-release.apk"`，短链才是 `releases/latest/download/enhance.apk`；历史上提交过的 APK 仍留在 git 历史里，若要连历史一起瘦身需要 `git filter-repo` + 强推（`.git` 目前约 130MB）。
 
 ## 常用命令
 
@@ -54,7 +53,7 @@ npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈�
 npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）
 node scripts/check-imports.mjs     # 导入自检（防「用了没导入」导致白屏）
 node scripts/check-secrets.mjs     # 密钥扫描
-node scripts/verify.mjs            # 自动化验收（83 步，含逐屏截图）
+node scripts/verify.mjs            # 自动化验收（逐屏截图，结果见 screenshots/report.json）
 ./gradlew assembleRelease          # 打 APK（产物在 app/build/，不进仓库）
 ```
 
