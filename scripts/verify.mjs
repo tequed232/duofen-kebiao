@@ -1,12 +1,23 @@
 /**
- * Browser verification for the production build.
+ * Browser verification for the production build（逐屏截图 + JSON 报告）。
  *
- * - launches Chromium with a fake camera device so the live preview can be checked
- * - drives the real app: home -> panel -> history -> settings -> api -> camera -> shutter
- *   -> history -> detail -> image viewer -> persistence after reload -> dark mode + undo
- * - captures screenshots into ./screenshots and a JSON report (written after every step)
+ * ⚠️ 已知状态：**部分失效，不是可信的验收判据**。
+ * 它写于 v2 改版之前，UI 在那之后重写过两轮，脚本里的选择器只跟上了一部分。
+ * 实测（2026-09，v3.5.2）：19 步中 **8 步通过、11 步失败**；
+ * 失败集中在课程卡片、看板拖拽/折叠、筛选页、导入面板这几处 —— 都是"选择器已过期"，
+ * 不是产品坏了（`pageErrors` 与 `consoleErrors` 均为 0，同一套 UI 的
+ * `scripts/check-import-e2e.mjs` 是 9/9 通过的）。
+ * 要当成验收用，先得把剩下的选择器对着现行 DOM 重写一遍；那是一件独立的事，尚未做。
  *
- * Usage: node scripts/verify.mjs [url]
+ * 因此**当前真正被 CI 强制执行的覆盖**是 auto-review 里的 9 条守卫
+ * （hygiene / secrets / web-security / version / licenses / isbn / backdrop-refraction /
+ *  schedule-html / import-e2e），不是这个脚本。
+ *
+ * 前置：`npm run build` 之后需要 preview server
+ * （`npm run preview`，默认 http://127.0.0.1:4173/）；
+ * 不起的话会以 `net::ERR_CONNECTION_REFUSED` 直接失败，且不会告诉你原因。
+ *
+ * Usage: node scripts/verify.mjs [url]        # 也可用 URL=… 指定
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -132,8 +143,16 @@ const clickTop = async (selector, index = 0) => {
   // 底边栏：网页是 M3 原生导航栏（md-navigation-tab）；APK 由原生 Dock 负责
   if (selector === 'md-navigation-tab' || selector === '.m3e-dock-tab') {
     // 自绘底栏：纯 button，JS 点击最稳
+    //
+    // 注意作用域：底栏是**常驻在 App 层、屏幕栈之外**的单一实例，**不在 `.screen` 里**。
+    // 原先这里写 `.screen:not([aria-hidden="true"]) .m3e-dock-tab` —— 底栏搬出屏幕栈之后
+    // 这个选择器永远匹配不到，`clicked` 恒为 false，于是静默回落到下面的通用点击路径，
+    // 最终以 `md-navigation-tab` 超时收场：整条验收从第一步就断，后面十几项全是连锁陪葬。
+    // 这类"匹配不到却不报错、只是回落到别的路径"的写法，正是坏守卫最爱的藏身处。
     const clicked = await page.evaluate((i) => {
-      const buttons = Array.from(document.querySelectorAll('.screen:not([aria-hidden="true"]) .m3e-dock-tab'));
+      const buttons = Array.from(document.querySelectorAll('.m3e-dock-tab')).filter(
+        (el) => el.offsetParent !== null,
+      );
       if (!buttons.length) return false;
       buttons[i]?.click();
       return true;

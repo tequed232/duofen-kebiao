@@ -42,21 +42,25 @@
 ### A. 可自主完成（无外部依赖）
 
 1. ~~**发布名片墙改动**~~ —— **已完成**。`gh-pages` 上的当前构建就是 v3.5.2（`assets/bootstrap-genovrcY.js`，实测含「致谢 · 名片墙」、`miratsu`、版权行、设置页「本地识别」行）；而 `npm run apk:parity` 现在能通过，并**证明 APK 内嵌资源与网页产物逐文件哈希一致** —— 「APK 还停在旧『关于』页」这个风险从此由这条守卫长期兜住（它此前一直假失败，见下方「易踩的坑」补充）。
+2. **重写 `scripts/verify.mjs` 的选择器**（未完成）。它写于 v2 之前，UI 之后重写了两轮，实测 **19 步里 11 步**因选择器过期而失联：课程卡片、看板拖拽/折叠、筛选页、导入面板。
+   已修掉其中一个**根因**：底栏搬出屏幕栈后，`verify.mjs` 里按 `.screen … .m3e-dock-tab` 限定的作用域选择器永不匹配 —— 而它失败时不报错、只是静默回落到通用点击路径，最后以 `md-navigation-tab` 超时收场，整套验收从第一步就断、后面十几项全是连锁陪葬。改成不限定作用域后 **6 → 8 步通过**。
+   剩下的属于「逐个对着现行 DOM 重写」，是一件独立的事。
+   **在此之前不要把它当验收判据** —— CI 里真正强制执行的覆盖是 auto-review 的 9 条守卫（hygiene / secrets / web-security / version / licenses / isbn / backdrop-refraction / schedule-html / import-e2e）。
 
 ### B. 阻塞：需要真机
 
-2. **灵动岛实况复核**：设置 → 实时通知（流体云）→「发送实况测试」，看状态栏是否出现；`adb shell dumpsys notification --noredact | findstr promotedOngoing` 复核 `promotedOngoing=true`。
+3. **灵动岛实况复核**：设置 → 实时通知（流体云）→「发送实况测试」，看状态栏是否出现；`adb shell dumpsys notification --noredact | findstr promotedOngoing` 复核 `promotedOngoing=true`。
    （真机 realme GT7 在本次会话中接入过，覆盖安装、本地识别资源、封面识别链路均已验；复核这项时设备已断开。）
-3. **界面缩放三档**的真机观感。
+4. **界面缩放三档**的真机观感。
 
 ### C. 阻塞：需要作者决策（不自行决定）
 
-4. **仓库拆分**：`duofen-kebiao-web` / `duofen-kebiao-android`（GitHub slug 只能用 ASCII）
+5. **仓库拆分**：`duofen-kebiao-web` / `duofen-kebiao-android`（GitHub slug 只能用 ASCII）
    - 方案 A：Android 仓库存 www 预构建快照 + 同步脚本（两端同源）
    - 方案 B：Android 仓库只放原生代码，构建时从 Web 仓库下载产物
-5. **名单口径**：liuli1719 的显示名（星爱流萤 / 小妍）、作者显示名（罗xx / 罗xx（Tequed232））；另外米达达的 B 站昵称是 `miratsu_米达达`，与素材台账里的插画作者 miratsu 是否同一人需要确认。
+6. **名单口径**：liuli1719 的显示名（星爱流萤 / 小妍）、作者显示名（罗xx / 罗xx（Tequed232））；另外米达达的 B 站昵称是 `miratsu_米达达`，与素材台账里的插画作者 miratsu 是否同一人需要确认。
    便于对照：`web/src/lib/meta.ts` 的 `CREDITS` 当前实际取值是 `罗xx`、`Hanbing`、`饼干`、`维舟`、`米达达`（附 X 链接 `x.com/miratsu169`）、`椿湫`。
-6. **git 历史瘦身**：历史上提交过的 8 个 `.apk` 仍留在 git 对象库里，`.git` 实测 **128.9 MB**。要连历史一起瘦身必须 `git filter-repo` + 强推 —— 属**破坏性重写**，需作者明确同意后再做。
+7. **git 历史瘦身**：历史上提交过的 8 个 `.apk` 仍留在 git 对象库里，`.git` 实测 **128.9 MB**。要连历史一起瘦身必须 `git filter-repo` + 强推 —— 属**破坏性重写**，需作者明确同意后再做。
 
 ## 常用命令
 
@@ -66,7 +70,7 @@ npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈�
 npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）
 node scripts/check-imports.mjs     # 导入自检（防「用了没导入」导致白屏）
 node scripts/check-secrets.mjs     # 密钥扫描
-node scripts/verify.mjs            # 自动化验收（逐屏截图，结果见 screenshots/report.json）
+node scripts/verify.mjs            # 逐屏截图 + screenshots/report.json；**部分失效**（见待办 2），且需先 npm run preview
 ./gradlew assembleRelease          # 打 APK（产物在 app/build/，不进仓库）
 ```
 
