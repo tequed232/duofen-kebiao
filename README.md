@@ -385,3 +385,10 @@ _未归类的依赖_
 | [shuding/liquid-glass](https://github.com/shuding/liquid-glass) | — | MIT License | Shu Ding | SVG + Canvas 玻璃着色器参考 |
 
 <!-- LICENSES:END -->
+
+## 相关文档
+
+- [docs/promo-brief.md](./docs/promo-brief.md) —— 宣传片创作说明（交给视频制作方 / MiniMax：创作要点、分镜、提示词、授权与禁止项）
+- [docs/commit-convention.md](./docs/commit-convention.md) —— 提交信息规范
+- [docs/asset-permissions.md](./docs/asset-permissions.md) —— 素材授权台账
+- [docs/PROJECT-STATE.md](./docs/PROJECT-STATE.md) —— 项目现状与坑位记录
