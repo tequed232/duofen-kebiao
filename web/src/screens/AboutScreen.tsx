@@ -165,44 +165,40 @@ export default function AboutScreen() {
           </div>
           <div className="credits-wall mt-12">
             {CREDITS.map((person) => {
-              const span = person.span ?? 1;
-              const wide = span > 1;
+              /* 每人一整行（1×3 列表）：头像 1 栏 + 姓名 / 角色 / 许可 / 平台按钮 2 栏。
+                 作者那行用 primary-container 做锚点，其余行保持中性色。 */
+              const anchor = Boolean(person.badge);
               return (
                 <div
-                  className={wide ? 'credit-card wide' : 'credit-card'}
+                  className={anchor ? 'credit-card wide' : 'credit-card'}
                   key={person.displayName}
-                  style={{ gridColumn: `span ${span}` }}
                 >
                   <CreditAvatar person={person} />
                   <div className="credit-body">
                     <span className="row gap-8 credit-name-row">
-                      <span className={wide ? 'md-title-medium-emphasized' : 'md-title-small-emphasized'}>
+                      <span className="md-title-medium-emphasized">
                         {person.displayName}
                       </span>
                       {person.badge ? (
-                        <span className={wide ? 'credit-badge' : 'credit-badge soft'}>{person.badge}</span>
+                        <span className="credit-badge">{person.badge}</span>
                       ) : null}
                     </span>
                     <span className="md-body-small muted">{person.role}</span>
                     {person.license ? <CreditLicenseMark license={person.license} /> : null}
                     <div className="credit-links">
-                      {person.links.map((link) => {
-                        /* 1 列的小名片挤不下两个文字按钮时只留剪影；宽卡一律保留文字 */
-                        const compact = !wide && person.links.length > 1;
-                        return (
-                          <button
-                            key={link.url}
-                            type="button"
-                            className={compact ? 'credit-link icon-only' : 'credit-link'}
-                            title={`${link.label} · ${link.url}`}
-                            aria-label={link.label}
-                            onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
-                          >
-                            <PlatformMark brand={link.platform} size={compact ? 14 : 12} />
-                            {compact ? null : link.label}
-                          </button>
-                        );
-                      })}
+                      {person.links.map((link) => (
+                        <button
+                          key={link.url}
+                          type="button"
+                          className="credit-link"
+                          title={`${link.label} · ${link.url}`}
+                          aria-label={link.label}
+                          onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                        >
+                          <PlatformMark brand={link.platform} size={12} />
+                          {link.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>

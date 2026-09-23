@@ -975,50 +975,39 @@ md-filled-text-field {
 }
 
 /* --------------------------------------------- 关于页：致谢 · 名片墙 ------ */
-/* 3 列网格：作者跨 3 列（整行）、画师跨 2 列，其余各 1 列，正好铺满不留空洞。
-   手机壳固定 412dp、内容区左右各 16dp，所以 1 列 ≈ (412 - 32 - 2×10) / 3 ≈ 120dp。 */
+/* 1 列 3 栏的列表：每人整行一张名片，一行 = 头像 1 栏 + 信息 2 栏（1×3）。
+   手机壳固定 412dp、内容区左右各 16dp，所以整行可用宽度 ≈ 380dp。 */
 .credits-wall {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 
 .credit-card {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 10px 8px;
-  border-radius: 20px;
-  background: var(--md-sys-color-surface-container-low);
-  text-align: center;
-}
-
-/* 宽卡（作者 span 3 / 画师 span 2）：头像在左，名字 / 角色 / 许可 / 平台按钮都在右侧 */
-.credit-card.wide {
   flex-direction: row;
   align-items: center;
   gap: 12px;
+  min-width: 0;
   padding: 12px 14px;
   border-radius: 24px;
+  background: var(--md-sys-color-surface-container-low);
+  text-align: left;
+}
+
+/* 作者那行用 primary-container 做锚点，其余行保持 surface 中性色 —— 六行同权重会糊成一片 */
+.credit-card.wide {
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
-  text-align: left;
 }
 
 .credit-body {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.credit-card.wide .credit-body {
   align-items: flex-start;
   gap: 5px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* 首字头像：图片加载不出来时它同时也是兜底显示（见 CreditAvatar 组件） */
@@ -1026,14 +1015,14 @@ md-filled-text-field {
   position: relative;
   overflow: hidden;
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1;
   user-select: none;
@@ -1055,14 +1044,6 @@ md-filled-text-field {
   color: var(--md-sys-color-on-tertiary-container);
 }
 
-.credit-card.wide .credit-mark {
-  width: 52px;
-  height: 52px;
-  font-size: 22px;
-  background: var(--md-sys-color-inverse-primary);
-  color: var(--md-sys-color-primary);
-}
-
 /* 深色锚点卡上 .muted 的 on-surface-variant 几乎看不见，这里改回继承色 */
 .credit-card.wide .muted {
   color: var(--md-sys-color-on-primary-container);
@@ -1071,15 +1052,11 @@ md-filled-text-field {
 
 .credit-name-row {
   align-items: center;
-  justify-content: center;
-  /* 窄卡片放不下徽标时，让徽标换行到名字下方，而不是把名字挤成省略号 */
+  justify-content: flex-start;
+  /* 名字 + 徽标一行放不下时让徽标换行，而不是把名字挤成省略号 */
   flex-wrap: wrap;
   row-gap: 4px;
   min-width: 0;
-}
-
-.credit-card.wide .credit-name-row {
-  justify-content: flex-start;
 }
 
 .credit-name-row > span {
@@ -1089,34 +1066,29 @@ md-filled-text-field {
   white-space: nowrap;
 }
 
+/* 徽标与按钮有两套配色：浅色行用 primary 系，.wide 锚点行（深底）用 on-primary-container 系 */
 .credit-badge {
   flex: 0 0 auto;
   padding: 2px 7px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 18%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+  color: var(--md-sys-color-primary);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.3px;
 }
 
-/* 浅色名片上的徽标（深色锚点卡用上面的默认样式） */
-.credit-badge.soft {
-  background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
-  color: var(--md-sys-color-primary);
+.credit-card.wide .credit-badge {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 18%, transparent);
+  color: inherit;
 }
 
 .credit-links {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 4px;
   width: 100%;
-  margin-top: auto;
-}
-
-.credit-card.wide .credit-links {
-  justify-content: flex-start;
-  margin-top: 0;
 }
 
 .credit-link {
@@ -1125,8 +1097,9 @@ md-filled-text-field {
   gap: 4px;
   padding: 5px 9px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 30%, transparent);
-  background: transparent;
+  /* 浅色行：描边 + primary 文字 */
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 35%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
   color: var(--md-sys-color-primary);
   font-family: var(--md-ref-typeface-brand);
   font-size: 10.5px;
@@ -1136,23 +1109,15 @@ md-filled-text-field {
   cursor: pointer;
 }
 
+/* 锚点行（深底）：改成 on-primary-container 的实心胶囊 */
 .credit-card.wide .credit-link {
   border-color: transparent;
   background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 16%, transparent);
   color: var(--md-sys-color-on-primary-container);
 }
 
-/* 多平台名片：只留剪影，2～3 个挤得进一行（120dp 卡片里内容区约 100dp） */
-.credit-link.icon-only {
-  gap: 0;
-  padding: 0;
-  width: 28px;
-  height: 28px;
-  justify-content: center;
-}
-
 .credit-link:hover {
-  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
 }
 
 .credit-card.wide .credit-link:hover {
@@ -1183,6 +1148,12 @@ md-filled-text-field {
   white-space: nowrap;
 }
 
+.credit-card.wide .credit-license {
+  border-color: color-mix(in srgb, var(--md-sys-color-on-primary-container) 40%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 14%, transparent);
+  color: var(--md-sys-color-on-primary-container);
+}
+
 button.credit-license {
   cursor: pointer;
 }
@@ -1191,15 +1162,17 @@ button.credit-license:hover {
   background: color-mix(in srgb, var(--md-sys-color-primary) 14%, transparent);
 }
 
+.credit-card.wide button.credit-license:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 24%, transparent);
+}
+
 button.credit-license:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 2px;
 }
 
-.credit-card.wide .credit-license {
-  border-color: color-mix(in srgb, var(--md-sys-color-on-primary-container) 40%, transparent);
-  background: color-mix(in srgb, var(--md-sys-color-on-primary-container) 14%, transparent);
-  color: var(--md-sys-color-on-primary-container);
+.credit-card.wide button.credit-license:focus-visible {
+  outline-color: var(--md-sys-color-inverse-primary);
 }
 
 .credit-link:focus-visible {

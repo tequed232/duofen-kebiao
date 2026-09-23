@@ -54,15 +54,10 @@ export interface CreditPerson {
   role: string;
   /** 姓名首字：头像加载失败时的兜底，也是无图环境的显示 */
   mark: string;
-  /** 名字旁的小徽标（作者「项目作者」、顾问「该项目顾问」…），窄卡片上会自动换行到名字下方 */
+  /** 名字旁的小徽标（作者「项目作者」、顾问「该项目顾问」…），同时也是锚点行的标记 */
   badge?: string;
   /** 各平台公开头像（已登记在 docs/asset-permissions.md） */
   avatar: string;
-  /**
-   * 跨列数（名片墙是 3 列网格）：作者 3 列（整行，高亮锚点卡）、画师 2 列，
-   * 其余不写＝1 列。宽卡（≥2）把小组件放到头像右侧；排布要让每行刚好铺满。
-   */
-  span?: 2 | 3;
   /** 主要联系平台，决定首字底色；默认 primary-container，'tertiary' 给以 B 站为主的人 */
   tone?: 'tertiary';
   /** 作品授权标记（权利人自己给出的许可） */
@@ -79,7 +74,6 @@ export const CREDITS: CreditPerson[] = [
     role: '项目发起 · 界面动效 · 数据与部署',
     mark: '罗',
     avatar: avatarLuo,
-    span: 3,
     badge: '项目作者',
     links: [
       { platform: 'github', label: 'GitHub', url: 'https://github.com/tequed232' },
@@ -97,7 +91,6 @@ export const CREDITS: CreditPerson[] = [
     mark: 'H',
     avatar: avatarHanbing,
     tone: 'tertiary',
-    span: 2,
     license: {
       label: 'CC BY',
       evidence: PERMISSION_HANBING_CC_BY,
