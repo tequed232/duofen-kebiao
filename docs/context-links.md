@@ -81,18 +81,23 @@ APK 直链（按版本）：
 | `.github/workflows/permission-reminder.yml` | 素材授权提醒（每周） |
 | `deploy/anubis/` | Anubis 反爬配置（https://github.com/TecharoHQ/anubis） |
 | `deploy/cloudflare/` | Cloudflare 边缘配置说明 |
-| `scripts/verify.mjs` | 自动化验收（含逐屏截图，结果写进 `screenshots/report.json`） |
+| `scripts/verify.mjs` | 逐屏验收（19 步全绿，逐屏截图 + `screenshots/report.json`）。需先 `npm run build && npm run preview`；已进 auto-review 守卫清单（`verify`） |
 | `scripts/check-secrets.mjs` | 本地密钥扫描 |
 | `scripts/check-imports.mjs` | 导入自检（防「用了没导入」导致白屏） |
+| `scripts/check-import-e2e.mjs` | **真实导入界面**端到端：把「模型回复」整段粘进去，验课表是否真进来、坏输入是否被拒（需 dev server，已进 auto-review 守卫清单） |
+| `scripts/check-backdrop-refraction.mjs` | 实测引擎是否认 `backdrop-filter: url(#svg)` 与 `feImage` 位移图（带 `blur` 对照，防假阴性；已进 CI） |
 | `scripts/collect-licenses.mjs` | 生成分类开源清单（README + 设置页数据） |
 
 ## 当前状态与已知问题（给审阅者的上下文）
 
-- **版本**：v3.0.2（`versionCode 30002` / `versionName 3.0.2`），Release + Pages + APK 均已更新
-- **APK 与网页同源**：APK 内嵌的 Web 构建与网页版逐文件哈希一致（55/55）
-- **已实现**：自绘 M3E 底栏（位置即结果 + 拖拽跟手 + 液态玻璃折射）、纯左右平移过渡、`resetTo` 无竞态标签切换、HTML 课表导入算法、本地缓存课表、教材多选删除、班级隐私清理、关于页致谢
-- **未完成**：**真机复验**（`adb devices` 为空，作者手机未接入），因此底栏真机手感、流体云实况（`promotedOngoing=true`）、界面缩放三档未确认
-- **技术限制（诚实记录）**：Chromium/WebView **会丢弃 `backdrop-filter` 里的 `url(#svg)`**，因此网页端无法对「背景」做真实折射；当前折射由 SVG 位移层叠在玻璃自身光带上实现（观感近似），真正的背景采样需要原生 `RenderEffect`/AGSL（本项目曾实现后回退）
+- **版本**：v3.5.2（`versionCode 30502` / `versionName 3.5.2`），Release + Pages + APK 均已更新
+- **APK 与网页同源**：APK 内嵌的 Web 构建与网页版共用同一份 `dist/`（bundle 哈希一致）
+- **已实现**：自绘 M3E 底栏（位置即结果 + 拖拽跟手 + 液态玻璃折射）、纯左右平移过渡、`resetTo` 无竞态标签切换、HTML 课表导入算法、本地缓存课表、教材多选删除、班级隐私清理、关于页致谢、**本地封面识别**（OpenCV 预处理 → Tesseract 中文 OCR → ISBN 校验 → 内置库匹配，识别资源打进 APK）
+- **真机复验（已完成）**：realme GT7 / Android 16 / arm64-v8a 上覆盖安装 v3.0.2 → v3.5.2 数据保留；设置页「本地识别」报告 `资源就绪：图像处理库 / 识别引擎 / 中文模型`；合成封面走完「选图识别封面」链路，识别出 `ISBN 9787040396638`
+- **仍未确认**：流体云实况（`promotedOngoing=true`）、界面缩放三档
+- **关于 `backdrop-filter` 与 `url(#svg)`（2026-09 更正）**：此前这里记着「Chromium/WebView 会丢弃 `backdrop-filter` 里的 `url(#svg)`，网页端无法对背景做真实折射」，并据此把折射做成「SVG 位移层叠在玻璃自身光带上」的近似。**该结论不成立**，已由 `scripts/check-backdrop-refraction.mjs` 实测推翻：在 Chromium 153 上，`url()` 通道与 `feImage` 位移图**都生效**，背景确实被掰弯（同区域开/关的平均逐像素差 68.47 / 88.38，对照 `blur` 62.28）。
+  复盘：原判定来自一次本地试验，它的位移图用 `feImage` 指向纯色 data URL，开/关截图完全一致 —— 但「一致」既可能是 `url()` 被丢弃，也可能是 **`feImage` 取不到图导致位移恒为 0**。两者修法完全不同，当时没有分开测，于是假阴性写进文档又被四处引用。
+  现状：桌面 Chromium 已证伪；**安卓 WebView 侧待真机回归时用同一守卫补测**（测量脚本不依赖项目代码，可直接在设备浏览器打开同一张测试页）。该守卫已进 CI，引擎行为若变化会直接反映在 PR 的 review 里，不再靠假设。
 - **隐私**：内置课表已清空过一次（含教师姓名、教室、班级人数），后按作者要求恢复课程数据但**署名统一为「Tequed232 拥有本项目的最终解释权」**；仓库不收录构建产物与截图；工作区密钥扫描通过
 
 ---

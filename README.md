@@ -166,8 +166,8 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | `check-about-credits.mjs` | 关于页名片墙版式（每行一张、头像在左、按钮齐全、无溢出） |
 | `github-release.mjs` | 发布：规范命名上传、归档到私有仓库、只保留最近 5 条 |
 | `collect-licenses.mjs` | 汇总依赖许可 → 设置页「开源相关」与 README 清单 |
-| `import-textbooks.mjs` `rtf-dump.mjs` | 教材数据导入、RTF 解析 |
-| `serve-dist.mjs` | 本地起静态服务器预览 `dist/` |
+| `rtf-dump.mjs` | 把教务导出的 RTF 课表转成纯文本，便于检查表格结构 |
+| `serve-dist.mjs` | 本地起静态服务器预览 `dist/`（默认 4174，`check-about-credits.mjs` 也对着它跑） |
 
 ### `docs/` —— 文档与凭据
 
@@ -390,14 +390,18 @@ node scripts/visual-parity.mjs   # 同一虚拟设备分别截 APK 内嵌资源�
 
 设置 → 底边栏风格（互斥）可在 **Liquid Glass** 与 **Material 3 原生导航栏** 之间切换。
 
-<!-- LICENSES:BEGIN -->
 ## 声明
 
 Tequed232 拥有本项目的最终解释权。
 
+<!-- 注意：下面这一区块由 `node scripts/collect-licenses.mjs` **整块重写**。
+     任何手工内容都不要写进 BEGIN/END 之间 —— 生成器是
+     `replace(BEGIN…END, 新块)`，写在里面的东西下次生成就没了。
+     「声明」原先就在里面，因此每跑一次生成器就被吃掉一次，现已移到标记之外。 -->
+<!-- LICENSES:BEGIN -->
 ## 开源相关（Open source）
 
-本项目共引入 **21** 个开源依赖，按用途分门别类列出（与设置里「关于 → 开源相关」一致）。
+本项目共引入 **23** 个开源依赖，按用途分门别类列出（与设置里「关于 → 开源相关」一致）。
 感谢每一位作者与维护者。
 
 > 自动生成：修改依赖后运行 `node scripts/collect-licenses.mjs` 重新整理。
@@ -469,8 +473,10 @@ _未归类的依赖_
 
 | 名称 | 版本 | 许可 | 版权 / 开发者 |
 | --- | --- | --- | --- |
+| [@techstark/opencv-js](https://github.com/TechStark/opencv-js) | 5.0.0-release.1 | Apache-2.0 | Wilson |
 | [@types/react](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react) | 19.3.0 | MIT | Asana |
 | [@types/react-dom](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) | 19.3.0 | MIT | Asana |
+| [tesseract.js](https://github.com/naptha/tesseract.js) | 7.0.0 | Apache-2.0 | 未提供版权方信息 |
 
 ### 参考实现（未引入代码）
 

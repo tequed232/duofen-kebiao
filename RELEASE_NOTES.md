@@ -1,3 +1,23 @@
+## 多分课表 v3.5.3 —— 开源署名补齐
+
+### 下载
+- 安装包：`duofen-kebiao-3.5.3.apk`（覆盖安装保留数据）
+- 发布页（始终最新）：https://github.com/tequed232/duofen-kebiao/releases/latest
+- 网页版：https://tequed232.github.io/duofen-kebiao/
+
+### 修复
+
+| 之前 | 现在 |
+| --- | --- |
+| 设置页「关于 → 开源相关」与 README 里缺 `@techstark/opencv-js`、`tesseract.js` 两条署名（两者都是 **Apache-2.0**，署名是许可要求） | 署名补齐，依赖数 21 → 23；并新增 `collect-licenses --check` 守卫，以后「加了依赖忘署名」会在 PR 里直接变红 |
+
+### 其他（不进安装包，但值得记录）
+
+- 逐屏验收 `scripts/verify.mjs` 从「19 步挂 11 步」修到**全绿**，并接进 CI。它此前坏掉的根本原因是**没人跑它**：底栏搬出屏幕栈后作用域选择器永不匹配、且失败不报错只是静默回落到超时；底栏切换不由 `click` 驱动，合成点击没反应却返回成功。
+- 更正了一条长期错误的记录：「Chromium 会丢弃 `backdrop-filter` 里的 `url(#svg)`」经实测**不成立**（桌面 Chromium 153 上 `url()` 与 `feImage` 都生效），并新增守卫持续测量引擎行为。
+
+---
+
 ## 多分课表 v3.5.2 —— 封面文字更干净
 
 ### 下载

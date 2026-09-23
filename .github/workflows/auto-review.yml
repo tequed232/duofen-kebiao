@@ -88,9 +88,17 @@ jobs:
           run_guard secrets        node scripts/check-secrets.mjs
           run_guard web-security   node scripts/check-web-security.mjs
           run_guard version        node scripts/check-version.mjs
+          # 开源署名清单是否跟得上依赖（本地识别引入 opencv-js / tesseract.js 时曾漏掉署名）
+          run_guard licenses       node scripts/collect-licenses.mjs --check
+          # 导入自检：防「用了没导入」导致整页白屏。它此前**没有任何 workflow 跑它**
+          # （仓库 12 个 check 脚本里有 2 个是这种状态），所以随时可能悄悄烂掉。
+          run_guard imports        node scripts/check-imports.mjs
           # ② 需要 esbuild（依赖已 npm ci）
           run_guard isbn           node scripts/check-isbn.mjs
-          # ③ 需要 dev server（它从源码 import TS，解析依赖 DOMParser）
+          # ③ 需要 Playwright 的 chromium（上一节已装）：量引擎对 backdrop-filter 的真实行为，
+          #    不依赖任何服务，跑在 dev server 之前
+          run_guard backdrop-refraction node scripts/check-backdrop-refraction.mjs
+          # ④ 需要 dev server（它从源码 import TS，解析依赖 DOMParser）
           npm run dev -- --port 5173 --strictPort > /tmp/guard-report/dev.log 2>&1 &
           dev_pid=$!
           for i in $(seq 1 30); do
@@ -98,7 +106,26 @@ jobs:
             sleep 1
           done
           APP_URL=http://127.0.0.1:5173/ run_guard schedule-html node scripts/check-schedule-html.mjs
+          # 真实导入界面端到端：把「模型回复」整段粘进去，看课表是否真进来
+          # （schedule-html 只验解析器；这条验的是导入教程教用户走的那条路真的通）
+          APP_URL=http://127.0.0.1:5173/ run_guard import-e2e  node scripts/check-import-e2e.mjs
           kill "$dev_pid" 2>/dev/null || true
+
+          # ⑤ 逐屏验收（19 步）：需要**生产构建 + preview server**。
+          #    它写于 v2 前，一度 19 步里 11 步失败；而因为不在 CI 里跑，烂了很久没人发现。
+          #    接进来就是为了让它不能再悄悄烂掉 —— 状态与三处静默失效见文件头注释。
+          npm run build > /tmp/guard-report/build.log 2>&1
+          npm run preview > /tmp/guard-report/preview.log 2>&1 &
+          preview_pid=$!
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          run_guard verify         node scripts/verify.mjs
+          # 关于页「致谢 · 名片墙」版式自检。它默认连 4174（那是 serve-dist.mjs 的端口），
+          # 和 verify 一样曾是「有效但没有任何 workflow 跑」的守卫之一 —— 这里指到 preview 上。
+          APP_URL=http://127.0.0.1:4173/ run_guard about-credits node scripts/check-about-credits.mjs
+          kill "$preview_pid" 2>/dev/null || true
 
           echo "overall=$overall" >> "$GITHUB_OUTPUT"
           cat /tmp/guard-report/summary.txt

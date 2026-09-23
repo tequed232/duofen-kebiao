@@ -6,10 +6,34 @@
  *
  * 样式对齐酷安《开源相关》：每条显示 名称+版本、许可、版权/开发者。
  *
- * Usage: node scripts/collect-licenses.mjs
+ * Usage:
+ *   node scripts/collect-licenses.mjs            # 生成并写回两个文件
+ *   node scripts/collect-licenses.mjs --check    # 只校验：署名清单与依赖不一致就非零退出（CI 用）
+ *
+ * 为什么要 --check：本地封面识别引入 `@techstark/opencv-js` 与 `tesseract.js`（都是 Apache-2.0）时，
+ * 功能上了但**署名清单没同步** —— README 与设置页「开源相关」都缺这两条署名，
+ * 而没有任何东西会因此报错。有了 --check，这类「加了依赖忘署名」会在 PR 的守卫表里直接变红。
+ *
+ * 注意：README 的 BEGIN/END 之间是**整块重写**的，任何手工内容都会被下次生成覆盖 ——
+ * 别往标记里写东西（「声明」原先在里面，就被吃掉过）。
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+/** --check：只比对不写盘，用于 CI */
+const CHECK = process.argv.includes('--check');
+/** 收集到的「已过期」目标，最后统一报出来 */
+const stale = [];
+/**
+ * 比对前统一换行符。
+ *
+ * 为什么必须有它：生成的内容用的是 `\n`，而本仓库在 Windows 上 `core.autocrlf=true`，
+ * **工作区文件本来就是 CRLF** —— 直接 `includes()` / `!==` 会在 Windows 上恒判「过期」，
+ * 与内容是否真的漂移无关。（这条守卫的第一版就栽在这上面：用编辑工具改过 README 之后，
+ * 它立刻开始报「README.md 的开源区块已过期」，而那只是换行符差异。）
+ * 换行符是平台约定，不是内容漂移；要判的是内容。
+ */
+const norm = (s) => s.replace(/\r\n/g, '\n');
 
 /** 分类规则：命中即归入该类（顺序即优先级） */
 const CATEGORIES = [
@@ -245,7 +269,12 @@ export const LICENSE_GROUPS: LicenseGroup[] = ${JSON.stringify(groups, null, 2)}
 /** 仅作参考、未引入代码的第三方实现 */
 export const REFERENCE_LIBS: LicenseEntry[] = ${JSON.stringify(REFERENCES, null, 2)};
 `;
-await writeFile('web/src/data/licenses.ts', ts, 'utf8');
+if (CHECK) {
+  const current = await readFile('web/src/data/licenses.ts', 'utf8').catch(() => '');
+  if (norm(current) !== norm(ts)) stale.push('web/src/data/licenses.ts');
+} else {
+  await writeFile('web/src/data/licenses.ts', ts, 'utf8');
+}
 
 /* 2) 生成 README 区块 */
 const lines = [];
@@ -280,13 +309,31 @@ lines.push('');
 const BEGIN = '<!-- LICENSES:BEGIN -->';
 const END = '<!-- LICENSES:END -->';
 const block = `${BEGIN}\n${lines.join('\n')}\n${END}`;
-let readme = await readFile('README.md', 'utf8');
+/* 留下改动前的内容：README 的过期判定必须拿**盘上的原文**比，
+   不能拿下面已经被替换过的 `readme` —— 那样 `includes(block)` 恒为真、检查形同虚设
+   （第一版就是这么写的，差点又交出一条永远绿的守卫）。 */
+const readmeBefore = await readFile('README.md', 'utf8');
+let readme = readmeBefore;
 if (readme.includes(BEGIN)) {
   readme = readme.replace(new RegExp(`${BEGIN}[\\s\\S]*?${END}`), block);
 } else {
   readme = `${readme.trimEnd()}\n\n---\n\n${block}\n`;
 }
-await writeFile('README.md', readme, 'utf8');
+if (CHECK) {
+  if (!norm(readmeBefore).includes(norm(block))) stale.push('README.md 的开源区块');
+} else {
+  await writeFile('README.md', readme, 'utf8');
+}
+
+if (CHECK) {
+  if (stale.length) {
+    console.error(`\n❌ 开源署名清单已过期：${stale.join('、')}`);
+    console.error('   依赖变过但没重新生成署名。跑 `node scripts/collect-licenses.mjs` 更新后再提交。');
+    process.exit(1);
+  }
+  console.log(`\n✅ 开源署名清单与依赖一致（依赖 ${all.length} 个，分 ${groups.length} 类）`);
+  process.exit(0);
+}
 
 console.log(`依赖 ${all.length} 个，分为 ${groups.length} 类：`);
 groups.forEach((group) => console.log(`  - ${group.title}（${group.items.length}）`));
