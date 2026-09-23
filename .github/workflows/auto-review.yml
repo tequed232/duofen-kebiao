@@ -90,7 +90,10 @@ jobs:
           run_guard version        node scripts/check-version.mjs
           # ② 需要 esbuild（依赖已 npm ci）
           run_guard isbn           node scripts/check-isbn.mjs
-          # ③ 需要 dev server（它从源码 import TS，解析依赖 DOMParser）
+          # ③ 需要 Playwright 的 chromium（上一节已装）：量引擎对 backdrop-filter 的真实行为，
+          #    不依赖任何服务，跑在 dev server 之前
+          run_guard backdrop-refraction node scripts/check-backdrop-refraction.mjs
+          # ④ 需要 dev server（它从源码 import TS，解析依赖 DOMParser）
           npm run dev -- --port 5173 --strictPort > /tmp/guard-report/dev.log 2>&1 &
           dev_pid=$!
           for i in $(seq 1 30); do

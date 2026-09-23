@@ -748,8 +748,11 @@ md-switch {
      STRENGTH 折射/饱和强度      BLUR     背景模糊
      SAT      饱和度            BRIGHT   亮度
      ZOOM     边缘放大            EDGE     边缘光带宽度
-   实现只用 CSS（backdrop-filter + 内阴影 + 边缘光带）：Chromium/WebView 会丢弃
-   `backdrop-filter: url(#svg)`，所以折射走 SVG 滤镜叠层（与底边栏同一套滤镜）。
+   实现只用 CSS（backdrop-filter + 内阴影 + 边缘光带）：折射由 useLens 生成的 SVG 位移滤镜
+   经 `backdrop-filter: url(#…)` 直接作用在**真实背景**上，与底边栏同一套滤镜。
+   （原先这里写着「Chromium/WebView 会丢弃 `backdrop-filter: url(#svg)`，所以折射只能走叠层近似」——
+     2026-09 实测更正：该说法不成立，`url()` 与 `feImage` 位移图都生效；
+     依据见 scripts/check-backdrop-refraction.mjs，该守卫已进 CI。）
    低性能模式下自动降级为不带模糊的实心表面（见 html[data-perf='low'] 规则）。 */
 .liquid-glass {
   /* 比例类参数用百分比变量：color-mix() 不接受 calc(0.49 * 100%) 这种写法 */

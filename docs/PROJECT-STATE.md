@@ -69,6 +69,6 @@ pwsh -File scripts/verify-device.ps1   # 一键：安装 + 截图 + 点底栏三
 1. **线上网页版由 CI 发布**：推送到 `main` 后自动构建并发布到 `gh-pages`（`.github/workflows/pages.yml`）。不要再手工往仓库根目录拷 `dist/` —— 那批产物已从仓库剔除，并被 `.gitignore` 忽略。
 2. **gradle 的 up-to-date 判定**会让新 `dist/` 不进 APK → 改完资源后清 `app/build/intermediates/{assets,merged_assets,packaged_assets}` 再打包。
 3. **JSX 里「用了没导入」** 会整页白屏 → 每次改动先跑 `check-imports.mjs` + 本地渲染自检（`root` 渲染长度 > 0 且运行时错误为 0）。
-4. **Chromium/WebView 丢弃 `backdrop-filter: url(#svg)`** → 网页端无法对背景做真实折射；当前用 SVG 位移层近似（真折射需原生 RenderEffect/AGSL）。
+4. **~~Chromium/WebView 丢弃 `backdrop-filter: url(#svg)`~~（2026-09 更正：此说法不成立）**。实测 Chromium 153 上 `url()` 与 `feImage` 位移图**都生效**，背景确实能被掰弯 —— 见 `scripts/check-backdrop-refraction.mjs`（已进 CI）。当初的假阴性来自「用 `feImage` 做位移图、开/关截图一致」就判定 `url()` 被丢弃：`feImage` 取不到图时位移恒为 0，同样会一致，两者没分开测。教训是**量引擎行为时必须带一个必然生效的对照**（那里是 `blur`），否则一次假阴性会被写进文档再被四处引用。
 5. **真机掉帧**多来自：逐帧 `getBoundingClientRect()`、改 `width`、移动元素挂 SVG 滤镜。
 6. 仓库**不收录**构建产物与截图（曾因此被密钥扫描误报）。
