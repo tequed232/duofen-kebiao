@@ -23,15 +23,17 @@ Material 3 Expressive 风格的课表应用：**四日课表 + 教材识别 + �
 
 ## 部署与发布
 
-GitHub Pages（`main` 分支根目录）直接托管生产构建：仓库根部的 `index.html` + `assets/` 就是 `dist/` 的内容，
-上一版单文件页面保留在 `legacy/index.html`，`.nojekyll` 关闭 Jekyll 处理。更新线上版本：
+源码留在 `main`，**构建产物不入库**。推送到 `main` 后由 `.github/workflows/pages.yml` 重新构建，并把 `dist/`
+推送到 `gh-pages` 分支发布（`gh-pages` 上放 `.nojekyll` 关闭 Jekyll 处理）；PR 只跑构建校验，不发布。
+上一版单文件页面保留在 `legacy/index.html`，仅供备查。
 
-```powershell
-npm run build
-Copy-Item dist\index.html index.html -Force
-Remove-Item assets -Recurse -Force; Copy-Item dist\assets assets -Recurse
-git add -A; git commit -m "Publish web build"; git push
+首次启用需要把 Pages 的发布源指向 `gh-pages` 分支（仓库管理员执行一次）：
+
+```bash
+gh api -X PUT repos/tequed232/duofen-kebiao/pages -f source.branch=gh-pages -f source.path=/
 ```
+
+生成本地发布物直接看 `dist/`，不要再往仓库根目录拷。
 
 生成 GitHub Release（Web 构建 zip + Android APK）：
 

@@ -1,6 +1,6 @@
 # Cloudflare CDN 挂载说明（多分课表）
 
-站点是纯静态产物（`dist/`，GitHub Pages 镜像在仓库根目录）。挂 Cloudflare 的官方 CDN 有两种做法，
+站点是纯静态产物（`dist/`；GitHub Pages 由 CI 构建并发布到 `gh-pages` 分支）。挂 Cloudflare 的官方 CDN 有两种做法，
 **推荐 A**：保留 GitHub Pages 作为源站，Cloudflare 负责 DNS、缓存、压缩与防护。
 
 ## A. 给现有站点套 Cloudflare（保留 GitHub Pages 源站）

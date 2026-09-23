@@ -43,8 +43,8 @@
 2. **仓库拆分**（作者要求）：`duofen-kebiao-web` / `duofen-kebiao-android`（GitHub slug 只能用 ASCII）
    - A：Android 仓库存 www 预构建快照 + 同步脚本（两端同源）
    - B：Android 仓库只放原生代码，构建时从 Web 仓库下载产物
-3. **发布名片墙改动**：`npm run build` → 刷新 Pages 镜像（根目录 `index.html` / `assets/`）→ 重打 APK
-   （否则线上网页版与 APK 还停在旧的「关于」页）
+3. **发布名片墙改动**：合并到 `main` 后由 CI（`.github/workflows/pages.yml`）构建并发布到 `gh-pages`；再重打 APK
+   （否则 APK 还停在旧的「关于」页）
 4. **待作者确认的名单口径**：liuli1719 的显示名（星爱流萤 / 小妍）、作者显示名（罗xx / 罗xx（Tequed232））；
    另外米达达的 B 站号昵称是 `miratsu_米达达`，与素材台账里的插画作者 miratsu 是否同一人需要确认
 5. 小事：`docs/context-links.md` 版本号更新到 v2.6
@@ -73,7 +73,7 @@ pwsh -File scripts/verify-device.ps1   # 一键：安装 + 截图 + 点底栏三
 
 ## 五、易踩的坑（都踩过）
 
-1. **发布前必须刷新 Pages 镜像**（根目录 `index.html` / `assets/`），否则线上网页版落后于 APK
+1. **线上网页版由 CI 发布**：推送到 `main` 后自动构建并发布到 `gh-pages`（`.github/workflows/pages.yml`）。不要再手工往仓库根目录拷 `dist/` —— 那批产物已从仓库剔除，并被 `.gitignore` 忽略
 2. **gradle 的 up-to-date 判定**会让新 `dist/` 不进 APK → 改完资源后清 `app/build/intermediates/{assets,merged_assets,packaged_assets}` 再打包
 3. **JSX 里"用了没导入"** 会整页白屏 → 每次改动先跑 `check-imports.mjs` + 本地渲染自检（`root` 渲染长度 > 0 且运行时错误为 0）
 4. **Chromium/WebView 丢弃 `backdrop-filter: url(#svg)`** → 网页端无法对背景做真实折射；当前用 SVG 位移层近似（真折射需原生 RenderEffect/AGSL）
