@@ -23,7 +23,7 @@ await build({
   logLevel: 'silent',
 });
 
-const { extractIsbns, isValidIsbn13, isValidIsbn10 } = await import(`file://${bundle}`);
+const { extractIsbns, isValidIsbn13, isValidIsbn10, formatIsbn13 } = await import(`file://${bundle}`);
 
 let pass = 0;
 let fail = 0;
@@ -72,6 +72,24 @@ check(
   extractIsbns('9780306406157 与 978-0-306-40615-7').length,
   1,
 );
+
+console.log('\n=== 裸 13 位串（条码区没有连字符）===');
+// 曾经的坑：pattern13 用量词 {10,17}，而 `97[89]` 已占 3 位，裸 13 位串只剩 10 位，
+// 配上末尾 \d 至少要 14 位 → 「9780306406157」永远抽不出来。
+// 上面那条「重复出现只计一次」正是因此**假通过**：长度恰好为 1 是因为裸串没被抽到，
+// 不是因为去重生效。改成 {9,17} 之后它才真正走一遍去重。
+check('裸 13 位能抽到', extractIsbns('9780306406157').length, 1);
+check('裸 13 位归一化为纯数字', extractIsbns('9780306406157')[0]?.isbn, '9780306406157');
+check('裸 13 位只算一条（不重复计为 10 位）', extractIsbns('9787040396638').length, 1);
+check('串中间的 OCR 误读仍能还原（O→0）', extractIsbns('ISBN 978-7-O4-O39663-8')[0]?.isbn, '9787040396638');
+check('裸串与带连字符串混排仍只计一次', extractIsbns('9780306406157 978-0-306-40615-7').length, 1);
+
+console.log('\n=== formatIsbn13 格式化 ===');
+// 曾经的坑：rest 有 8 位，却只取 slice(2, 7) 共 5 位，静默丢一位数字 ——
+// 格式化出来的「978-7-04-03966-8」其实只有 12 位。
+check('格式化后数字一个不少', formatIsbn13('9787040396638').replace(/\D/g, ''), '9787040396638');
+check('中国组号按标准分段', formatIsbn13('9787040396638'), '978-7-04-039663-8');
+check('非 13 位原样返回', formatIsbn13('123'), '123');
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

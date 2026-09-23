@@ -61,6 +61,17 @@ export interface RecognizeCoverOptions {
 }
 
 /**
+ * 去掉**汉字之间**被 OCR 插进来的空格。
+ *
+ * Tesseract 的 chi_sim 在字距偏大时会逐字切分，真机上「高等数学」会被读成「高 等 数学」，
+ * 直接显示出来就是个错书名。只压缩两个汉字之间的空白：拉丁文之间的空格保持原样，
+ * 「大学 English 教程」这类混排不受影响。
+ */
+export function squeezeCjkSpaces(text: string): string {
+  return text.replace(/(?<=[\u4e00-\u9fa5])[ \t]+(?=[\u4e00-\u9fa5])/g, '');
+}
+
+/**
  * 识别一张教材封面。
  * 会依次识别各个预处理视图，按「文本可信度 + 与课程/内置库的匹配度」选最优。
  */
@@ -123,8 +134,8 @@ export async function recognizeCover(
    * 内置库那份是人工整理过的（与 12 张封面照片一一对应），比现场 OCR 可靠；
    * 课程匹配上却不给库里的书名，用户就得自己改，那是白识别。
    */
-  const coverTitle = longestLine(bestText);
-  const publisher = guessPublisher(bestText) || library?.publisher || '';
+  const coverTitle = squeezeCjkSpaces(longestLine(bestText));
+  const publisher = squeezeCjkSpaces(guessPublisher(bestText)) || library?.publisher || '';
 
   onProgress?.({ phase: 'done', ratio: 1, text: '识别完成' });
 
