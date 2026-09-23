@@ -24,6 +24,8 @@ export interface ParsedSchedule extends ScheduleData {
     courses: number;
     skipped: string[];
     weeksDetected: number[];
+    /** 归一化时做过的调整（去掉代码围栏 / 伪表格转换…），用于告诉用户「我改了什么」 */
+    normalization: string[];
   };
 }
 
@@ -165,11 +167,111 @@ function tableRows(table: HTMLTableElement): HTMLTableRowElement[] {
 }
 
 /**
+ * 归一化「多模态模型输出」的 HTML。
+ *
+ * 直接拿 DeepSeek / Gemini / ChatGPT 的回复来粘时，最常见的三种噪音：
+ *   ① 被 ```html 围栏包住（有时还带语言标注前后的空行）
+ *   ② 前后带解释性文字（「好的，这是转换结果：」…「希望对你有帮助」）
+ *   ③ 没有 <table>，而是用 div + role="row"/"cell" 或 ul/li 表达的伪表格
+ * 这里把它们整理成 DOMParser 能直接吃的形态；真正的解析仍由既有算法负责。
+ *
+ * 返回归一化后的 HTML 与「有没有动过」的说明，便于在导入结果里提示用户。
+ */
+export function normalizeModelHtml(input: string): { html: string; notes: string[] } {
+  const notes: string[] = [];
+  let html = input.trim();
+
+  // ① 去掉 markdown 代码围栏：取第一个围栏到最后一个围栏之间的内容
+  const fenced = /```[a-zA-Z]*\s*\n([\s\S]*?)```/.exec(html);
+  if (fenced) {
+    html = fenced[1].trim();
+    notes.push('已去掉 Markdown 代码围栏');
+  }
+
+  // ② 前后解释文字：只保留第一段像 HTML 的内容
+  if (!/^\s*</.test(html)) {
+    const start = html.search(/<(table|div|ul|ol|html|body|tbody|tr)\b/i);
+    if (start > 0) {
+      html = html.slice(start);
+      notes.push('已去掉 HTML 之前的说明文字');
+    }
+  }
+  const lastTag = html.lastIndexOf('>');
+  if (lastTag >= 0 && lastTag < html.length - 1) {
+    const tail = html.slice(lastTag + 1).trim();
+    // 结尾若是大段自然语言（含中文标点且不含标签），砍掉
+    if (tail.length > 4 && !/[<>]/.test(tail)) {
+      html = html.slice(0, lastTag + 1);
+      notes.push('已去掉 HTML 之后的说明文字');
+    }
+  }
+
+  // ③ 伪表格：div + role=row/cell 或 ul/li → 转成真正的 table
+  if (!/<table\b/i.test(html)) {
+    const pseudo = pseudoTableToTable(html);
+    if (pseudo) {
+      html = pseudo.html;
+      notes.push(`已把 ${pseudo.kind} 结构转换为表格`);
+    }
+  }
+
+  return { html, notes };
+}
+
+/**
+ * 把「没有 table 的表格」认出来并转成 <table>。
+ * 支持两种模型常见写法：
+ *   · div 网格：role="row" / role="cell"（或 class 名里含 row/cell）
+ *   · 列表：<ul><li>星期一 第1-2节 高等数学 …</li>…</ul>
+ */
+function pseudoTableToTable(html: string): { html: string; kind: string } | null {
+  // 先看 div 网格
+  const rowMatches = [...html.matchAll(/<div[^>]*(?:role=["']row["']|class=["'][^"']*\brow\b[^"']*["'])[^>]*>([\s\S]*?)<\/div>/gi)];
+  if (rowMatches.length >= 2) {
+    const rows = rowMatches.map((row) =>
+      [...row[1].matchAll(/<div[^>]*(?:role=["'](?:cell|gridcell)["']|class=["'][^"']*\bcell\b[^"']*["'])[^>]*>([\s\S]*?)<\/div>/gi)].map(
+        (cell) => cell[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+      ),
+    );
+    const usable = rows.filter((cells) => cells.length >= 2);
+    if (usable.length >= 2) {
+      return { kind: 'div 网格', html: rowsToTable(usable) };
+    }
+  }
+
+  // 再看列表：一行一门课，靠文本里的星期/节次字段解析
+  const items = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((item) =>
+    item[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+  );
+  const usable = items.filter((text) => text.length > 3);
+  if (usable.length >= 2) {
+    return { kind: '列表', html: rowsToTable(usable.map((text) => [text])) };
+  }
+
+  return null;
+}
+
+/** 二维文本 → 最小可用的 <table>（每格一个 td，用 <br> 保留原换行） */
+function rowsToTable(rows: string[][]): string {
+  const body = rows
+    .map((cells) => `<tr>${cells.map((cell) => `<td>${escapeHtml(cell).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`)
+    .join('');
+  return `<table>${body}</table>`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
  * 主入口：把 HTML 文本解析成 ScheduleData。
- * @param html 教务导出的 HTML（整页或片段均可）
+ * @param html 教务导出的 HTML（整页或片段均可），也兼容多模态模型输出的 HTML
  */
 export function parseScheduleHtml(html: string): ParsedSchedule {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
+  // 先归一化：兼容多模态模型输出（代码围栏 / 前后说明文字 / 伪表格）
+  const normalized = normalizeModelHtml(html);
+  const source = normalized.html;
+  const doc = new DOMParser().parseFromString(source, 'text/html');
   const tables = Array.from(doc.querySelectorAll('table'));
   const skipped: string[] = [];
   const weeksSeen = new Set<number>();
@@ -369,6 +471,7 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
       courses,
       skipped: skipped.slice(0, 12),
       weeksDetected: [...weeksSeen].sort((a, b) => a - b),
+      normalization: normalized.notes,
     },
   };
 }
