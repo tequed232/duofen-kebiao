@@ -84,6 +84,8 @@ APK 直链（按版本）：
 | `scripts/verify.mjs` | 自动化验收（含逐屏截图，结果写进 `screenshots/report.json`） |
 | `scripts/check-secrets.mjs` | 本地密钥扫描 |
 | `scripts/check-imports.mjs` | 导入自检（防「用了没导入」导致白屏） |
+| `scripts/check-import-e2e.mjs` | **真实导入界面**端到端：把「模型回复」整段粘进去，验课表是否真进来、坏输入是否被拒（需 dev server，已进 auto-review 守卫清单） |
+| `scripts/check-backdrop-refraction.mjs` | 实测引擎是否认 `backdrop-filter: url(#svg)` 与 `feImage` 位移图（带 `blur` 对照，防假阴性；已进 CI） |
 | `scripts/collect-licenses.mjs` | 生成分类开源清单（README + 设置页数据） |
 
 ## 当前状态与已知问题（给审阅者的上下文）

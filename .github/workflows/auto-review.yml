@@ -101,6 +101,9 @@ jobs:
             sleep 1
           done
           APP_URL=http://127.0.0.1:5173/ run_guard schedule-html node scripts/check-schedule-html.mjs
+          # 真实导入界面端到端：把「模型回复」整段粘进去，看课表是否真进来
+          # （schedule-html 只验解析器；这条验的是导入教程教用户走的那条路真的通）
+          APP_URL=http://127.0.0.1:5173/ run_guard import-e2e  node scripts/check-import-e2e.mjs
           kill "$dev_pid" 2>/dev/null || true
 
           echo "overall=$overall" >> "$GITHUB_OUTPUT"
