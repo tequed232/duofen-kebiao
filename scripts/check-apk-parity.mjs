@@ -60,9 +60,25 @@ const apkFiles = new Map(
     }),
 );
 
+/**
+ * APK 里**有意**比网页产物多出来的那部分：打进安装包的本地识别资源。
+ *
+ * 为什么会有差：`vite.config.ts` 的 `stripLocalOcrFromDist` 在构建收尾把 `dist/ocr` 删掉，
+ * 好让网页产物维持 2.1 MB（识别资源约 58 MB，网页版需要时开发者跑 `npm run setup:ocr` 自取）；
+ * 而 APK 侧由 `app/build.gradle.kts` 的 `syncOcrAssets` 把它们塞进 `assets/www/ocr`。
+ * 所以「APK 比 dist 多出 ocr/」是**设计如此**，不是不一致。
+ *
+ * 但不能因此把多出来的一律放过 —— 只认这一个前缀，其它任何多出来的文件仍然报不一致，
+ * 否则这条守约会退化成"永远绿"。这正是它此前一直红的原因：多出的 22 个 ocr 文件
+ * 被当成不一致，于是「只要有识别资源的 APK 就必然失败」。
+ */
+const APK_ONLY_PREFIX = 'ocr/';
+
 const distFiles = await walk(distDir);
 const missing = [...distFiles.keys()].filter((key) => !apkFiles.has(key));
-const extra = [...apkFiles.keys()].filter((key) => !distFiles.has(key));
+const extrasRaw = [...apkFiles.keys()].filter((key) => !distFiles.has(key));
+const deliberate = extrasRaw.filter((key) => key.startsWith(APK_ONLY_PREFIX));
+const extra = extrasRaw.filter((key) => !key.startsWith(APK_ONLY_PREFIX));
 const differing = [...distFiles.keys()].filter(
   (key) => apkFiles.has(key) && apkFiles.get(key) !== distFiles.get(key),
 );
@@ -71,12 +87,18 @@ const bundle = [...distFiles.keys()].find((key) => /assets\/index-.*\.js$/.test(
 console.log(`APK      : ${apk}`);
 console.log(`网页构建 : ${distFiles.size} 个文件，入口 bundle ${bundle}`);
 console.log(`APK 内嵌 : ${apkFiles.size} 个文件`);
+console.log(
+  `有意多出 : ${deliberate.length} 个（${APK_ONLY_PREFIX}，打进 APK 的本地识别资源，网页产物按设计不含）`,
+);
 if (missing.length) console.log(`缺少: ${missing.slice(0, 6).join(', ')}${missing.length > 6 ? ` …共 ${missing.length}` : ''}`);
-if (extra.length) console.log(`多出: ${extra.slice(0, 6).join(', ')}${extra.length > 6 ? ` …共 ${extra.length}` : ''}`);
+if (extra.length) console.log(`多出（非预期）: ${extra.slice(0, 6).join(', ')}${extra.length > 6 ? ` …共 ${extra.length}` : ''}`);
 if (differing.length) console.log(`内容不同: ${differing.slice(0, 6).join(', ')}`);
 
 if (missing.length || extra.length || differing.length) {
   console.error('\n❌ APK 与网页不一致');
   process.exit(1);
 }
-console.log('\n✅ APK 与网页逐文件一致（文件名 + 内容哈希全部相同）');
+console.log(
+  `\n✅ 网页产物的 ${distFiles.size} 个文件在 APK 里逐文件一致（文件名 + 内容哈希全部相同）` +
+    `，另有 ${deliberate.length} 个 ${APK_ONLY_PREFIX} 资源按设计只进 APK`,
+);

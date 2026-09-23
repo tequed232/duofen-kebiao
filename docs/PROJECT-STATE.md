@@ -49,7 +49,7 @@
 
 ```bash
 npm run build                 # 网页构建（输出 dist/）
-npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈希比对（期望 55/55）
+npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈希比对；ocr/ 按设计只进 APK，不算不一致
 npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）
 node scripts/check-imports.mjs     # 导入自检（防「用了没导入」导致白屏）
 node scripts/check-secrets.mjs     # 密钥扫描
