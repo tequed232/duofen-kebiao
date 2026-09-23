@@ -125,9 +125,10 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       disp.setAttribute('scale', map.scale.toFixed(2));
       blur.setAttribute('stdDeviation', String(Math.max(0.6, params.strength)));
       /* backdrop 那份：贴图相同，但**位移大幅收窄**（作者反馈：边缘扭曲区域太大、显得夸张；
-         苹果的扭曲收在选中框周围一小块、衰减很快）。封顶从 26px 降到 10px、
-         系数从 0.4 降到 0.22 —— 「玻璃翘边」只留在边缘一线，不再整块都在扭。 */
-      const backdropScale = Math.min(10, map.scale * 0.22);
+         苹果的扭曲收在选中框周围一小块、衰减很快）。
+         封顶与系数由参数覆盖 —— 底栏取 7px / 0.16，真实背景只被掰弯一点点；
+         浮层沿用默认的 10px / 0.22。 */
+      const backdropScale = Math.min(params.backdropMax ?? 10, map.scale * (params.backdropFactor ?? 0.22));
       backdropFilter.setAttribute('width', String(width));
       backdropFilter.setAttribute('height', String(height));
       backdropImage.setAttribute('width', String(width));

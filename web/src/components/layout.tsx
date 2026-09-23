@@ -115,6 +115,18 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const springRafRef = useRef<number | undefined>(undefined);
   const SPRING_K = 0.34;
   const SPRING_C = 0.72;
+  /** 按下时的指针 x，用来判断这次手势是「轻点」还是「拖动」 */
+  const downXRef = useRef(0);
+  /**
+   * 拖动阈值（px）。超过它才算拖动。
+   *
+   * 为什么必须有这个阈值：原来 `pointerdown` 就直接进拖动态，而拖动态的 CSS 是
+   * `transition: none; transform: translate3d(var(--pill-x))` —— 于是**轻点**也会
+   * 让色块瞬移到指尖，苹果那种「从旧位置移过去」的过渡被整个跳过，看起来就是"闪现"。
+   * 有了阈值，轻点根本不进拖动态，色块继续走 `.m3e-dock-slider` 上那条带 overshoot
+   * 的弹簧过渡 —— 这才是 duang 的来源；真拖动才切到手写弹簧逐帧跟手。
+   */
+  const DRAG_SLOP = 6;
 
   const stopSpring = () => {
     if (springRafRef.current !== undefined) {
@@ -190,7 +202,9 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     const push = Math.max(0, Math.abs(x - (left + halfCell)) - halfCell);
     const squash = Math.min(0.32, push / 60);
     const inWall = movedRef.current && clamped && push > 1;
-    element.style.setProperty('--pill-x', `${left.toFixed(1)}px`);
+    /* 位移**取整到整像素**：小数位置会让背景采样落在半像素上，逐帧抖动就是"滑动时闪烁"
+       的来源之一。整像素对肉眼无损（1px 的步进在 60fps 下看不出来），却能消掉重采样抖动。 */
+    element.style.setProperty('--pill-x', `${Math.round(left)}px`);
     /* 碰壁触感：只在"刚撞上"的那一帧响一次（inWallRef 记录状态），
        不然每帧都命中边界会连成一片嗡嗡声。 */
     if (inWall && !inWallRef.current) haptic('wall');
@@ -264,28 +278,42 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     if (!dockRef.current) return;
     geoRef.current = measure(); // 只在这里读布局
 
-    // 按住：常驻色块直接跟手（不再弹触摸小球，避免同时出现两个圆）
     pendingXRef.current = event.clientX;
-    // 弹簧从**当前色块位置**起跑，避免按下的瞬间跳一下
+    downXRef.current = event.clientX;
+    /* 弹簧种子取**色块当前所在格的中心**，不是手指位置。
+       取手指位置的话，按下那一帧色块就被拽到指尖了（瞬移）；从原处起跑去追手指，
+       才有一点点滞后与回弹 —— 作者要的「液态跟手」正是这一段。 */
     {
       const geo0 = geoRef.current;
-      springXRef.current = geo0 ? clamp(event.clientX - geo0.left, 0, geo0.width) : 0;
+      springXRef.current = geo0 ? geo0.centers[activeIndex] ?? geo0.width / 2 : 0;
       springVelRef.current = 0;
     }
-    draggingRef.current = true;
-    setDragging(true);
+    /* 先不进拖动态：位移超过 DRAG_SLOP 才进。轻点若在这里就进，色块会因
+       `.dragging` 的 `transition: none` 瞬移到指尖 —— 那就是"闪现"的来源。 */
+    draggingRef.current = false;
     velRef.current = 0;
     accelRef.current = 0;
     accelHoldRef.current = 0;
     inWallRef.current = false;
     movedRef.current = false;
     lastMoveRef.current = { x: event.clientX, t: performance.now() };
-    applyFrame(springXRef.current);
-    startShapeLoop();
-    runSpring();
 
     const onWindowMove = (moveEvent: PointerEvent) => {
-      if (!draggingRef.current) return;
+      if (!draggingRef.current) {
+        /* 还没进拖动态：位移超过阈值才算拖动，没超过就什么都不做 ——
+           轻点会走 onWindowUp 里「直接切标签」那条分支，色块继续用 CSS 弹簧过渡移过去。 */
+        if (Math.abs(moveEvent.clientX - downXRef.current) < DRAG_SLOP) return;
+        draggingRef.current = true;
+        setDragging(true);
+        /* 从**按下那一刻**重新起算速度：否则第一帧会把「按下到跨过阈值」这段位移
+           当成一次极快的甩动，形变直接吃满，看着像抽了一下。 */
+        lastMoveRef.current = { x: downXRef.current, t: performance.now() };
+        velRef.current = 0;
+        accelRef.current = 0;
+        accelHoldRef.current = 0;
+        startShapeLoop();
+        runSpring();
+      }
       movedRef.current = true; // 真的拖起来了（撞墙触感与形变都以此为前提）
       // 速度 → 加速度：都用「本次位移 / 间隔」估算，不读布局
       const now = performance.now();
@@ -298,6 +326,31 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
       scheduleFrame(); // 合帧：一帧最多写一次
     };
     const onWindowUp = (upEvent: PointerEvent) => {
+      /* 轻点（位移从未超过 DRAG_SLOP）：全程没进拖动态，色块也没被 --pill-x 接管，
+         所以这里**只需切标签** —— activeIndex 一变，`.m3e-dock-slider` 上那条
+         cubic-bezier(0.34, 1.56, 0.64, 1) 弹簧过渡就会把色块从旧位置弹到新位置，
+         过冲量随跨距等比放大，这就是「移过去 duang」那一下。 */
+      if (!draggingRef.current) {
+        const geo = geoRef.current;
+        if (geo) {
+          const x = clamp(upEvent.clientX - geo.left, 0, geo.width - 1);
+          const index = clamp(Math.floor(x / geo.cell), 0, TABS.length - 1);
+          const tab = TABS[index];
+          if (tab && index !== activeIndex) {
+            haptic('select');
+            if (typeof navSelectTab === 'function') navSelectTab(tab.id);
+            else onSelect(tab.id);
+          } else if (tab) {
+            haptic('tick'); // 点当前标签：给一次轻刻度，避免"点了没反应"
+          }
+        }
+        setHoverIndex(null);
+        geoRef.current = null;
+        window.removeEventListener('pointermove', onWindowMove);
+        window.removeEventListener('pointerup', onWindowUp);
+        window.removeEventListener('pointercancel', onWindowUp);
+        return;
+      }
       if (draggingRef.current) {
         draggingRef.current = false;
         setDragging(false);

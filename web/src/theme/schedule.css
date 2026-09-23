@@ -885,8 +885,12 @@ html[data-perf='low'] .screen {
      遮罩是透镜生成的 rim 图（窄窄一圈弧面），所以重模糊不会铺满整块。
      12px → 6px：原来这一层把边缘糊得太狠，和本体叠起来就看不清内容了；
      折射已经比它更醒目，散射只需要一点「化开」的观感。 */
-  backdrop-filter: blur(6px) saturate(1.35);
-  -webkit-backdrop-filter: blur(6px) saturate(1.35);
+  /* 这里原本还有一层 `backdrop-filter: blur(6px) saturate(1.35)`，已去掉，原因有二：
+     ① **闪烁**：底栏上同时叠了三层 backdrop-filter（本体透镜、这一层、.m3e-dock-scatter），
+        每层各自采样一次背景；滚动或拖动时逐帧重采样，采样相位对不齐就闪。少一层就少一份抖。
+     ② 冗余：这一层本来就被 --lg-edge-url 遮成边缘一圈弧面，而 .m3e-dock-scatter 的磨砂带
+        正好也压在边界上 —— 边界那圈模糊由它出就够了。
+     保留的是它的位移滤镜（filter: var(--lg-map-url)）与那道斜向光带，折射观感不受影响。 */
   -webkit-mask-image: var(--lg-edge-url, none);
   mask-image: var(--lg-edge-url, none);
   background: linear-gradient(
@@ -1018,7 +1022,15 @@ html[data-perf='low'] .m3e-dock-slider {
   /* 同心圆角：外层 34px − 内边距 6px */
   border-radius: 28px;
   background: color-mix(in srgb, var(--md-sys-color-secondary-container) 94%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 30%, transparent);
+  /* 色散：只留**选中胶囊边缘 1px 内的一丝**（作者要求：苹果的页签栏几乎不做 RGB 分离，
+     色散极克制；要么只留选中框边缘那一丝，要么换成轻微折射/高光）。
+     这里不做三通道位移 —— 那既是不自然彩边的来源，也是逐帧重采样→闪烁的来源，
+     改成胶囊上缘偏冷、下缘偏暖各 1px 的极窄描边：模拟真实玻璃把光掰开的那点分离，
+     纯合成层，零采样成本，也不会抖。 */
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 30%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #8ec8ff 22%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #ffb98a 18%, transparent);
 }
 
 .m3e-dock-tab {
@@ -1260,11 +1272,11 @@ html[data-perf='low'] .m3e-dock-slider-reflection {
 }
 
 /* 拖动经过的标签轻微提亮（不给"已选中"的语义，选中仍由 active 决定）。
-   这里用 on-surface-variant 而不是 on-surface：后者在暗色主题里几乎是纯白，
-   手指停在某一格时那个图标会**亮成白色**（作者反馈「选中框滑走后原图标变白」的成因），
-   而它其实只是「手指路过」，不该比选中态还亮。 */
+   注释原本就写着「后者在暗色主题里几乎是纯白」—— 但公式仍是 on-surface 占 72%，
+   等于注释说不要、代码照做，暗色主题下那个图标看着就是"变白"。
+   现在真的把权重翻过来：以 on-surface-variant 为主，只掺一点 on-surface。 */
 .m3e-dock-tab.hovered {
-  color: color-mix(in srgb, var(--md-sys-color-on-surface) 72%, var(--md-sys-color-on-surface-variant));
+  color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 82%, var(--md-sys-color-on-surface));
 }
 
 
