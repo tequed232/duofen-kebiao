@@ -104,10 +104,31 @@ async function main() {
   const message = git(`log -1 --pretty=%B ${BRANCH}`);
 
   const ref = await api('GET', `/repos/${REPO}/git/ref/heads/${BRANCH}`);
-  if (ref.status !== 200) throw new Error(`读远端 ref 失败：${ref.status} ${ref.raw.slice(0, 160)}`);
-  const remote = ref.json.object.sha;
+  let remote;
+  let createdBranch = false;
 
-  console.log(`仓库   : ${REPO}  分支: ${BRANCH}`);
+  if (ref.status === 404) {
+    /* 远端还没有这个分支：从 base 分支（默认 main）拉一个。
+       这样新特性分支也能走这条通道推上去，而不是只能更新已存在的分支。 */
+    const base = argOf('base', 'main');
+    const baseRef = await api('GET', `/repos/${REPO}/git/ref/heads/${base}`);
+    if (baseRef.status !== 200) throw new Error(`找不到基分支 ${base}：${baseRef.status}`);
+    const baseSha = baseRef.json.object.sha;
+    const made = await api('POST', `/repos/${REPO}/git/refs`, {
+      ref: `refs/heads/${BRANCH}`,
+      sha: baseSha,
+    });
+    if (made.status >= 300) throw new Error(`建分支失败：${made.status} ${made.raw.slice(0, 200)}`);
+    remote = baseSha;
+    createdBranch = true;
+    console.log(`远端分支 : 不存在 → 已从 ${base} 创建（${baseSha.slice(0, 7)}）`);
+  } else if (ref.status !== 200) {
+    throw new Error(`读远端 ref 失败：${ref.status} ${ref.raw.slice(0, 160)}`);
+  } else {
+    remote = ref.json.object.sha;
+  }
+
+  console.log(`仓库   : ${REPO}  分支: ${BRANCH}${createdBranch ? '（新建）' : ''}`);
   console.log(`远端   : ${remote.slice(0, 7)}`);
   console.log(`本地   : ${head.slice(0, 7)}   ${message.split('\n')[0]}`);
 
