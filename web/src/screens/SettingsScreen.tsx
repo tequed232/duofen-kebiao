@@ -13,7 +13,8 @@ import { MapChooserDialog } from '../components/schedule';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
 import { mapProviderById } from '../lib/schedule';
-import { isNativeShell, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib/native';
+import { isNativeShell, haptic, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib/native';
+import { probeOcrAssets, type OcrAssetStatus } from '../lib/ocrStatus';
 
 export default function SettingsScreen() {
   const nav = useNav();
@@ -27,7 +28,20 @@ export default function SettingsScreen() {
   const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
   const [perfDialogOpen, setPerfDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
+  /** 本地识别资源状态：null = 正在探测 */
+  const [ocrStatus, setOcrStatus] = useState<OcrAssetStatus | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // 进设置页就探一次识别资源（HEAD 请求，不下载内容）
+  useEffect(() => {
+    let cancelled = false;
+    void probeOcrAssets().then((status) => {
+      if (!cancelled) setOcrStatus(status);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // keep the sliders in sync when settings are changed elsewhere (e.g. 撤销)
 
@@ -252,6 +266,70 @@ export default function SettingsScreen() {
               </md-filled-tonal-button>
               <span className="md-body-small muted">仅 Android 16 / ColorOS 生效</span>
             </div>
+
+            {/* -------------------------------------- 本地识别资源状态 + CDN 开关 */}
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name={ocrStatus === null ? 'speed' : ocrStatus.ready ? 'check_circle' : 'error'} />
+              </div>
+              <div slot="headline">本地识别</div>
+              <div className="list-inline-texts" slot="supporting-text">
+                {ocrStatus === null ? (
+                  <span>正在检查识别资源…</span>
+                ) : ocrStatus.ready ? (
+                  <>
+                    <span>资源就绪：图像处理库 / 识别引擎 / 中文模型</span>
+                    <span>封面识别全程在本机，图片不出设备</span>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      缺少{!ocrStatus.opencv ? ' 图像处理库' : ''}
+                      {!ocrStatus.engine ? ' 识别引擎' : ''}
+                      {!ocrStatus.lang ? ' 中文模型' : ''}
+                    </span>
+                    <span>开发者执行 npm run setup:ocr 补齐</span>
+                  </>
+                )}
+              </div>
+              <div slot="end">
+                <MdIconButton
+                  icon="refresh"
+                  label="重新检查识别资源"
+                  onClick={() => {
+                    haptic('select');
+                    setOcrStatus(null);
+                    void probeOcrAssets().then(setOcrStatus);
+                  }}
+                />
+              </div>
+            </md-list-item>
+
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name={settings.localOcrCdn ? 'download' : 'storage'} />
+              </div>
+              <div slot="headline">允许联网取识别资源</div>
+              <div className="list-inline-texts" slot="supporting-text">
+                <span>{settings.localOcrCdn ? '允许：缺资源时从 CDN 取引擎' : '禁止：只用本机资源'}</span>
+                <span>中文模型与图片始终在本机，不上传</span>
+              </div>
+              <div slot="end">
+                <MdSwitch
+                  selected={settings.localOcrCdn}
+                  onSelectedChange={(value) =>
+                    updateSettings(
+                      { localOcrCdn: value },
+                      {
+                        message: value
+                          ? '已允许联网取识别资源（图片仍不出设备）'
+                          : '已禁止联网：识别只使用本机资源',
+                      },
+                    )
+                  }
+                />
+              </div>
+            </md-list-item>
 
             {/* ------------------------------------------------ 5 API编辑 */}
             <md-list-item
