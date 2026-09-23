@@ -8,8 +8,16 @@ export interface AppSettings {
   visionApiUrl: string;
   visionApiKey: string;
   /**
-   * 本地识别（OpenCV + Tesseract）缺资源时，是否允许从公网 CDN 取模型。
-   * 默认 false —— 全部走 localhost，只有用户明确同意才联网。
+   * 本地识别缺资源时，是否允许从公网 CDN 取 **OCR 引擎核心**。
+   *
+   * 默认 true，原因是实测的兼容性缺陷：自托管核心（把 tesseract.js-core 放到
+   * web/public/ocr/ 并用 corePath 指过去）在 tesseract.js 6 与 7 上都在初始化后崩溃
+   * （`initialization failed: Cannot read properties of undefined (reading 'resolve')`），
+   * 且 Promise 不 reject。而「本地中文模型 + 官方 CDN 核心」在 0.2 秒内即成功。
+   *
+   * 注意隐私边界：**图片始终不出设备**，**中文模型也仍在本地**；
+   * 只有 OCR 引擎（不含任何用户数据）会从 CDN 取一次并被浏览器缓存。
+   * 想完全离线可关掉本项 —— 代价是自托管核心当前不可用，识别会失败。
    */
   localOcrCdn: boolean;
   /** default map provider id used when navigating to a course address ('' = ask every time) */
@@ -43,7 +51,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cameraSharpness: 1,
   visionApiUrl: '',
   visionApiKey: '',
-  localOcrCdn: false,
+  localOcrCdn: true,
   mapProvider: '',
   termStart: '',
   schoolName: '',

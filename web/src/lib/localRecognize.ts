@@ -13,13 +13,43 @@ import { extractIsbns } from './isbn';
 import { guessPublisher, libraryTextbook, matchCourseByText } from './textbooks';
 import type { LocalRecognizeResult, OcrProgress } from './localOcrTypes';
 
-/** 取封面文字里最长的一行，通常就是书名 */
+/**
+ * 取封面文字里最像「书名」的一行。
+ *
+ * 不能简单取最长行：封面上还有「ISBN 978-7-04-039663-8」「定价 49.80 元」这类
+ * 比书名更长的条目 —— 早期版本就是这么把书名取成 ISBN 的（端到端验证抓到的）。
+ * 所以先按「像不像书名」打分：含中文加分，含数字 / ISBN / 定价 / 元 等扣分，
+ * 同分再比长度。
+ */
 export function longestLine(text: string): string {
-  return text
+  const candidates = text
     .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length >= 2)
-    .sort((a, b) => b.length - a.length)[0] ?? '';
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter((line) => line.length >= 2);
+  if (!candidates.length) return '';
+
+  const score = (line: string): number => {
+    const compact = line.replace(/\s/g, '');
+    if (!compact) return -100;
+    let value = 0;
+    // 中文正文最可能是书名
+    const cjk = (compact.match(/[\u4e00-\u9fa5]/g) ?? []).length;
+    value += cjk * 2;
+    // ISBN / 定价 / 出版社 等明显不是书名
+    if (/isbn/i.test(compact)) value -= 40;
+    if (/(出版社|出版|书局|杂志社|编辑部)/.test(compact)) value -= 25;
+    if (/(定价|价格|元|￥|¥|电话|网址|http)/i.test(compact)) value -= 15;
+    // 纯数字（含连字符）几乎不可能是书名
+    if (/^[\d\s\-—–]+$/.test(compact)) value -= 30;
+    // 数字占比过高也扣分
+    const digits = (compact.match(/\d/g) ?? []).length;
+    if (digits / compact.length > 0.4) value -= 20;
+    // 长度给它一点优势，但远小于「像不像书名」的权重
+    value += Math.min(compact.length, 20) * 0.5;
+    return value;
+  };
+
+  return candidates.reduce((best, line) => (score(line) > score(best) ? line : best), candidates[0]);
 }
 
 export interface RecognizeCoverOptions {
@@ -88,7 +118,11 @@ export async function recognizeCover(
   const isbnHits = extractIsbns([bestText, ...candidates.map((c) => c.text)].join('\n'));
   const isbn = isbnHits[0]?.isbn;
 
-  // 书名：内置库优先（人工整理过），否则用封面文字里最长的一行
+  /**
+   * 书名优先级：**内置库 > 封面文字**。
+   * 内置库那份是人工整理过的（与 12 张封面照片一一对应），比现场 OCR 可靠；
+   * 课程匹配上却不给库里的书名，用户就得自己改，那是白识别。
+   */
   const coverTitle = longestLine(bestText);
   const publisher = guessPublisher(bestText) || library?.publisher || '';
 

@@ -29,7 +29,7 @@ export interface PreprocessOutcome {
   notes: string[];
 }
 
-const MAX_EDGE = 1600;
+const MAX_EDGE = 1000;
 
 function loadImage(dataUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
