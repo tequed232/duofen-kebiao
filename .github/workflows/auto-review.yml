@@ -1,0 +1,199 @@
+name: Auto review
+
+# 「审 PR / 审 Issue 的自动化账号」。
+#
+# 为什么不用自己注册一个账号：用一个脚本去注册 GitHub 账号、再拿它跑自动化，
+# 违反 GitHub 的《Acceptable Use Policies》（禁止批量注册与把账号当机器人使用），
+# 账号可能被封，且与本人账号关联有连带风险。
+#
+# 官方做法就是用 Actions 自带的 GITHUB_TOKEN —— 它以 `github-actions[bot]` 身份提交 review，
+# 不需要额外账号、不需要存密钥、权限被限制在本仓库内，而且每次运行都留下可审计的记录。
+#
+# 它解决的正是作者遇到的死结：GitHub 不允许批准自己创建的 PR
+# （`422 Review Can not approve your own pull request`）—— 但 bot 与作者不是同一个身份，
+# 所以 `github-actions[bot]` 可以批准作者开的 PR。
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  issues:
+    types: [opened, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: auto-review-${{ github.event.pull_request.number || github.event.issue.number || 'manual' }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------
+  # PR：跑完守卫后给出 review。
+  # 默认只 COMMENT（写明它检查了什么、哪些没过），**全部条件满足才 APPROVE**：
+  #   1. 提交者是仓库所有者 —— 别人的 PR 由人来审，机器不替人做判断
+  #   2. 目标分支是 main
+  #   3. 不是草稿
+  #   4. 没打 block-autoreview 标签（需要人工细看时用它拦下）
+  #   5. 本仓库自己的守卫（hygiene / secret 扫描 / 前端安全 / 版本号 / ISBN）全部通过
+  # 这样它挡的是「自己 PR 没人能批」这个形式问题，而不是替代真实评审。
+  # ------------------------------------------------------------------
+  review-pull-request:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 守卫都是纯 Node 脚本（不依赖 node_modules），逐个跑并记录结果。
+      # 用 `|| true` 收住退出码：这里要的是「报告结果」而不是让 job 变红
+      # —— job 变红留给上面那些专用 workflow（hygiene / secret-scan）。
+      - name: 运行仓库自带守卫
+        id: guards
+        run: |
+          set -uo pipefail
+          mkdir -p /tmp/guard-report
+          overall=ok
+          run_guard () {
+            local name="$1"; shift
+            if "$@" > /tmp/guard-report/"$name".log 2>&1; then
+              echo "PASS $name" >> /tmp/guard-report/summary.txt
+            else
+              echo "FAIL $name" >> /tmp/guard-report/summary.txt
+              overall=fail
+            fi
+          }
+          run_guard hygiene        node scripts/check-repo-hygiene.mjs
+          run_guard secrets        node scripts/check-secrets.mjs
+          run_guard web-security   node scripts/check-web-security.mjs
+          run_guard version        node scripts/check-version.mjs
+          run_guard isbn           node scripts/check-isbn.mjs
+          run_guard schedule-html  node scripts/check-schedule-html.mjs || true
+          echo "overall=$overall" >> "$GITHUB_OUTPUT"
+          cat /tmp/guard-report/summary.txt
+
+      - name: 组装 review 正文
+        id: body
+        run: |
+          set -uo pipefail
+          {
+            echo "## 自动检查（github-actions[bot]）"
+            echo
+            echo "对提交 \`${{ github.event.pull_request.head.sha }}\` 跑了仓库自带的守卫："
+            echo
+            echo '| 守卫 | 结果 |'
+            echo '| --- | --- |'
+            while read -r line; do
+              status="${line%% *}"; name="${line##* }"
+              if [ "$status" = "PASS" ]; then echo "| \`$name\` | ✅ |"; else echo "| \`$name\` | ❌ |"; fi
+            done < /tmp/guard-report/summary.txt
+            echo
+            echo "失败项的日志见本次运行的 artifacts / 下方 job 输出。"
+            echo
+            echo "> 本 review 由 \`.github/workflows/auto-review.yml\` 自动提交。"
+            echo "> 它只代表**这些机器可判定的检查**通过了，不构成对设计取舍的评审 ——"
+            echo "> 那部分仍需人工判断（或顾问）。"
+          } > /tmp/review-body.md
+          cat /tmp/review-body.md
+
+      # 用 gh 提交 review：GITHUB_TOKEN 以 github-actions[bot] 身份出现
+      - name: 提交 review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          GUARDS: ${{ steps.guards.outputs.overall }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -uo pipefail
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          event=COMMENT
+          reason=""
+
+          if [ "$GUARDS" != "ok" ]; then
+            reason="守卫未全部通过（见 review 正文）"
+          elif [ "$AUTHOR" != "$OWNER" ]; then
+            reason="提交者 @$AUTHOR 不是仓库所有者，留给人工评审"
+          elif [ "$BASE" != "main" ]; then
+            reason="目标分支是 $BASE，不是 main"
+          elif [ "$IS_DRAFT" = "true" ]; then
+            reason="PR 仍是草稿"
+          elif echo ",$LABELS," | grep -q ',block-autoreview,'; then
+            reason="带了 block-autoreview 标签，需人工细看"
+          else
+            event=APPROVE
+            reason="机器可判定的检查全部通过"
+          fi
+
+          {
+            echo ""
+            echo "**结论：${event}** —— ${reason}"
+          } >> /tmp/review-body.md
+
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+            -f event="$event" \
+            -F body=@/tmp/review-body.md \
+            --jq '"review: \(.state) by \(.user.login)"'
+
+  # ------------------------------------------------------------------
+  # Issue：首次响应。给提交者一份「怎么把问题说清楚」的清单，
+  # 顺带把明显是 bug / 功能请求的打上标签，减少来回追问。
+  # 只在 issue 刚被打开（或重新打开）时跑 —— 不在每条评论上都跑。
+  # ------------------------------------------------------------------
+  greet-issue:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 首次响应 issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (!issue) return;
+            // 刚打开时评论数为 0；重新打开时已有人回过就不再打扰
+            if (issue.comments > 0 && context.payload.action !== 'reopened') return;
+
+            const body = [
+              '谢谢你提出来 👋 为了能尽快定位，麻烦补一下这几项（有就填，没有可跳过）：',
+              '',
+              '- **复现步骤**：点了哪里、期望什么、实际什么',
+              '- **环境**：手机型号 / 系统版本（流体云相关请注明 ColorOS 版本）、用的是网页版还是 APK',
+              '- **截图或录屏**：界面问题最好有图',
+              '- 如果是**课表导入**问题：贴一小段导入源（HTML / 文本），或说明是从哪个教务系统导出的',
+              '',
+              '> 这条是自动回复（`github-actions[bot]`）。维护者看到后会跟进。',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body,
+            });
+
+            // 按标题关键词打标签（标签不存在时静默跳过，不因此报错）
+            const title = issue.title || '';
+            const want = [];
+            if (/bug|错误|失败|崩溃|闪退|异常|不能|无法/i.test(title)) want.push('bug');
+            if (/希望|建议|能否|可不可以|feature|支持/i.test(title)) want.push('enhancement');
+            if (want.length) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: want,
+                });
+              } catch (error) {
+                core.info(`打标签跳过：${error.message}`);
+              }
+            }
