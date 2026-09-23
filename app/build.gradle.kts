@@ -55,12 +55,43 @@ val syncWebAssets by tasks.registering(Copy::class) {
     }
 }
 
+/**
+ * 把「本地识别资源」也打进 APK：web/public/ocr/ → assets/www/ocr/
+ *
+ * 为什么单独一步：这些文件（OpenCV 13 MB + Tesseract 引擎与中文模型）被
+ * vite.config.ts 从 dist/ 里排除了 —— 网页版不该让它们上线（产物会从 2.1 MB 涨到 25 MB）。
+ * 但 **APK 需要它们**，否则点「识别封面」时找不到模型，本地识别在手机上直接失败。
+ *
+ * 作者已确认接受这个体积代价：APK 从约 3.5 MB 增至约 50 MB。
+ *
+ * 运行时路径与网页一致（web/src/lib/opencvLoader.ts 用 import.meta.env.BASE_URL 拼
+ * `ocr/...`），APK 里页面从 assets/www/ 提供，正好解析到 assets/www/ocr/。
+ */
+val syncOcrAssets by tasks.registering(Copy::class) {
+    outputs.upToDateWhen { false }
+    description = "Bundle the local OCR assets (OpenCV + Tesseract) into the APK"
+    from(rootProject.file("web/public/ocr"))
+    into(webAssetsDir.resolve("ocr"))
+    doFirst {
+        val source = rootProject.file("web/public/ocr")
+        require(source.resolve("opencv/opencv.js").exists() && source.resolve("tesseract/lang/chi_sim.traineddata").exists()) {
+            "本地识别资源缺失：请先在仓库根目录执行 npm run setup:ocr（会下载约 40 MB 模型）"
+        }
+        val size = source.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        logger.lifecycle("syncOcrAssets: ${source} -> ${webAssetsDir.resolve("ocr")}（${"%.1f".format(size / 1024.0 / 1024.0)} MB）")
+    }
+}
+
 /** 同步前清空旧的 assets/www，避免旧 bundle 残留 */
 val cleanWebAssets by tasks.registering(Delete::class) {
     delete(webAssetsDir)
 }
 
-tasks.named("preBuild") { dependsOn(cleanWebAssets, syncWebAssets) }
+/* 顺序很关键：clean 必须先跑完，否则「先同步、后清空」会把刚拷进去的东西删掉。 */
+syncWebAssets { mustRunAfter(cleanWebAssets) }
+syncOcrAssets { mustRunAfter(cleanWebAssets) }
+
+tasks.named("preBuild") { dependsOn(cleanWebAssets, syncWebAssets, syncOcrAssets) }
 
 android {
     namespace = "com.app.m3expressive"

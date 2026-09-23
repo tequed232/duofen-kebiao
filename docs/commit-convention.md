@@ -85,6 +85,24 @@ node scripts/check-imports.mjs   # 防「用了没导入」导致白屏
 npm run build              # 构建能过
 ```
 
+## 推送：网络不通时走 API 通道
+
+本机到 `github.com:443` 的连接经常被重置（`Failed to connect to github.com:443`、
+`Empty reply from server`，`git push` 反复失败），而 `api.github.com` 一直可用。
+作者已确认：**以后遇到这种情况直接走这条通道上传**，不要干等。
+
+```powershell
+node scripts/push-via-api.mjs --dry-run   # 先看远端 / 本地差异
+node scripts/push-via-api.mjs             # 走 api.github.com 上传
+```
+
+原理：Git 是内容寻址的 —— 脚本把本地提交的整棵树（blob → tree 递归）上传到远端，
+再以「远端 main」为父创建提交，最后把 ref 指过去。
+因此**远端内容与本地逐字节一致**；两边的 commit SHA 可能不同（父不同），
+但脚本会打印树 SHA —— 树相同即代表内容完全相同。
+
+限制：如果远端有本地没有的提交，脚本会提示先 `git fetch`（避免覆盖别人的提交）。
+
 ## 历史遗留
 
 2026-09-22 之前的部分提交是英文长句（例如 `Drop APKs from the repository, ...`），保留不改动。若要统一成中文，需要重写历史并强推，会影响所有已 clone / fork 的人，另行评估。
