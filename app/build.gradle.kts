@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -27,6 +29,16 @@ fun webVersion(): Pair<Int, String> {
 }
 
 val (webVersionCode, webVersionName) = webVersion()
+
+/**
+ * 正式签名：仓库根放 keystore.properties（已在 .gitignore 中）即可启用。
+ * 文件不存在时回退 debug 签名，保证 CI 与刚克隆的仓库照样能构建。
+ */
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) keystorePropertiesFile.inputStream().use { load(it) }
+}
+val hasReleaseKeystore = keystorePropertiesFile.exists()
 
 /** 把 dist/ 同步进 app/src/main/assets/www（删除旧文件，保证不残留旧 bundle） */
 val syncWebAssets by tasks.registering(Copy::class) {
@@ -72,10 +84,26 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            // 有 keystore.properties 就用正式签名，否则退回 debug 签名（CI 不会因此变红）
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
