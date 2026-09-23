@@ -88,6 +88,8 @@ jobs:
           run_guard secrets        node scripts/check-secrets.mjs
           run_guard web-security   node scripts/check-web-security.mjs
           run_guard version        node scripts/check-version.mjs
+          # 开源署名清单是否跟得上依赖（本地识别引入 opencv-js / tesseract.js 时曾漏掉署名）
+          run_guard licenses       node scripts/collect-licenses.mjs --check
           # ② 需要 esbuild（依赖已 npm ci）
           run_guard isbn           node scripts/check-isbn.mjs
           # ③ 需要 Playwright 的 chromium（上一节已装）：量引擎对 backdrop-filter 的真实行为，
