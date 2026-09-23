@@ -189,8 +189,13 @@ export function normalizeModelHtml(input: string): { html: string; notes: string
   }
 
   // ② 前后解释文字：只保留第一段像 HTML 的内容
-  if (!/^\s*</.test(html)) {
-    const start = html.search(/<(table|div|ul|ol|html|body|tbody|tr)\b/i);
+  //
+  // 注意别误伤真正的网页：教务导出整页时开头是 <!DOCTYPE html> / <html>，
+  // 这时**不能**去「找第一个像容器的标签」—— 那样会把 <head> 砍掉，
+  // 而学期、开学日期恰恰写在 <head><title> 里。
+  const isFullDocument = /^\s*(<!doctype|<html|<body)/i.test(html);
+  if (!isFullDocument && !/^\s*</.test(html)) {
+    const start = html.search(/<(table|div|ul|ol|tbody|tr|section|main)\b/i);
     if (start > 0) {
       html = html.slice(start);
       notes.push('已去掉 HTML 之前的说明文字');
@@ -224,28 +229,83 @@ export function normalizeModelHtml(input: string): { html: string; notes: string
  *   · div 网格：role="row" / role="cell"（或 class 名里含 row/cell）
  *   · 列表：<ul><li>星期一 第1-2节 高等数学 …</li>…</ul>
  */
+/**
+ * 把「没有 table 的表格」认出来并转成 <table>。
+ * 支持两种模型常见写法：
+ *   · div 网格：role="row" / role="cell"（或 class 名里含 row / cell）
+ *   · 列表：<ul><li>一行一门课</li>…</ul>
+ *
+ * 用 DOMParser 而不是正则来解析：div 网格几乎总是嵌套的
+ * （`<div class=row><div class=cell>…</div></div>`），正则的非贪婪匹配会在
+ * 第一个内层 </div> 就截断，行与格的数量都会算错。
+ */
 function pseudoTableToTable(html: string): { html: string; kind: string } | null {
-  // 先看 div 网格
-  const rowMatches = [...html.matchAll(/<div[^>]*(?:role=["']row["']|class=["'][^"']*\brow\b[^"']*["'])[^>]*>([\s\S]*?)<\/div>/gi)];
-  if (rowMatches.length >= 2) {
-    const rows = rowMatches.map((row) =>
-      [...row[1].matchAll(/<div[^>]*(?:role=["'](?:cell|gridcell)["']|class=["'][^"']*\bcell\b[^"']*["'])[^>]*>([\s\S]*?)<\/div>/gi)].map(
-        (cell) => cell[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
-      ),
-    );
-    const usable = rows.filter((cells) => cells.length >= 2);
-    if (usable.length >= 2) {
-      return { kind: 'div 网格', html: rowsToTable(usable) };
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  /**
+   * 抽一格的内容：**保留 <br> 作为换行**，但不碰 innerHTML。
+   *
+   * 读 innerHTML 会被 check:web-security 判为注入面（本仓库的安全约定：不用 innerHTML），
+   * 而且这里本来就只需要文本 —— 所以走 DOM 遍历：文本节点按原样收，
+   * <br> 与块级元素收成换行。模型常写成
+   * `<div class="cell">高等数学<br>张三<br>1-201<br>1-16周</div>`，
+   * 若直接 textContent 会把四个字段黏成一串，后面的分类器一个字段都认不出来。
+   */
+  const cellText = (cell: Element): string => {
+    const parts: string[] = [];
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parts.push(node.nodeValue ?? '');
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = (node as Element).tagName.toLowerCase();
+      if (tag === 'br') {
+        parts.push('\n');
+        return;
+      }
+      const block = tag === 'p' || tag === 'div' || tag === 'li';
+      if (block && parts.length) parts.push('\n');
+      node.childNodes.forEach(walk);
+      if (block) parts.push('\n');
+    };
+    cell.childNodes.forEach(walk);
+    return parts.join('');
+  };
+  const collect = (root: Element, selector: string): string[][] => {
+    const rows: string[][] = [];
+    for (const row of Array.from(root.querySelectorAll(selector))) {
+      const cells = Array.from(row.querySelectorAll('[role="cell"],[role="gridcell"],[class*="cell"]'))
+        .map((cell) => cellText(cell).replace(/[^\S\n]+/g, ' ').trim())
+        .filter(Boolean);
+      if (cells.length >= 2) rows.push(cells);
     }
-  }
+    return rows;
+  };
 
-  // 再看列表：一行一门课，靠文本里的星期/节次字段解析
-  const items = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((item) =>
-    item[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
-  );
-  const usable = items.filter((text) => text.length > 3);
-  if (usable.length >= 2) {
-    return { kind: '列表', html: rowsToTable(usable.map((text) => [text])) };
+  // 先看 div 网格
+  const gridRows = collect(doc, '[role="row"],[class*="row"]');
+  if (gridRows.length >= 2) return { kind: 'div 网格', html: rowsToTable(gridRows) };
+
+  // 再看列表：一行一门课。li 内用 <br> 分隔字段时拆成多格，
+  // 否则整行只有一格 —— 网格布局看不出星期列、列表布局又要求多列，一门课都认不出来。
+  const itemRows: string[][] = Array.from(doc.querySelectorAll('li'))
+    .map((item) => {
+      const fields = cellText(item)
+        .split('\n')
+        .map((piece) => piece.replace(/[^\S\n]+/g, ' ').trim())
+        .filter(Boolean);
+      const text = (item.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (fields.length >= 2) return fields;
+      return text ? [text] : [];
+    })
+    .filter((cells) => cells.length > 0 && cells.join('').length > 3);
+  if (itemRows.length >= 2) {
+    // 列表分支靠表头认列（课程 / 教师 / 教室 / 时间），而 <li> 没有表头 ——
+    // 按最大字段数补一个，否则解析器会因为「没有表头」直接跳过整张表。
+    const width = Math.max(...itemRows.map((cells) => cells.length));
+    const HEADERS = ['课程名称', '教师', '教室', '时间'];
+    const header = Array.from({ length: width }, (_, i) => HEADERS[i] ?? `字段${i + 1}`);
+    return { kind: '列表', html: rowsToTable([header, ...itemRows]) };
   }
 
   return null;
@@ -294,9 +354,11 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
   let term = '';
   let termStart = '';
 
-  // 学期与开学日期（常见于页面顶部）
+  // 学期与开学日期（常见于页面顶部 / <title>）
+  // 注意「学年」是两个字符：写成 学?年? 的话 2026-2027学年第一学期 会对不上，
+  // 学期字样也不止「一/二」（有「第三学期」这种）。
   const pageText = (doc.body?.textContent ?? '').replace(/\s+/g, ' ');
-  const termMatch = /(20\d{2})\s*[-–~至]\s*(20\d{2})\s*学?年?\s*(第?[一二]学期|[12]学期)?/.exec(pageText);
+  const termMatch = /(20\d{2})\s*[-–~至]\s*(20\d{2})\s*(?:学年|年度)?\s*(第?[一二三四1-4]\s*学期)?/.exec(pageText);
   if (termMatch) {
     term = `${termMatch[1]}-${termMatch[2]}${termMatch[3] ? `-${termMatch[3].replace(/第|学期/g, '')}` : ''}`;
   }

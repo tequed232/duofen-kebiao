@@ -13,6 +13,7 @@
     "check:credits": "node scripts/check-about-credits.mjs",
     "check:version": "node scripts/check-version.mjs",
     "check:isbn": "node scripts/check-isbn.mjs",
+    "check:schedule-html": "node scripts/check-schedule-html.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",
