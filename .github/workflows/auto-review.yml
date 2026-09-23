@@ -12,6 +12,14 @@ name: Auto review
 # 它解决的正是作者遇到的死结：GitHub 不允许批准自己创建的 PR
 # （`422 Review Can not approve your own pull request`）—— 但 bot 与作者不是同一个身份，
 # 所以 `github-actions[bot]` 可以批准作者开的 PR。
+#
+# 前置开关（一次性，仓库所有者操作）：
+#   Settings → Actions → General → Workflow permissions
+#   → 勾选 “Allow GitHub Actions to create and approve pull requests”
+# 不勾选时 GITHUB_TOKEN 只能 COMMENT，APPROVE 会被拒：
+#   `422 GitHub Actions is not permitted to approve pull requests.`
+# 该步骤对这种情形做了降级处理（见文件末尾），所以漏勾也只会少一个批准，
+# 不会让整个 workflow 变红、更不会让 PR 拿不到 review。
 
 on:
   pull_request:
@@ -127,7 +135,9 @@ jobs:
           } > /tmp/review-body.md
           cat /tmp/review-body.md
 
-      # 用 gh 提交 review：GITHUB_TOKEN 以 github-actions[bot] 身份出现
+      # 用 gh 提交 review：GITHUB_TOKEN 以 github-actions[bot] 身份出现。
+      # 关键点：先按结论提交；若 APPROVE 被仓库设置拒绝，就降级成 COMMENT 重提，
+      # 而不是让 step 以 exit 1 收场 —— 那样 PR 会既没批准、也没留下 review 正文。
       - name: 提交 review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -158,12 +168,41 @@ jobs:
             reason="机器可判定的检查全部通过"
           fi
 
-          {
-            echo ""
-            echo "**结论：${event}** —— ${reason}"
-          } >> /tmp/review-body.md
+          # 结论行单独放一个文件：降级重提时只换它，正文表格不用重建。
+          make_footer () {
+            {
+              echo ""
+              echo "**结论：$1** —— $2"
+            } > /tmp/review-footer.md
+          }
 
-          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
-            -f event="$event" \
-            -F body=@/tmp/review-body.md \
-            --jq '"review: \(.state) by \(.user.login)"'
+          submit () {
+            cat /tmp/review-body.md /tmp/review-footer.md > /tmp/review-final.md
+            gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+              -f event="$1" \
+              -F body=@/tmp/review-final.md \
+              --jq '"review: \(.state) by \(.user.login)"' 2>/tmp/review-err.txt
+          }
+
+          make_footer "$event" "$reason"
+          if submit "$event"; then
+            exit 0
+          fi
+
+          echo "::warning::以 $event 提交 review 失败：$(cat /tmp/review-err.txt)"
+
+          # 唯一已知的可降级故障：仓库没开 “Allow GitHub Actions to create and approve pull requests”。
+          # 这时 APPROVE 会被 422 拒绝，但 COMMENT 仍然可用。
+          if [ "$event" = "APPROVE" ]; then
+            echo "::notice::仓库未允许 Actions 审批 PR，本次 review 降级为 COMMENT。"
+            echo "::notice::开启方式：Settings → Actions → General → Workflow permissions，勾选 “Allow GitHub Actions to create and approve pull requests”。"
+            event=COMMENT
+            reason="机器可判定的检查全部通过；本应 APPROVE，但仓库未允许 Actions 审批 PR，降级为 COMMENT"
+            make_footer "$event" "$reason"
+            if submit "$event"; then
+              exit 0
+            fi
+          fi
+
+          cat /tmp/review-err.txt
+          exit 1
