@@ -1,0 +1,180 @@
+/**
+ * OpenCV.js 懒加载器。
+ *
+ * 为什么懒加载：OpenCV 的 wasm 解包约 14 MB，而本仓库要求任何入库文件不得超过 2 MB
+ * （scripts/check-repo-hygiene.mjs），APK 也只有 3.4 MB。所以它不进主包、不进仓库，
+ * 只在「真的要识别封面」时按需从本地取一次，之后由浏览器缓存。
+ *
+ * 取源顺序（默认全本地）：
+ *   1. /ocr/opencv/…        —— npm run setup:ocr 已经放好的本地副本
+ *   2. node_modules 里的包  —— 装了依赖的本地开发环境，走 Vite 的 ?url 资源
+ * 只有显式把 settings.localOcrCdn 打开，才会去公网 CDN —— 默认「全部挂载在 localhost 运行」。
+ */
+import type { OcrProgress } from './localOcrTypes';
+
+const CDN_OPENCV = 'https://docs.opencv.org/4.10.0/opencv.js';
+const LOCAL_DIR = './ocr/opencv/opencv.js';
+
+type CvModule = {
+  Mat: new (...args: unknown[]) => CvMat;
+  imread: (canvas: HTMLCanvasElement | string) => CvMat;
+  cvtColor: (src: CvMat, dst: CvMat, code: number) => void;
+  GaussianBlur: (src: CvMat, dst: CvMat, size: unknown, sigma: number) => void;
+  adaptiveThreshold: (
+    src: CvMat,
+    dst: CvMat,
+    maxValue: number,
+    adaptiveMethod: number,
+    thresholdType: number,
+    blockSize: number,
+    c: number,
+  ) => void;
+  getStructuringElement: (shape: number, size: unknown) => CvMat;
+  dilate: (src: CvMat, dst: CvMat, kernel: CvMat) => void;
+  morphologyEx: (src: CvMat, dst: CvMat, op: number, kernel: CvMat) => void;
+  findContours: (src: CvMat, contours: CvMatVector, hierarchy: CvMat, mode: number, method: number) => void;
+  contourArea: (contour: CvMat) => number;
+  boundingRect: (contour: CvMat) => { x: number; y: number; width: number; height: number };
+  minAreaRect: (points: CvMat) => { center: { x: number; y: number }; size: { width: number; height: number }; angle: number };
+  boxPoints: (rect: unknown, points: CvMat) => void;
+  getRotationMatrix2D: (center: unknown, angle: number, scale: number) => CvMat;
+  warpAffine: (src: CvMat, dst: CvMat, m: CvMat, size: unknown, flags: number, borderMode: number, borderValue: unknown) => void;
+  mean: (src: CvMat) => { 0: number };
+  threshold: (src: CvMat, dst: CvMat, thresh: number, maxValue: number, type: number) => void;
+  resize: (src: CvMat, dst: CvMat, size: unknown, fx: number, fy: number, interpolation: number) => void;
+  MatVector: new () => CvMatVector;
+  Size: new (w: number, h: number) => unknown;
+  Mat1?: unknown;
+  matFromArray?: unknown;
+  Scalar: new (...args: number[]) => unknown;
+  COLOR_RGBA2GRAY: number;
+  ADAPTIVE_THRESH_GAUSSIAN_C: number;
+  THRESH_BINARY: number;
+  THRESH_OTSU: number;
+  MORPH_RECT: number;
+  MORPH_CLOSE: number;
+  RETR_EXTERNAL: number;
+  CHAIN_APPROX_SIMPLE: number;
+  INTER_CUBIC: number;
+  INTER_AREA: number;
+  BORDER_REPLICATE: number;
+  BORDER_CONSTANT: number;
+};
+
+type CvMat = {
+  rows: number;
+  cols: number;
+  data: Uint8Array;
+  data32S: Int32Array;
+  delete: () => void;
+  roi: (rect: { x: number; y: number; width: number; height: number }) => CvMat;
+  clone: () => CvMat;
+};
+
+type CvMatVector = {
+  size: () => number;
+  get: (index: number) => CvMat;
+  delete: () => void;
+};
+
+let cached: Promise<CvModule> | null = null;
+
+/** 把 opencv.js 注入到页面并等它在 window.cv 上就绪。 */
+function injectScript(src: string): Promise<CvModule> {
+  return new Promise((resolve, reject) => {
+    const win = window as unknown as { cv?: CvModule | (() => Promise<CvModule>) };
+    const previous = win.cv;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onerror = () => {
+      script.remove();
+      win.cv = previous;
+      reject(new Error(`加载 OpenCV 失败：${src}`));
+    };
+    script.onload = () => {
+      const cv = win.cv;
+      if (!cv) {
+        reject(new Error('OpenCV 脚本已加载，但 window.cv 未出现'));
+        return;
+      }
+      // OpenCV 4.x 的 ESM 版在 window.cv 上挂的是一个返回 Promise 的工厂
+      if (typeof cv === 'function') {
+        (cv as () => Promise<CvModule>)()
+          .then((mod) => {
+            win.cv = mod;
+            resolve(mod);
+          })
+          .catch(reject);
+        return;
+      }
+      // 经典版：等 runtime 初始化完成（calledRun / onRuntimeInitialized）
+      const ready = cv as CvModule & { calledRun?: boolean; onRuntimeInitialized?: () => void };
+      if (ready.calledRun) {
+        resolve(ready);
+        return;
+      }
+      const timer = window.setTimeout(() => resolve(ready), 15000);
+      ready.onRuntimeInitialized = () => {
+        window.clearTimeout(timer);
+        resolve(ready);
+      };
+    };
+    document.head.appendChild(script);
+  });
+}
+
+async function loadFromLocal(): Promise<CvModule> {
+  // 1) 本地已放好的副本（npm run setup:ocr）
+  try {
+    const head = await fetch(LOCAL_DIR, { method: 'HEAD' });
+    if (head.ok) return await injectScript(LOCAL_DIR);
+  } catch {
+    /* 本地没有副本，继续 */
+  }
+  // 2) 开发环境的 node_modules（Vite 会把 ?url 变成可访问的资源地址）
+  const mod = (await import(/* @vite-ignore */ '@techstark/opencv-js')) as unknown as
+    | CvModule
+    | { default: CvModule };
+  const resolved = (mod as { default?: CvModule }).default ?? (mod as CvModule);
+  return typeof resolved === 'function' ? await (resolved as unknown as () => Promise<CvModule>)() : resolved;
+}
+
+/** 载入 OpenCV（只加载一次）。allowCdn=true 时才允许回落到公网。 */
+export function loadOpenCv(allowCdn = false, onProgress?: (p: OcrProgress) => void): Promise<CvModule> {
+  if (cached) return cached;
+  cached = (async () => {
+    onProgress?.({ phase: 'opencv', ratio: 0, text: '正在载入图像处理库（OpenCV）…' });
+    try {
+      const cv = await loadFromLocal();
+      onProgress?.({ phase: 'opencv', ratio: 1, text: '图像处理库已就绪' });
+      return cv;
+    } catch (error) {
+      if (!allowCdn) {
+        cached = null;
+        throw new Error(
+          `本地没有 OpenCV：${
+            error instanceof Error ? error.message : '未知错误'
+          }。请运行 npm run setup:ocr 把它放到 web/public/ocr/，或在设置里允许本地识别回落到 CDN。`,
+        );
+      }
+      onProgress?.({ phase: 'opencv', ratio: 0.5, text: '本地没有 OpenCV，改用 CDN…' });
+      const cv = await injectScript(CDN_OPENCV);
+      onProgress?.({ phase: 'opencv', ratio: 1, text: '图像处理库已就绪（CDN）' });
+      return cv;
+    }
+  })();
+  return cached;
+}
+
+/** 供「本地识别能力自检」用：不抛错，只报告能不能用。 */
+export async function probeOpenCv(): Promise<boolean> {
+  try {
+    await loadOpenCv(false);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export type { CvModule, CvMat };

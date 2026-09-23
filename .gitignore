@@ -51,3 +51,7 @@ keystore.properties
 /manifest.webmanifest
 /_headers
 /.nojekyll
+
+# 本地识别资源（OpenCV + Tesseract 引擎 + 中文模型，合计约 40 MB）：
+# 由 npm run setup:ocr 生成，远超单文件 2 MB 上限，运行时从 localhost 读取
+web/public/ocr/
