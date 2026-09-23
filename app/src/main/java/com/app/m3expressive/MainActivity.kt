@@ -422,6 +422,7 @@ class MainActivity : ComponentActivity() {
             minutesLeft: Int,
             startAtMillis: Long,
             navigateUri: String,
+            coverDataUrl: String,
         ) {
             LiveUpdates.classReminder(
                 this@MainActivity,
@@ -432,6 +433,7 @@ class MainActivity : ComponentActivity() {
                 minutesLeft,
                 startAtMillis,
                 navigateUri.ifBlank { null },
+                coverDataUrl.ifBlank { null },
             )
         }
 

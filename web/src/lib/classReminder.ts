@@ -11,6 +11,7 @@
  */
 import type { ScheduleData, ScheduleCourse } from './schedule';
 import { nativeClassReminder, nativeStopClassReminder, isNativeShell } from './native';
+import { coverThumbnail } from './imaging';
 
 export interface ReminderSettings {
   enabled: boolean;
@@ -61,12 +62,14 @@ export interface UpcomingClass {
   startAt: number;
   textbooks: string;
   navigateUri: string;
+  /** 教材封面（用于通知大图标）；没拍照就为 undefined */
+  cover?: string;
 }
 
 /** 找出今天下一节课（含正在进行、刚开始的这节课） */
 export function findUpcomingClass(
   schedule: ScheduleData,
-  textbooks: Record<string, { title?: string }>,
+  textbooks: Record<string, { title?: string; cover?: string }>,
   schoolName: string,
   now = new Date(),
 ): UpcomingClass | null {
@@ -94,6 +97,7 @@ export function findUpcomingClass(
         startAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(start / 60), start % 60).getTime(),
         textbooks: book?.title ?? '',
         navigateUri: label ? `geo:0,0?q=${encodeURIComponent(label)}` : '',
+        cover: book?.cover,
       };
     });
   });
@@ -107,12 +111,12 @@ export function findUpcomingClass(
  */
 export function startClassReminderLoop(getContext: () => {
   schedule: ScheduleData;
-  textbooks: Record<string, { title?: string }>;
+  textbooks: Record<string, { title?: string; cover?: string }>;
   settings: ReminderSettings & { schoolName?: string };
 }): () => void {
   let stopped = false;
 
-  const tick = () => {
+  const tick = async () => {
     if (stopped) return;
     const { schedule, textbooks, settings } = getContext();
     if (!settings.enabled) {
@@ -136,6 +140,8 @@ export function startClassReminderLoop(getContext: () => {
     writeNotified(notified);
 
     if (!isNativeShell()) return;
+    // 封面先缩成通知用的小图再传原生 —— 原图可能有几 MB，跨进程传会卡
+    const cover = upcoming.cover ? (await coverThumbnail(upcoming.cover)) ?? '' : '';
     nativeClassReminder({
       course: upcoming.course.name,
       room: upcoming.course.room ?? '',
@@ -144,6 +150,7 @@ export function startClassReminderLoop(getContext: () => {
       minutesLeft: upcoming.minutesLeft,
       startAtMillis: upcoming.startAt,
       navigateUri: upcoming.navigateUri,
+      coverDataUrl: cover,
     });
   };
 

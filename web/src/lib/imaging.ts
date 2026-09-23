@@ -151,3 +151,29 @@ export function dataUrlSizeKb(dataUrl: string): number {
   const payload = index >= 0 ? dataUrl.slice(index + 1) : dataUrl;
   return Math.round((payload.length * 0.75) / 1024);
 }
+
+/**
+ * 生成「通知大图标」用的封面小图。
+ *
+ * 通知里的图片要跨进程传给原生侧，太大既慢又可能被系统截断，所以统一缩到
+ * 长边 256、JPEG 0.8 —— 56dp 的方图在这个尺寸下足够清晰，体积通常只有几十 KB。
+ * 失败时返回 null：调用方应退回默认图标，而不是让提醒整体失败。
+ */
+export async function coverThumbnail(dataUrl: string, maxEdge = 256, quality = 0.8): Promise<string | null> {
+  try {
+    const image = await loadImage(dataUrl);
+    const longest = Math.max(image.naturalWidth, image.naturalHeight) || 1;
+    const scale = Math.min(1, maxEdge / longest);
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch {
+    return null;
+  }
+}
