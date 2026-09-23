@@ -1,10 +1,8 @@
-# 提交信息规范（Commit Convention）
+# 提交信息规范
 
-> 对齐国内同类项目的通行做法，参考
-> [MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pulls)：
-> **Conventional Commits 的类型前缀 + 中文描述**。本仓库自 2026-09 起统一按本文件执行。
+> 对齐国内同类项目的通行做法，参考 [MaaAssistantArknights](https://github.com/MaaAssistantArknights/MaaAssistantArknights/pulls)：**Conventional Commits 的类型前缀 + 中文描述**。本仓库自 2026-09 起统一按本文件执行。
 
-## 一句话格式
+## 格式
 
 ```
 <类型>(<范围>): <中文描述>
@@ -36,8 +34,7 @@ chore(release): 版本号升至 0.92.1
 
 按模块取，方便一眼看出动了哪块：
 
-`web`（网页端）、`android`（APK / Kotlin 宿主）、`apk`、`dock`（底边栏）、`schedule`（课表）、
-`credits`（致谢 · 名片墙）、`about`（关于页）、`release`（发版）、`repo`（仓库卫生 / CI）、`docs`、`i18n`。
+`web`（网页端）、`android`（APK / Kotlin 宿主）、`apk`、`dock`（底边栏）、`schedule`（课表）、`credits`（致谢 · 名片墙）、`about`（关于页）、`release`（发版）、`repo`（仓库卫生 / CI）、`docs`、`i18n`。
 
 ## 描述怎么写
 
@@ -49,11 +46,10 @@ chore(release): 版本号升至 0.92.1
 不要这样写：
 
 - `update`、`fix bug`、`修改`、`优化` —— 没有信息量；
-- `Drop APKs from the repository, guard against binary artifacts, ship the credits wall`
-  —— 英文长句、三件事挤一行，中文项目里读起来费劲；
+- `Drop APKs from the repository, guard against binary artifacts, ship the credits wall` —— 英文长句、三件事挤一行，中文项目里读起来费劲；
 - `修复了那个问题` —— 要写清是哪个问题。
 
-## 正文（可选）
+## 正文
 
 空一行后写「为什么」，以及影响面、验证方式：
 
@@ -76,5 +72,4 @@ npm run build              # 构建能过
 
 ## 历史遗留
 
-2026-09-22 之前的部分提交是英文长句（例如 `Drop APKs from the repository, ...`），保留不改动。
-若要统一成中文，需要重写历史并强推，会影响所有已 clone / fork 的人，另行评估。
+2026-09-22 之前的部分提交是英文长句（例如 `Drop APKs from the repository, ...`），保留不改动。若要统一成中文，需要重写历史并强推，会影响所有已 clone / fork 的人，另行评估。
