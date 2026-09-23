@@ -108,6 +108,19 @@ jobs:
           APP_URL=http://127.0.0.1:5173/ run_guard import-e2e  node scripts/check-import-e2e.mjs
           kill "$dev_pid" 2>/dev/null || true
 
+          # ⑤ 逐屏验收（19 步）：需要**生产构建 + preview server**。
+          #    它写于 v2 前，一度 19 步里 11 步失败；而因为不在 CI 里跑，烂了很久没人发现。
+          #    接进来就是为了让它不能再悄悄烂掉 —— 状态与三处静默失效见文件头注释。
+          npm run build > /tmp/guard-report/build.log 2>&1
+          npm run preview > /tmp/guard-report/preview.log 2>&1 &
+          preview_pid=$!
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/ > /dev/null && break
+            sleep 1
+          done
+          run_guard verify         node scripts/verify.mjs
+          kill "$preview_pid" 2>/dev/null || true
+
           echo "overall=$overall" >> "$GITHUB_OUTPUT"
           cat /tmp/guard-report/summary.txt
 

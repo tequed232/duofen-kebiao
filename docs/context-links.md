@@ -81,7 +81,7 @@ APK 直链（按版本）：
 | `.github/workflows/permission-reminder.yml` | 素材授权提醒（每周） |
 | `deploy/anubis/` | Anubis 反爬配置（https://github.com/TecharoHQ/anubis） |
 | `deploy/cloudflare/` | Cloudflare 边缘配置说明 |
-| `scripts/verify.mjs` | 逐屏截图 + `screenshots/report.json`。**部分失效，勿当验收判据**：写于 v2 前，19 步中 11 步选择器已过期（需先 `npm run preview`）。当前强制执行的覆盖是 auto-review 的 9 条守卫 |
+| `scripts/verify.mjs` | 逐屏验收（19 步全绿，逐屏截图 + `screenshots/report.json`）。需先 `npm run build && npm run preview`；已进 auto-review 守卫清单（`verify`） |
 | `scripts/check-secrets.mjs` | 本地密钥扫描 |
 | `scripts/check-imports.mjs` | 导入自检（防「用了没导入」导致白屏） |
 | `scripts/check-import-e2e.mjs` | **真实导入界面**端到端：把「模型回复」整段粘进去，验课表是否真进来、坏输入是否被拒（需 dev server，已进 auto-review 守卫清单） |

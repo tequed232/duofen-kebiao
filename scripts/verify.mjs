@@ -1,20 +1,21 @@
 /**
  * Browser verification for the production build（逐屏截图 + JSON 报告）。
  *
- * ⚠️ 已知状态：**部分失效，不是可信的验收判据**。
- * 它写于 v2 改版之前，UI 在那之后重写过两轮，脚本里的选择器只跟上了一部分。
- * 实测（2026-09，v3.5.2）：19 步中 **8 步通过、11 步失败**；
- * 失败集中在课程卡片、看板拖拽/折叠、筛选页、导入面板这几处 —— 都是"选择器已过期"，
- * 不是产品坏了（`pageErrors` 与 `consoleErrors` 均为 0，同一套 UI 的
- * `scripts/check-import-e2e.mjs` 是 9/9 通过的）。
- * 要当成验收用，先得把剩下的选择器对着现行 DOM 重写一遍；那是一件独立的事，尚未做。
+ * 状态：**19 步全绿**（2026-09，v3.5.2 实测 ok 19 / FAIL 0）。
+ * 它写于 v2 之前，UI 之后重写了两轮，一度烂到 **19 步里 11 步失败** —— 而且因为
+ * 它当时**不在 CI 里跑**，坏了很久都没人发现。已修掉三处静默失效（见下），并接进
+ * auto-review 的守卫清单，让它不能再悄悄烂掉：
  *
- * 因此**当前真正被 CI 强制执行的覆盖**是 auto-review 里的 9 条守卫
- * （hygiene / secrets / web-security / version / licenses / isbn / backdrop-refraction /
- *  schedule-html / import-e2e），不是这个脚本。
+ *   1. 底栏搬出屏幕栈后，`.screen … .m3e-dock-tab` 这个作用域**永远匹配不到**，
+ *      而失败时不报错、只是静默回落到通用点击路径，最后以 `md-navigation-tab` 超时收场；
+ *   2. 底栏切换**不由 button 的 click 驱动**（整个 <nav> 用 pointerdown/up 判定拖动 vs 轻点），
+ *      所以 `page.evaluate(() => el.click())` 点了完全没反应**却仍然返回成功** ——
+ *      那些点 index 0 的步骤「通过」只是因为应用本来就停在首页；
+ *   3. 「回到今天」在 v3 起是右下角 FAB（`.schedule-today-fab`），而脚本按**索引 1**
+ *      点顶栏按钮，那里现在是「查看教材」—— 一点就被推离课表，后面十几项全在错误页面上连锁失败。
  *
- * 前置：`npm run build` 之后需要 preview server
- * （`npm run preview`，默认 http://127.0.0.1:4173/）；
+ * 前置：需要**生产构建 + preview server**：
+ *   npm run build && npm run preview     # 默认 http://127.0.0.1:4173/
  * 不起的话会以 `net::ERR_CONNECTION_REFUSED` 直接失败，且不会告诉你原因。
  *
  * Usage: node scripts/verify.mjs [url]        # 也可用 URL=… 指定
@@ -140,25 +141,19 @@ const seedDemoData = async () => {
 
 
 const clickTop = async (selector, index = 0) => {
-  // 底边栏：网页是 M3 原生导航栏（md-navigation-tab）；APK 由原生 Dock 负责
+  // 底边栏是自绘的 `.m3e-dock`（`.m3e-dock-tab` 是里面的按钮），网页与 APK 同一套。
   if (selector === 'md-navigation-tab' || selector === '.m3e-dock-tab') {
-    // 自绘底栏：纯 button，JS 点击最稳
-    //
-    // 注意作用域：底栏是**常驻在 App 层、屏幕栈之外**的单一实例，**不在 `.screen` 里**。
-    // 原先这里写 `.screen:not([aria-hidden="true"]) .m3e-dock-tab` —— 底栏搬出屏幕栈之后
-    // 这个选择器永远匹配不到，`clicked` 恒为 false，于是静默回落到下面的通用点击路径，
-    // 最终以 `md-navigation-tab` 超时收场：整条验收从第一步就断，后面十几项全是连锁陪葬。
-    // 这类"匹配不到却不报错、只是回落到别的路径"的写法，正是坏守卫最爱的藏身处。
-    const clicked = await page.evaluate((i) => {
-      const buttons = Array.from(document.querySelectorAll('.m3e-dock-tab')).filter(
-        (el) => el.offsetParent !== null,
-      );
-      if (!buttons.length) return false;
-      buttons[i]?.click();
-      return true;
-    }, index);
-    if (clicked) {
-      await page.waitForTimeout(900);
+    /* 必须用**真实点击**，不能用 `page.evaluate(() => el.click())`。
+       底栏的切换不是在 button 的 click 上实现的：整个 <nav> 用 pointerdown/pointerup 做
+       「拖动 vs 轻点」判定（见 web/src/components/layout.tsx 的 onDown/onUp），
+       合成一个 click 事件不产生指针事件，于是**点了完全没反应、却仍然返回成功**。
+       这个静默失效此前一直是隐形的：那些点 index 0（首页）的步骤「通过」了，
+       只是因为应用本来就停在首页 —— 直到筛选那一步点 index 1（搜索）才暴露。
+       另外底栏常驻在 App 层、不在任何 .screen 里，作用域选择器也匹配不到。 */
+    const tabs = page.locator('.m3e-dock-tab:visible');
+    if ((await tabs.count()) > index) {
+      await tabs.nth(index).click({ timeout: 7000, force: true });
+      await page.waitForTimeout(1000);
       return;
     }
   }
@@ -340,8 +335,15 @@ try {
   });
 
   await step('back to today after the month jump', async () => {
-    // 月历跳转后回到今天，确保当前周有课程可点开
-    await clickTop('.app-bar md-icon-button', 1);
+    // 月历跳转后回到今天，确保当前周有课程可点开。
+    //
+    // 「回到今天」在 v3 起是**右下角常驻 FAB**（`ScheduleScreen.tsx`，类名 .schedule-today-fab），
+    // 原来在顶栏最右边。这里以前点的是 `.app-bar md-icon-button` 的**索引 1** ——
+    // 而现行顶栏的按钮顺序是 `[筛选课程, 查看教材(.appbar-textbooks), 课表数据与导入(.appbar-import)]`，
+    // 索引 1 正好命中「查看教材」：一点就被推到教材页，于是后面十几项全在**错误页面上**连锁失败
+    // （course detail / 看板拖拽 / 筛选 / 导入 全部超时）。这是本文件此前 11 步失联的起点。
+    // 教训：按**索引**点的顶栏按钮，一旦插入新按钮就会静默指错目标 —— 改成语义化类名。
+    await top().locator('.schedule-today-fab').click({ timeout: 7000, force: true });
     await page.waitForTimeout(900);
   });
 

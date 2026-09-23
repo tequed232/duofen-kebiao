@@ -42,10 +42,11 @@
 ### A. 可自主完成（无外部依赖）
 
 1. ~~**发布名片墙改动**~~ —— **已完成**。`gh-pages` 上的当前构建就是 v3.5.2（`assets/bootstrap-genovrcY.js`，实测含「致谢 · 名片墙」、`miratsu`、版权行、设置页「本地识别」行）；而 `npm run apk:parity` 现在能通过，并**证明 APK 内嵌资源与网页产物逐文件哈希一致** —— 「APK 还停在旧『关于』页」这个风险从此由这条守卫长期兜住（它此前一直假失败，见下方「易踩的坑」补充）。
-2. **重写 `scripts/verify.mjs` 的选择器**（未完成）。它写于 v2 之前，UI 之后重写了两轮，实测 **19 步里 11 步**因选择器过期而失联：课程卡片、看板拖拽/折叠、筛选页、导入面板。
-   已修掉其中一个**根因**：底栏搬出屏幕栈后，`verify.mjs` 里按 `.screen … .m3e-dock-tab` 限定的作用域选择器永不匹配 —— 而它失败时不报错、只是静默回落到通用点击路径，最后以 `md-navigation-tab` 超时收场，整套验收从第一步就断、后面十几项全是连锁陪葬。改成不限定作用域后 **6 → 8 步通过**。
-   剩下的属于「逐个对着现行 DOM 重写」，是一件独立的事。
-   **在此之前不要把它当验收判据** —— CI 里真正强制执行的覆盖是 auto-review 的 9 条守卫（hygiene / secrets / web-security / version / licenses / isbn / backdrop-refraction / schedule-html / import-e2e）。
+2. ~~**重写 `scripts/verify.mjs` 的选择器**~~ —— **已完成**。它写于 v2 之前，一度 **19 步里 11 步失败**，而它当时不在 CI 里跑，所以烂了很久没被发现。修掉三处**静默失效**后 **19/0 全绿**：
+   - 底栏搬出屏幕栈后，`.screen … .m3e-dock-tab` 作用域永不匹配，且失败不报错、只静默回落到 `md-navigation-tab` 超时；
+   - 底栏切换不由 button 的 `click` 驱动（整个 `<nav>` 用 pointerdown/up 判定拖动 vs 轻点），`el.click()` 点了没反应**却仍然返回成功** —— 点 index 0 的步骤「通过」只是因为应用本来就停在首页；
+   - 「回到今天」在 v3 起是右下角 FAB（`.schedule-today-fab`），脚本却按**索引 1** 点顶栏按钮，那里现在是「查看教材」，一点就被推离课表、后面十几项在错误页面上连锁失败。
+   已接进 auto-review 守卫清单（`verify`），并做了活性验证：把「期望 2 页看板」改成 3 → 立刻报红。
 
 ### B. 阻塞：需要真机
 
@@ -70,7 +71,7 @@ npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈�
 npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）
 node scripts/check-imports.mjs     # 导入自检（防「用了没导入」导致白屏）
 node scripts/check-secrets.mjs     # 密钥扫描
-node scripts/verify.mjs            # 逐屏截图 + screenshots/report.json；**部分失效**（见待办 2），且需先 npm run preview
+node scripts/verify.mjs            # 逐屏验收（19 步）；需先 npm run build && npm run preview
 ./gradlew assembleRelease          # 打 APK（产物在 app/build/，不进仓库）
 ```
 
