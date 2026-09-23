@@ -107,3 +107,24 @@ export function guessPublisher(text: string): string {
   const compact = text.replace(/\s+/g, '');
   return known.find((publisher) => compact.includes(publisher)) ?? '';
 }
+
+/**
+ * 定价行的特征。封面右下角必印「定价：45.00 元」，OCR 一定读得到。
+ */
+const PRICE_LINE = /(定价|价格|售价|￥|¥)/;
+
+/**
+ * 去掉封面文字里的**定价行**。
+ *
+ * 为什么专门滤它：定价既不参与匹配课程（matchCourseByText 靠课程名与内置书名打分），
+ * 也不帮助判断是哪一本书 —— 每本书都有个价格。但它一定会被 OCR 读出来，于是
+ * 「定价：45.00 元」就跟着预填进「封面文字」，让人以为识别结果里带着这行信息。
+ * 书名、出版社、ISBN 这些**真正有用**的行一律保留：它们还要用来匹配课程。
+ */
+export function stripPriceLines(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !PRICE_LINE.test(line))
+    .join('\n');
+}

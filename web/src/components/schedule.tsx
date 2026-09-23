@@ -12,7 +12,7 @@ import { MdIcon, MdIconButton, MdTextField, useMdDialog } from './md';
 import { analyzeImage } from '../lib/api';
 import { recognizeCover } from '../lib/localRecognize';
 import { listSnapshots, relativeTime, saveSnapshot, type ScheduleSnapshot } from '../lib/scheduleCache';
-import { guessPublisher, matchCourseByText } from '../lib/textbooks';
+import { guessPublisher, matchCourseByText, stripPriceLines } from '../lib/textbooks';
 import { ExpandableSheet } from './overlays';
 import {
   MAP_PROVIDERS,
@@ -698,7 +698,14 @@ export function TextbookSection({ courseName }: { courseName: string }) {
           onProgress: (progress) => setOcrProgress(progress.text),
         });
         if (result.best.trim()) {
-          const text = [result.best, result.isbn ? `ISBN ${result.isbn}` : ''].filter(Boolean).join('\n');
+          // 「封面文字」里不预填定价行：它对匹配课程、判断是哪本书都没用，
+          // 但 OCR 一定会读到，留着只会让这栏看起来塞了无关信息。
+          const cover = stripPriceLines(result.best);
+          // 已经读出的 ISBN 若就在上述文字里，就不要再补一行 —— 否则同一个书号
+          // 会出现两次（原文的带连字符形式 + 归一化形式）。
+          const coverDigits = cover.replace(/[^0-9Xx]/g, '');
+          const needIsbnLine = Boolean(result.isbn) && !coverDigits.includes(result.isbn as string);
+          const text = [cover, needIsbnLine ? `ISBN ${result.isbn}` : ''].filter(Boolean).join('\n');
           const matched = result.course ?? courseName;
           openDialog({ ocr: text, cover: dataUrl, matched });
           showSnackbar({

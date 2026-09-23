@@ -14,6 +14,7 @@ import path from 'node:path';
 
 const dir = await mkdtemp(path.join(tmpdir(), 'duofen-isbn-'));
 const bundle = path.join(dir, 'isbn.mjs');
+const textbooksBundle = path.join(dir, 'textbooks.mjs');
 await build({
   entryPoints: ['web/src/lib/isbn.ts'],
   bundle: true,
@@ -22,8 +23,18 @@ await build({
   platform: 'neutral',
   logLevel: 'silent',
 });
+// textbooks.ts 只依赖一个 JSON，是纯模块，同样能在 Node 里跑（封面文字清洗在这里）
+await build({
+  entryPoints: ['web/src/lib/textbooks.ts'],
+  bundle: true,
+  format: 'esm',
+  outfile: textbooksBundle,
+  platform: 'neutral',
+  logLevel: 'silent',
+});
 
 const { extractIsbns, isValidIsbn13, isValidIsbn10, formatIsbn13 } = await import(`file://${bundle}`);
+const { stripPriceLines } = await import(`file://${textbooksBundle}`);
 
 let pass = 0;
 let fail = 0;
@@ -90,6 +101,23 @@ console.log('\n=== formatIsbn13 格式化 ===');
 check('格式化后数字一个不少', formatIsbn13('9787040396638').replace(/\D/g, ''), '9787040396638');
 check('中国组号按标准分段', formatIsbn13('9787040396638'), '978-7-04-039663-8');
 check('非 13 位原样返回', formatIsbn13('123'), '123');
+
+console.log('\n=== 封面文字清洗：去掉定价行 ===');
+// 这段就是真机（realme GT7）上「标记教材」对话框预填的那三行，原样抄过来的。
+const deviceOcrText = ['ISBN 978-7-04-039663-8', '定价：45.00 元', 'ISBN 9787040396638'].join('\n');
+check(
+  '真机 OCR 文本里的定价行被去掉',
+  stripPriceLines(deviceOcrText),
+  'ISBN 978-7-04-039663-8\nISBN 9787040396638',
+);
+check(
+  '书名与出版社行必须保留（还要用来匹配课程）',
+  stripPriceLines(['高等数学', '高等教育出版社', 'ISBN 978-7-04-039663-8', '定价：45.00元'].join('\n')),
+  '高等数学\n高等教育出版社\nISBN 978-7-04-039663-8',
+);
+check('人民币符号开头的行也去掉', stripPriceLines('￥ 45.00'), '');
+check('空行被清掉', stripPriceLines('高等数学\n\n\n高等教育出版社'), '高等数学\n高等教育出版社');
+check('没有定价行时原样保留', stripPriceLines('高等数学'), '高等数学');
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);
