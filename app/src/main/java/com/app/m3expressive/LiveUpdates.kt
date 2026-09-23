@@ -106,6 +106,7 @@ object LiveUpdates {
         minutesLeft: Int,
         startAtMillis: Long,
         navigateUri: String?,
+        coverDataUrl: String? = null,
     ) {
         ensureChannel(context)
         val openApp = PendingIntent.getActivity(
@@ -173,30 +174,8 @@ object LiveUpdates {
             ).build(),
         )
 
-        // 大图标（设计稿左侧的方块）：课程名首字 + 主题色底
-        try {
-            val size = (context.resources.displayMetrics.density * 56).toInt()
-            val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(bitmap)
-            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-            paint.color = 0xFF12512E.toInt()
-            val radius = size / 2f
-            canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), radius * 0.42f, radius * 0.42f, paint)
-            paint.color = 0xFFFFFFFF.toInt()
-            paint.textAlign = android.graphics.Paint.Align.CENTER
-            paint.textSize = size * 0.46f
-            paint.typeface = android.graphics.Typeface.DEFAULT_BOLD
-            val metrics = paint.fontMetrics
-            canvas.drawText(
-                course.take(1),
-                radius,
-                radius - (metrics.ascent + metrics.descent) / 2f,
-                paint,
-            )
-            builder.setLargeIcon(android.graphics.drawable.Icon.createWithBitmap(bitmap))
-        } catch (_: Throwable) {
-            /* 画不出就忽略，不影响通知 */
-        }
+        // 大图标（设计稿左侧的方块）：优先用**教材封面**，没有封面时退回课程名首字
+        setLargeIconFromCover(context, builder, coverDataUrl, course)
 
         // 标准样式：Android 16 走 ProgressStyle（反射，复用 applyLiveUpdateStyle），否则 BigTextStyle
         val promoted = applyLiveUpdateStyle(builder, 100)
@@ -210,6 +189,79 @@ object LiveUpdates {
         }
 
         notifySafely(context, builder.build())
+    }
+
+    /**
+     * 通知左侧的方形大图标。
+     *
+     * 优先用教材封面：网页侧把封面缩成小尺寸 data URL（`data:image/jpeg;base64,…`）传进来，
+     * 这里解码后按 56dp 居中裁成正方形 —— 与设计稿里那块方图一致。
+     * 没有封面（或解码失败）时退回「课程名首字 + 主题色圆角底」，保证任何情况下都有图。
+     */
+    private fun setLargeIconFromCover(
+        context: Context,
+        builder: Notification.Builder,
+        coverDataUrl: String?,
+        course: String,
+    ) {
+        val size = (context.resources.displayMetrics.density * 56).toInt().coerceAtLeast(48)
+        val decoded = decodeDataUrlBitmap(coverDataUrl)
+        try {
+            val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            val radius = size / 2f
+            if (decoded != null) {
+                // 居中裁成正方形并铺满，避免封面被拉伸变形
+                val side = minOf(decoded.width, decoded.height).coerceAtLeast(1)
+                val src = android.graphics.Rect(
+                    (decoded.width - side) / 2,
+                    (decoded.height - side) / 2,
+                    (decoded.width - side) / 2 + side,
+                    (decoded.height - side) / 2 + side,
+                )
+                val dst = android.graphics.Rect(0, 0, size, size)
+                canvas.save()
+                val clip = android.graphics.Path().apply {
+                    addRoundRect(0f, 0f, size.toFloat(), size.toFloat(), radius * 0.42f, radius * 0.42f, android.graphics.Path.Direction.CW)
+                }
+                canvas.clipPath(clip)
+                canvas.drawBitmap(decoded, src, dst, paint)
+                canvas.restore()
+                decoded.recycle()
+            } else {
+                paint.color = 0xFF12512E.toInt()
+                canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), radius * 0.42f, radius * 0.42f, paint)
+                paint.color = 0xFFFFFFFF.toInt()
+                paint.textAlign = android.graphics.Paint.Align.CENTER
+                paint.textSize = size * 0.46f
+                paint.typeface = android.graphics.Typeface.DEFAULT_BOLD
+                val metrics = paint.fontMetrics
+                canvas.drawText(
+                    course.take(1),
+                    radius,
+                    radius - (metrics.ascent + metrics.descent) / 2f,
+                    paint,
+                )
+            }
+            builder.setLargeIcon(android.graphics.drawable.Icon.createWithBitmap(bitmap))
+        } catch (_: Throwable) {
+            /* 画不出就忽略，不影响通知其余部分 */
+        }
+    }
+
+    /** 解析 `data:image/...;base64,xxxx`；不是这种形式或解码失败返回 null */
+    private fun decodeDataUrlBitmap(dataUrl: String?): android.graphics.Bitmap? {
+        if (dataUrl.isNullOrBlank()) return null
+        return try {
+            val comma = dataUrl.indexOf(',')
+            if (comma < 0) return null
+            val payload = dataUrl.substring(comma + 1)
+            val bytes = android.util.Base64.decode(payload, android.util.Base64.DEFAULT)
+            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     /** 开始 / 更新进行中的实时状态；progress 为 null 表示不确定进度。 */

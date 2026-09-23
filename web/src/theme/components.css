@@ -1446,3 +1446,63 @@ button.credit-license:focus-visible {
   box-shadow: 0 6px 18px color-mix(in srgb, #000 28%, transparent);
   z-index: 21;
 }
+
+/* ---------------------------------------------------- 导入教程面板 ----- */
+/* 教程里既要讲步骤，也要给「可直接复制的提示词」，所以排版以可读为先：
+   正文行高放宽、列表带序号、提示词用等宽字体并在窄屏可横向滚动。 */
+
+.tutorial-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 4px 0 8px;
+  background: var(--md-sys-color-surface-container-low);
+}
+
+/* 未选中的页签做成弱化样式，和 credit-link 的实心胶囊区分开 */
+.credit-link.ghost {
+  border-color: color-mix(in srgb, var(--md-sys-color-outline) 45%, transparent);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.tutorial-list {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  line-height: 1.55;
+}
+
+.tutorial-list li {
+  line-height: 1.55;
+}
+
+.tutorial-tools {
+  margin: 8px 0 4px;
+}
+
+.tutorial-prompt {
+  margin: 10px 0 4px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline) 30%, transparent);
+  background: var(--md-sys-color-surface-container);
+  overflow: hidden;
+}
+
+.tutorial-prompt-body {
+  margin: 0;
+  padding: 12px;
+  max-height: 240px;
+  overflow: auto;
+  font-family: var(--md-ref-typeface-mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.tutorial-prompt .credit-link {
+  margin: 0 12px 12px;
+}

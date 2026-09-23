@@ -24,6 +24,8 @@ export interface ParsedSchedule extends ScheduleData {
     courses: number;
     skipped: string[];
     weeksDetected: number[];
+    /** 归一化时做过的调整（去掉代码围栏 / 伪表格转换…），用于告诉用户「我改了什么」 */
+    normalization: string[];
   };
 }
 
@@ -165,11 +167,171 @@ function tableRows(table: HTMLTableElement): HTMLTableRowElement[] {
 }
 
 /**
+ * 归一化「多模态模型输出」的 HTML。
+ *
+ * 直接拿 DeepSeek / Gemini / ChatGPT 的回复来粘时，最常见的三种噪音：
+ *   ① 被 ```html 围栏包住（有时还带语言标注前后的空行）
+ *   ② 前后带解释性文字（「好的，这是转换结果：」…「希望对你有帮助」）
+ *   ③ 没有 <table>，而是用 div + role="row"/"cell" 或 ul/li 表达的伪表格
+ * 这里把它们整理成 DOMParser 能直接吃的形态；真正的解析仍由既有算法负责。
+ *
+ * 返回归一化后的 HTML 与「有没有动过」的说明，便于在导入结果里提示用户。
+ */
+export function normalizeModelHtml(input: string): { html: string; notes: string[] } {
+  const notes: string[] = [];
+  let html = input.trim();
+
+  // ① 去掉 markdown 代码围栏：取第一个围栏到最后一个围栏之间的内容
+  const fenced = /```[a-zA-Z]*\s*\n([\s\S]*?)```/.exec(html);
+  if (fenced) {
+    html = fenced[1].trim();
+    notes.push('已去掉 Markdown 代码围栏');
+  }
+
+  // ② 前后解释文字：只保留第一段像 HTML 的内容
+  //
+  // 注意别误伤真正的网页：教务导出整页时开头是 <!DOCTYPE html> / <html>，
+  // 这时**不能**去「找第一个像容器的标签」—— 那样会把 <head> 砍掉，
+  // 而学期、开学日期恰恰写在 <head><title> 里。
+  const isFullDocument = /^\s*(<!doctype|<html|<body)/i.test(html);
+  if (!isFullDocument && !/^\s*</.test(html)) {
+    const start = html.search(/<(table|div|ul|ol|tbody|tr|section|main)\b/i);
+    if (start > 0) {
+      html = html.slice(start);
+      notes.push('已去掉 HTML 之前的说明文字');
+    }
+  }
+  const lastTag = html.lastIndexOf('>');
+  if (lastTag >= 0 && lastTag < html.length - 1) {
+    const tail = html.slice(lastTag + 1).trim();
+    // 结尾若是大段自然语言（含中文标点且不含标签），砍掉
+    if (tail.length > 4 && !/[<>]/.test(tail)) {
+      html = html.slice(0, lastTag + 1);
+      notes.push('已去掉 HTML 之后的说明文字');
+    }
+  }
+
+  // ③ 伪表格：div + role=row/cell 或 ul/li → 转成真正的 table
+  if (!/<table\b/i.test(html)) {
+    const pseudo = pseudoTableToTable(html);
+    if (pseudo) {
+      html = pseudo.html;
+      notes.push(`已把 ${pseudo.kind} 结构转换为表格`);
+    }
+  }
+
+  return { html, notes };
+}
+
+/**
+ * 把「没有 table 的表格」认出来并转成 <table>。
+ * 支持两种模型常见写法：
+ *   · div 网格：role="row" / role="cell"（或 class 名里含 row/cell）
+ *   · 列表：<ul><li>星期一 第1-2节 高等数学 …</li>…</ul>
+ */
+/**
+ * 把「没有 table 的表格」认出来并转成 <table>。
+ * 支持两种模型常见写法：
+ *   · div 网格：role="row" / role="cell"（或 class 名里含 row / cell）
+ *   · 列表：<ul><li>一行一门课</li>…</ul>
+ *
+ * 用 DOMParser 而不是正则来解析：div 网格几乎总是嵌套的
+ * （`<div class=row><div class=cell>…</div></div>`），正则的非贪婪匹配会在
+ * 第一个内层 </div> 就截断，行与格的数量都会算错。
+ */
+function pseudoTableToTable(html: string): { html: string; kind: string } | null {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  /**
+   * 抽一格的内容：**保留 <br> 作为换行**，但不碰 innerHTML。
+   *
+   * 读 innerHTML 会被 check:web-security 判为注入面（本仓库的安全约定：不用 innerHTML），
+   * 而且这里本来就只需要文本 —— 所以走 DOM 遍历：文本节点按原样收，
+   * <br> 与块级元素收成换行。模型常写成
+   * `<div class="cell">高等数学<br>张三<br>1-201<br>1-16周</div>`，
+   * 若直接 textContent 会把四个字段黏成一串，后面的分类器一个字段都认不出来。
+   */
+  const cellText = (cell: Element): string => {
+    const parts: string[] = [];
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parts.push(node.nodeValue ?? '');
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = (node as Element).tagName.toLowerCase();
+      if (tag === 'br') {
+        parts.push('\n');
+        return;
+      }
+      const block = tag === 'p' || tag === 'div' || tag === 'li';
+      if (block && parts.length) parts.push('\n');
+      node.childNodes.forEach(walk);
+      if (block) parts.push('\n');
+    };
+    cell.childNodes.forEach(walk);
+    return parts.join('');
+  };
+  const collect = (root: Element, selector: string): string[][] => {
+    const rows: string[][] = [];
+    for (const row of Array.from(root.querySelectorAll(selector))) {
+      const cells = Array.from(row.querySelectorAll('[role="cell"],[role="gridcell"],[class*="cell"]'))
+        .map((cell) => cellText(cell).replace(/[^\S\n]+/g, ' ').trim())
+        .filter(Boolean);
+      if (cells.length >= 2) rows.push(cells);
+    }
+    return rows;
+  };
+
+  // 先看 div 网格
+  const gridRows = collect(doc, '[role="row"],[class*="row"]');
+  if (gridRows.length >= 2) return { kind: 'div 网格', html: rowsToTable(gridRows) };
+
+  // 再看列表：一行一门课。li 内用 <br> 分隔字段时拆成多格，
+  // 否则整行只有一格 —— 网格布局看不出星期列、列表布局又要求多列，一门课都认不出来。
+  const itemRows: string[][] = Array.from(doc.querySelectorAll('li'))
+    .map((item) => {
+      const fields = cellText(item)
+        .split('\n')
+        .map((piece) => piece.replace(/[^\S\n]+/g, ' ').trim())
+        .filter(Boolean);
+      const text = (item.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (fields.length >= 2) return fields;
+      return text ? [text] : [];
+    })
+    .filter((cells) => cells.length > 0 && cells.join('').length > 3);
+  if (itemRows.length >= 2) {
+    // 列表分支靠表头认列（课程 / 教师 / 教室 / 时间），而 <li> 没有表头 ——
+    // 按最大字段数补一个，否则解析器会因为「没有表头」直接跳过整张表。
+    const width = Math.max(...itemRows.map((cells) => cells.length));
+    const HEADERS = ['课程名称', '教师', '教室', '时间'];
+    const header = Array.from({ length: width }, (_, i) => HEADERS[i] ?? `字段${i + 1}`);
+    return { kind: '列表', html: rowsToTable([header, ...itemRows]) };
+  }
+
+  return null;
+}
+
+/** 二维文本 → 最小可用的 <table>（每格一个 td，用 <br> 保留原换行） */
+function rowsToTable(rows: string[][]): string {
+  const body = rows
+    .map((cells) => `<tr>${cells.map((cell) => `<td>${escapeHtml(cell).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`)
+    .join('');
+  return `<table>${body}</table>`;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
  * 主入口：把 HTML 文本解析成 ScheduleData。
- * @param html 教务导出的 HTML（整页或片段均可）
+ * @param html 教务导出的 HTML（整页或片段均可），也兼容多模态模型输出的 HTML
  */
 export function parseScheduleHtml(html: string): ParsedSchedule {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
+  // 先归一化：兼容多模态模型输出（代码围栏 / 前后说明文字 / 伪表格）
+  const normalized = normalizeModelHtml(html);
+  const source = normalized.html;
+  const doc = new DOMParser().parseFromString(source, 'text/html');
   const tables = Array.from(doc.querySelectorAll('table'));
   const skipped: string[] = [];
   const weeksSeen = new Set<number>();
@@ -192,9 +354,11 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
   let term = '';
   let termStart = '';
 
-  // 学期与开学日期（常见于页面顶部）
+  // 学期与开学日期（常见于页面顶部 / <title>）
+  // 注意「学年」是两个字符：写成 学?年? 的话 2026-2027学年第一学期 会对不上，
+  // 学期字样也不止「一/二」（有「第三学期」这种）。
   const pageText = (doc.body?.textContent ?? '').replace(/\s+/g, ' ');
-  const termMatch = /(20\d{2})\s*[-–~至]\s*(20\d{2})\s*学?年?\s*(第?[一二]学期|[12]学期)?/.exec(pageText);
+  const termMatch = /(20\d{2})\s*[-–~至]\s*(20\d{2})\s*(?:学年|年度)?\s*(第?[一二三四1-4]\s*学期)?/.exec(pageText);
   if (termMatch) {
     term = `${termMatch[1]}-${termMatch[2]}${termMatch[3] ? `-${termMatch[3].replace(/第|学期/g, '')}` : ''}`;
   }
@@ -369,6 +533,7 @@ export function parseScheduleHtml(html: string): ParsedSchedule {
       courses,
       skipped: skipped.slice(0, 12),
       weeksDetected: [...weeksSeen].sort((a, b) => a - b),
+      normalization: normalized.notes,
     },
   };
 }

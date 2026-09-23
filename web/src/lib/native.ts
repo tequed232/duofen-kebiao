@@ -176,7 +176,10 @@ export function haptic(kind: HapticKind): void {
   }
 }
 
-/** 上课提醒（实况通知 / 灵动岛）：course/room/timeText/textbooks + 剩余分钟数 + 开始时间戳 + 导航链接 */
+/**
+ * 上课提醒（实况通知 / 灵动岛）：course/room/timeText/textbooks + 剩余分钟数 + 开始时间戳 + 导航链接。
+ * `coverDataUrl` 是教材封面的小图（data URL），原生侧拿它当通知大图标 —— 对应设计稿左侧那块方图。
+ */
 export interface ClassReminder {
   course: string;
   room: string;
@@ -185,6 +188,8 @@ export interface ClassReminder {
   minutesLeft: number;
   startAtMillis: number;
   navigateUri: string;
+  /** 教材封面（缩小后的 data URL）；没有就传空串，原生侧退回课程名首字 */
+  coverDataUrl?: string;
 }
 
 export function nativeClassReminder(payload: ClassReminder): boolean {
@@ -199,6 +204,7 @@ export function nativeClassReminder(payload: ClassReminder): boolean {
       payload.minutesLeft,
       payload.startAtMillis,
       payload.navigateUri,
+      payload.coverDataUrl ?? '',
     );
     return true;
   } catch {

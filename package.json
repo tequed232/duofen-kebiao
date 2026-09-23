@@ -6,11 +6,14 @@
   "description": "多分课表：Material 3 Expressive 风格的课表应用（四日课表 / 教材识别 / 上课提醒）",
   "scripts": {
     "icons": "node scripts/subset-icons.mjs",
+    "setup:ocr": "node scripts/setup-ocr.mjs",
     "dev": "vite",
     "build": "node scripts/subset-icons.mjs && node scripts/check-icons.mjs && vite build",
     "apk": "gradlew.bat assembleRelease",
     "check:credits": "node scripts/check-about-credits.mjs",
     "check:version": "node scripts/check-version.mjs",
+    "check:isbn": "node scripts/check-isbn.mjs",
+    "check:schedule-html": "node scripts/check-schedule-html.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",
@@ -22,9 +25,11 @@
     "@fontsource/roboto": "^5.3.0",
     "@material/material-color-utilities": "^0.4.0",
     "@material/web": "^2.5.0",
+    "@techstark/opencv-js": "^5.0.0-release.1",
     "material-symbols": "^0.47.4",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

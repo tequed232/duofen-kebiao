@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 教材窗口：查看 / 管理所有已导入、已识别的教材。
  *
  * 数据来源：内置教材库 + 用户在课程详情里识别或手动填写的覆盖项 + 本窗口快捷添加的条目。
@@ -14,6 +14,7 @@ import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
 import { highlightKeyFor } from '../components/schedule';
 import { targetWeekFor, weekNumberFor } from '../lib/schedule';
+import ImportTutorial from './ImportTutorial';
 
 const HIDDEN_KEY = 'duofen.hiddenTextbooks';
 const ADDED_KEY = 'duofen.addedTextbooks';
@@ -52,6 +53,7 @@ export default function TextbooksScreen() {
   const [hidden, setHidden] = useState<string[]>(() => readList<string[]>(HIDDEN_KEY, []));
   const [added, setAdded] = useState<AddedBook[]>(() => readList<AddedBook[]>(ADDED_KEY, []));
   const [addOpen, setAddOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [draft, setDraft] = useState<AddedBook>({ title: '', course: '', publisher: '' });
 
   useEffect(() => writeList(HIDDEN_KEY, hidden), [hidden]);
@@ -170,10 +172,22 @@ export default function TextbooksScreen() {
               </md-text-button>
             </>
           ) : (
-            <MdIconButton icon="checklist" label="多选" onClick={() => setSelectMode(true)} />
+            <>
+              <MdIconButton
+                icon="help_center"
+                label="导入教程"
+                onClick={() => {
+                  haptic('select');
+                  setTutorialOpen(true);
+                }}
+              />
+              <MdIconButton icon="checklist" label="多选" onClick={() => setSelectMode(true)} />
+            </>
           )
         }
       />
+
+      <ImportTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} initialTab="textbook" />
 
       <div className="screen-content">
         <SectionHeader icon="menu_book" title={`已导入教材 ${entries.length} 本`} />
