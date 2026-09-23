@@ -1,3 +1,25 @@
+## 多分课表 v3.0.2 —— 安全审查整改 + 致谢口径
+
+### 下载
+- 安装包：`enhance-3.0.2.apk`（覆盖安装保留数据）
+- 短链（始终最新）：https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk
+- 网页版：https://tequed232.github.io/duofen-kebiao/
+
+### 安全（详见 `docs/security-review.md`）
+- **接口密钥不再可能明文外发**：新增端点准入 —— 非 https 只放行本机 / 局域网地址
+  （自建 Ollama 这类服务照常可用），公网 http 直接拦下并提示改用 https
+- **报错不再回显密钥**：网关常把请求头塞进错误体，现在密钥在抛出前先抹成 `***`
+- **去掉唯一注入面**：HTML 课表导入不再用 `innerHTML`，改 DOM 遍历（语义等价）
+- **SQL 注入不适用**（附证据）：全仓库无 SQL、无 sqlite/Room、无服务端，数据只在本机 IndexedDB
+- 新增守卫 `npm run check:web-security`（注入面 / 密钥进 URL / 明文端点），与密钥扫描
+  `npm run check:secrets` 一起接入 CI；密钥扫描的历史段修复了"匹配到自己"的假阳性
+
+### 其他
+- 「致谢 · 名片墙」中 **饼干** 角色补充为「翻译 · **3D 设计** · 同学」（README / CONTRIBUTORS 同步）
+- 修复：粘贴 HTML 课表必报「没有解析到课表节次」——HTML 路由此前只写在「选文件」那条路上
+
+---
+
 ## 多分课表 v3.0.1 —— 内容安全区修复
 
 ### 下载

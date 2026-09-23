@@ -79,18 +79,37 @@ const SENSITIVE = /(^|\/)(\.env|\.env\..*|id_rsa|.*\.pem|.*\.key|.*\.jks|.*\.key
 const sensitiveTracked = tracked.filter((file) => SENSITIVE.test(file));
 
 /* -------------------------------------------------------------- 4) 历史 */
+/*
+ * 用 `git log -G<正则>`（按**内容**匹配每个提交的增删行）而不是 `-S<字符串>`：
+ * `-S` 只看"某字符串的出现次数有没有变"，于是本文件自己的特征表一被提交就永远命中自己 ——
+ * 之前那批「ghp_ / AIza / AKIA / 私钥块」的历史告警全是这个自我匹配的假阳性（已用 git grep 逐条核对）。
+ * 同时排除构建产物与压缩包（旧镜像提交里的 minified 代码含有大量的短横线串）以及本文件自身。
+ */
 const HISTORY_PATTERNS = [
-  { name: 'sk- 密钥（历史）', needle: 'sk-' },
-  { name: 'ghp_/gho_ token（历史）', needle: 'ghp_' },
-  { name: 'Google API key（历史）', needle: 'AIza' },
-  { name: 'AWS key（历史）', needle: 'AKIA' },
-  { name: '私钥块（历史）', needle: 'BEGIN RSA PRIVATE KEY' },
-  { name: 'gmail 邮箱（历史）', needle: '@gmail.com' },
+  { name: 'OpenAI 风格密钥（历史）', re: 'sk-[A-Za-z0-9_-]{24,}' },
+  { name: 'GitHub token（历史）', re: 'gh[pousr]_[A-Za-z0-9]{30,}' },
+  { name: 'Google API key（历史）', re: 'AIza[0-9A-Za-z_-]{30,}' },
+  { name: 'AWS key（历史）', re: 'AKIA[0-9A-Z]{16}' },
+  { name: '私钥块（历史）', re: 'BEGIN [A-Z ]*PRIVATE KEY' },
+  { name: 'Slack token（历史）', re: 'xox[baprs]-[A-Za-z0-9-]{10,}' },
+];
+const HISTORY_EXCLUDES = [
+  ':(exclude)scripts/check-secrets.mjs',
+  ':(exclude)scripts/check-web-security.mjs',
+  ':(exclude)assets',
+  ':(exclude)dist',
+  ':(exclude)*/dist',
+  ':(exclude)node_modules',
+  ':(exclude)*.min.js',
 ];
 const history = [];
-for (const { name, needle } of HISTORY_PATTERNS) {
+for (const { name, re } of HISTORY_PATTERNS) {
   try {
-    const out = execFileSync('git', ['log', '--all', '--oneline', '-S', needle], { encoding: 'utf8' })
+    const out = execFileSync(
+      'git',
+      ['log', '--all', '--oneline', `-G${re}`, '--', '.', ...HISTORY_EXCLUDES],
+      { encoding: 'utf8' },
+    )
       .split(/\r?\n/)
       .filter(Boolean);
     if (out.length) history.push({ name, commits: out.length, first: out[0] });

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 课表 (schedule) building blocks:
  *  - PagedWeekBoard: the 4x4 board (上午/中午/下午/晚上 × 4 days) that pages left/right
  *    through the seven days of a teaching week; the table itself does not move with
@@ -29,6 +29,7 @@ import {
   mapProviderById,
   maxWeekOf,
   parseISODate,
+  parseHtmlSchedule,
   parseScheduleFile,
   parseTextSchedule,
   startOfWeek,
@@ -968,7 +969,9 @@ export function ScheduleImportSheet({
       return;
     }
     try {
-      const parsed = parseTextSchedule(pasted);
+      // 粘贴内容里带 <table> 就按 HTML 课表解析（与「选文件」那条路的判定一致）——
+      // 以前粘贴路径只会走纯文本解析器，于是从网页里复制的表格一直报「没有解析到课表节次」。
+      const parsed = /<table/i.test(pasted) ? parseHtmlSchedule(pasted) : parseTextSchedule(pasted);
       setSchedule(parsed);
       setPasted('');
       onImported(`已从文本导入：${parsed.periods.length} 个节次`);

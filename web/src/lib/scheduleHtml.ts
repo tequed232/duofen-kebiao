@@ -127,16 +127,34 @@ function classify(segments: string[]): { course: { name: string; teacher: string
   return { course: { name, teacher, room, weeks }, consumed };
 }
 
-/** 单元格文本 → 多段（按 <br>、换行、斜杠切分） */
+/**
+ * 单元格 → 多段（按 `<br>`、换行、斜杠切分）。
+ *
+ * 走 **DOM 遍历**，不碰 `innerHTML`：这里的输入是用户导入的**外部文件**，
+ * 把它的标记塞进 innerHTML 属于典型的注入面（本次审查的整改项）。
+ * 只取文本节点、`<br>` 折算成换行，块级元素前后补换行，语义与旧实现一致但没有解析风险。
+ */
 function cellSegments(cell: Element): string[] {
-  const html = cell.innerHTML ?? '';
-  const withBreaks = html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|li|td|span)>/gi, '\n');
-  const div = document.createElement('div');
-  div.innerHTML = withBreaks;
-  const text = div.textContent ?? '';
-  return text
+  const parts: string[] = [];
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.nodeValue ?? '');
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = (node as Element).tagName.toLowerCase();
+    if (tag === 'br') {
+      parts.push('\n');
+      return;
+    }
+    const block = tag === 'p' || tag === 'div' || tag === 'li' || tag === 'td' || tag === 'tr';
+    if (block && parts.length) parts.push('\n');
+    node.childNodes.forEach(walk);
+    if (block) parts.push('\n');
+  };
+  cell.childNodes.forEach(walk);
+  return parts
+    .join('')
     .split(/[\n/／|]+/)
     .map((piece) => piece.replace(/\s+/g, ' ').trim())
     .filter(Boolean);

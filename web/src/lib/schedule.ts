@@ -589,7 +589,8 @@ export function parseHtmlSchedule(html: string): ScheduleData {
   // 先用新的「HTML 课表算法」解析（支持网格表与列表表两种导出结构）；
   // 若它一门课都没识别出来，再回落到下面的旧实现。
   try {
-    const better = parseScheduleHtml(html);    if (better.diagnostics.courses > 0) {
+    const better = parseScheduleHtml(html);
+    if (better.diagnostics.courses > 0) {
       return better;
     }
   } catch {

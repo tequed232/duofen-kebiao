@@ -23,3 +23,9 @@ jobs:
 
       - name: No installers or archives in the repository
         run: node scripts/check-repo-hygiene.mjs
+
+      - name: No injection surface, no key in URL, no plaintext endpoint in web/
+        run: node scripts/check-web-security.mjs
+
+      - name: No credentials in the working tree or in history
+        run: node scripts/check-secrets.mjs

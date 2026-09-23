@@ -11,6 +11,8 @@
     "apk": "gradlew.bat assembleRelease",
     "check:images": "node scripts/check-image-cache.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check:web-security": "node scripts/check-web-security.mjs",
     "apk:parity": "node scripts/check-apk-parity.mjs build/release/duofen-kebiao-latest.apk",
     "preview": "vite preview --port 4173",
     "verify": "node scripts/verify.mjs"
