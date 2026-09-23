@@ -51,10 +51,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
 
-      # 守卫都是纯 Node 脚本（不依赖 node_modules），逐个跑并记录结果。
-      # 用 `|| true` 收住退出码：这里要的是「报告结果」而不是让 job 变红
-      # —— job 变红留给上面那些专用 workflow（hygiene / secret-scan）。
+      # 守卫分两类，环境要求不同（第一次运行时踩过：没装依赖 / 没起服务，
+      # 于是 isbn 与 schedule-html 在 CI 里从来跑不起来，报的是「环境没准备好」而不是代码问题）。
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 装 Playwright 浏览器（schedule-html 守卫要用）
+        run: npx playwright install --with-deps chromium
+
+      # 守卫逐个跑并记录结果。用 `|| true` 收住退出码：这里要的是「报告结果」，
+      # 而不是让本 job 变红 —— job 变红留给专用 workflow（hygiene / secret-scan / android）。
       - name: 运行仓库自带守卫
         id: guards
         run: |
@@ -70,14 +78,34 @@ jobs:
               overall=fail
             fi
           }
+
+          # ① 纯 Node 脚本，不需要额外环境
           run_guard hygiene        node scripts/check-repo-hygiene.mjs
           run_guard secrets        node scripts/check-secrets.mjs
           run_guard web-security   node scripts/check-web-security.mjs
           run_guard version        node scripts/check-version.mjs
+          # ② 需要 esbuild（依赖已 npm ci）
           run_guard isbn           node scripts/check-isbn.mjs
-          run_guard schedule-html  node scripts/check-schedule-html.mjs || true
+          # ③ 需要 dev server（它从源码 import TS，解析依赖 DOMParser）
+          npm run dev -- --port 5173 --strictPort > /tmp/guard-report/dev.log 2>&1 &
+          dev_pid=$!
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:5173/ > /dev/null && break
+            sleep 1
+          done
+          APP_URL=http://127.0.0.1:5173/ run_guard schedule-html node scripts/check-schedule-html.mjs
+          kill "$dev_pid" 2>/dev/null || true
+
           echo "overall=$overall" >> "$GITHUB_OUTPUT"
           cat /tmp/guard-report/summary.txt
+
+      - name: 上传守卫日志（失败时用于定位）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guard-logs
+          path: /tmp/guard-report/
+          retention-days: 7
 
       - name: 组装 review 正文
         id: body
