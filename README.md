@@ -388,6 +388,7 @@ _未归类的依赖_
 
 ## 相关文档
 
+- [docs/live-activity-plan.md](./docs/live-activity-plan.md) —— 灵动岛/实况通知的现状评估与两条路线（本地调度 vs Cloudflare 远程触发）
 - [docs/writing-style.md](./docs/writing-style.md) —— 协作与表达约定（中文高语义 / 允许一词多义 / 参照国内开源项目 / AI 思考展示的口径）
 - [docs/promo-brief.md](./docs/promo-brief.md) —— 宣传片创作说明（交给视频制作方 / MiniMax：创作要点、分镜、提示词、授权与禁止项）
 - [docs/commit-convention.md](./docs/commit-convention.md) —— 提交信息规范
