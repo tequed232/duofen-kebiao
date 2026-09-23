@@ -27,6 +27,12 @@ const argOf = (name, fallback) => {
 };
 const BRANCH = argOf('branch', 'main');
 const DRY = args.includes('--dry-run');
+/**
+ * rebase 过之后远端分支不再是本地提交的祖先，普通更新会被 GitHub 拒绝
+ * （422 Update is not a fast forward）。只有推**非 main 的特性分支**时才允许 --force；
+ * main 永远强制快进，避免误覆盖别人的提交。
+ */
+const FORCE = args.includes('--force');
 
 const git = (a) => execFileSync('git', a.split(' '), { encoding: 'utf8', maxBuffer: 1 << 26 }).trim();
 const gitBuf = (a) => execFileSync('git', a.split(' '), { maxBuffer: 1 << 26 });
@@ -173,14 +179,16 @@ async function main() {
   if (commit.status >= 300) throw new Error(`建提交失败：${commit.status} ${commit.raw.slice(0, 200)}`);
   console.log(`  新提交 ${commit.json.sha.slice(0, 7)}`);
 
+  const allowForce = FORCE && BRANCH !== 'main';
   const updated = await api('PATCH', `/repos/${REPO}/git/refs/heads/${BRANCH}`, {
     sha: commit.json.sha,
-    force: false,
+    force: allowForce,
   });
   if (updated.status >= 300) {
-    throw new Error(`更新 ref 失败：${updated.status} ${updated.raw.slice(0, 200)}`);
+    const hint = BRANCH !== 'main' ? '（若是 rebase 过的分支，加 --force 重试）' : '';
+    throw new Error(`更新 ref 失败：${updated.status} ${updated.raw.slice(0, 160)}${hint}`);
   }
-  console.log(`\n✅ 已上传到 ${BRANCH}（快进，无强推）`);
+  console.log(`\n✅ 已上传到 ${BRANCH}（${allowForce ? '强制更新，非快进' : '快进，无强推'}）`);
 
   try {
     execFileSync('git', ['update-ref', `refs/remotes/origin/${BRANCH}`, commit.json.sha], { stdio: 'pipe' });
