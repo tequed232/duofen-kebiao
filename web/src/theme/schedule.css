@@ -1337,16 +1337,27 @@ html[data-perf='high'] .m3e-dock {
    小球与色块同时出现会出现"两个圆"，而且小球那套每帧要算速度 + 过渡 + 混合，更费帧；
    触摸反馈与流体拉伸统一由色块表达（含撞边挤压，见 applyFrame 里的 --pill-squash / --pill-bulge）。 */
 
-/* 列表项的小字并排显示（第一行/第二行放同一行，窄屏自动换行） */
+/* 列表项的小字并排显示（第一行/第二行放同一行，窄屏自动换行）。
+   坑点：`flex-wrap` 只在 **span 之间** 换行，span 自身仍可能比容器还宽；
+   再叠一条 `white-space: nowrap` 就变成「溢出 → 被父级裁掉」，且没有省略号，
+   信息是静默消失的。真机 realme GT7（365dp 宽、font_scale 1.0）实测文字列只容得下
+   约 16 个汉字，而「资源就绪：图像处理库 / 识别引擎 / 中文模型」有 24 字，
+   屏幕上只剩「资源就绪：图像处理库 / 识别引」。 */
 .list-inline-texts {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
+  /* 允许本容器被压缩，而不是把子项顶出去 */
+  min-width: 0;
 }
 
 .list-inline-texts > span {
-  white-space: nowrap;
+  /* 放得下就并排一行，放不下就在 span 内部换行。
+     `min-width: 0` 是 flex 子项能收缩到内容宽度以下的前提（默认 min-width:auto 不允许），
+     `overflow-wrap: anywhere` 兜住 `npm run setup:ocr` 这类长 token。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .list-inline-texts > span:not(:last-child)::after {
