@@ -845,8 +845,12 @@ html[data-perf='low'] .screen {
   border-radius: 999px;
   overflow: hidden;
   background: color-mix(in srgb, var(--md-sys-color-surface-container) 58%, transparent);
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  /* 三层玻璃叠在一起（本体 + 折射 + 散射），本体这一层从 18px 降到 12px：
+     作者反馈「滑动时闪烁 / 糊」—— 18px 会把背后文字晕开一大片，
+     而且三层模糊叠加时每帧都要重新采样，是掉帧与闪烁的主因之一。
+     现在本体 12px、折射 6px、散射 8px，总模糊量比原来低一半。 */
+  backdrop-filter: blur(12px) saturate(1.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
   border: 1px solid color-mix(in srgb, #ffffff 20%, transparent);
   box-shadow:
     0 8px 24px color-mix(in srgb, #000 30%, transparent),
@@ -876,11 +880,13 @@ html[data-perf='low'] .screen {
   z-index: 0;
   opacity: calc(0.35 + var(--dock-scroll, 0) * 0.35);
   filter: var(--lg-map-url, url(#m3e-dock-refraction));
-  /* 散射字体的特性：底栏边缘那一圈做**更重的背景模糊**（本体只 2px），
+  /* 散射字体的特性：底栏边缘那一圈做**更重的背景模糊**（本体只 12px），
      于是穿过底栏的列表文字在边上被"散开"、中间仍读得清 —— 真实玻璃的散射就是这样分布。
-     遮罩是透镜生成的 rim 图（窄窄一圈弧面），所以重模糊不会铺满整块。 */
-  backdrop-filter: blur(12px) saturate(1.4);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+     遮罩是透镜生成的 rim 图（窄窄一圈弧面），所以重模糊不会铺满整块。
+     12px → 6px：原来这一层把边缘糊得太狠，和本体叠起来就看不清内容了；
+     折射已经比它更醒目，散射只需要一点「化开」的观感。 */
+  backdrop-filter: blur(6px) saturate(1.35);
+  -webkit-backdrop-filter: blur(6px) saturate(1.35);
   -webkit-mask-image: var(--lg-edge-url, none);
   mask-image: var(--lg-edge-url, none);
   background: linear-gradient(
@@ -897,7 +903,11 @@ html[data-perf='low'] .screen {
    压在底栏上会让内容看起来蒙了一层纱 —— 作者要求「能直接透过底栏看列表」，
    玻璃质感改由透镜折射（rim）+ 描边 + 滑块表达。） */
 
-/* 选中滑块：一格的宽度，按选中序号平移；拖动时跟手且无过渡 */
+/* 选中滑块：一格的宽度，按选中序号平移。
+   点按切换时用**弹簧缓动**移动过去（带 overshoot），而不是瞬移 ——
+   苹果那种「duang」的核心就是这一段：滑块从旧位置弹到新位置，跨得越远弹得越明显。
+   缓动来自 theme/motion.ts 注入的 --md-sys-motion-spring-bounce
+   （stiffness 500 / damping 0.62，M3 Expressive 里专给「状态变化轻微弹跳」用的那条）。 */
 .m3e-dock-slider {
   position: absolute;
   top: 6px;
@@ -909,7 +919,9 @@ html[data-perf='low'] .screen {
   z-index: 1;
   pointer-events: none;
   transform: translate3d(calc(var(--m3e-active, 0) * (100% + 4px)), 0, 0);
-  transition: transform 320ms cubic-bezier(0.2, 0, 0, 1);
+  transition: transform var(--md-sys-motion-spring-bounce-duration, 460ms)
+    var(--md-sys-motion-spring-bounce, cubic-bezier(0.34, 1.56, 0.64, 1));
+  will-change: transform;
 }
 
 /* 拖动中：位置与拉伸统一由 --pill-x / --pill-stretch 决定
@@ -1029,9 +1041,9 @@ html[data-perf='low'] .m3e-dock-slider {
   opacity: 0.9;
   /* 散射不能压过折射：折射只发生在边缘，而这一层最重的模糊带正好也在边缘 ——
      20px 会把"被掰弯"的观感抹平（作者反馈「只看到毛玻璃、看不出折射」），
-     降到 11px 并把带宽收窄，让边缘既散得开、又留得住形变。 */
-  backdrop-filter: blur(11px) saturate(1.4);
-  -webkit-backdrop-filter: blur(11px) saturate(1.4);
+     先降到 11px，再因「滑动闪烁 / 糊」降到 8px。 */
+  backdrop-filter: blur(8px) saturate(1.4);
+  -webkit-backdrop-filter: blur(8px) saturate(1.4);
   background:
     linear-gradient(
       to bottom,
@@ -1220,10 +1232,13 @@ html[data-perf='low'] .m3e-dock-slider-reflection {
   /* 固定一格宽；拖动时的「流体拉伸」用 scaleX(var(--pill-stretch)) 表达，不改变布局宽度 */
   width: calc((100% - 12px - 8px) / 3);
   transform: translate3d(var(--pill-x, 0px), 0, 0);
-  transition:
-    transform 350ms cubic-bezier(0.2, 0.9, 0.3, 1.2),
-    width 200ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
-  will-change: transform, width;
+  /* 弹簧缓动（--md-sys-motion-spring-bounce，见 theme/motion.ts）：
+     点按与松手吸附都走这条「带 overshoot 的移动」，也就是作者要的 duang。
+     这段必须在文件后部仍然生效 —— 之前这里被一条更晚的
+     `transform 350ms cubic-bezier(0.2,0.9,0.3,1.2)` 覆盖掉，弹簧等于没生效。 */
+  transition: transform var(--md-sys-motion-spring-bounce-duration, 460ms)
+    var(--md-sys-motion-spring-bounce, cubic-bezier(0.34, 1.56, 0.64, 1));
+  will-change: transform;
 }
 
 /* 未拖动（磁吸状态）：用序号定位，保证与标签严格对齐 */
@@ -1244,9 +1259,12 @@ html[data-perf='low'] .m3e-dock-slider-reflection {
   transition: none;
 }
 
-/* 拖动经过的标签轻微提亮（不给"已选中"的语义，选中仍由 active 决定） */
+/* 拖动经过的标签轻微提亮（不给"已选中"的语义，选中仍由 active 决定）。
+   这里用 on-surface-variant 而不是 on-surface：后者在暗色主题里几乎是纯白，
+   手指停在某一格时那个图标会**亮成白色**（作者反馈「选中框滑走后原图标变白」的成因），
+   而它其实只是「手指路过」，不该比选中态还亮。 */
 .m3e-dock-tab.hovered {
-  color: var(--md-sys-color-on-surface);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 72%, var(--md-sys-color-on-surface-variant));
 }
 
 

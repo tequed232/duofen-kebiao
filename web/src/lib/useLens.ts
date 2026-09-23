@@ -20,8 +20,11 @@ interface LensHost {
   blur: SVGFEGaussianBlurElement;
   image: SVGFEImageElement;
   disp: SVGFEDisplacementMapElement;
-  /** 同一张贴图、更小的位移量：给 backdrop-filter 用（对真实内容做透镜 + 色散） */
+  /** 同一张贴图、更小的位移量：给 backdrop-filter 用（对真实内容做透镜） */
   backdropFilter: SVGFilterElement;
+  /** backdrop 那份的模糊与位移节点（不再有色散通道） */
+  backdropBlur: SVGFEGaussianBlurElement;
+  backdropDisp: SVGFEDisplacementMapElement;
   key: string;
 }
 
@@ -63,9 +66,15 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     filter.append(blur, image, disp);
     svg.appendChild(filter);
 
-    /* 第二份滤镜：吃同一张贴图，但位移小得多 —— 这份给 backdrop-filter 用，
-       直接作用在**真实背景**上（内容在玻璃边缘被掰弯，也就是 Apple 那套透镜）。
-       位移量必须比浮层那份小：浮层是自己的渐变，弯一点无妨；真实内容弯过头会撕裂。 */
+    /* 第二份滤镜：给 backdrop-filter 用，直接作用在**真实背景**上
+       （内容在玻璃边缘被掰弯，也就是 Apple 那套透镜）。位移量必须比浮层那份小：
+       浮层是自己的渐变，弯一点无妨；真实内容弯过头会撕裂。
+
+       这里**故意不做 RGB 色散**（作者反馈：上下色散太多太突兀，苹果的液态玻璃几乎不靠
+       RGB 分离）。原实现让 R/G/B 三通道用不同位移量采样同一张贴图来产生色边 ——
+       那既是不自然彩边的来源，也是「滚动时闪烁」的来源之一：每帧要跑三条
+       feDisplacementMap + 两次 feBlend，采样不足就会抖。
+       现在只留一条位移链：干净、更快、也更接近真玻璃。 */
     const backdropFilter = document.createElementNS(SVG_NS, 'filter');
     backdropFilter.setAttribute('filterUnits', 'userSpaceOnUse');
     backdropFilter.setAttribute('color-interpolation-filters', 'sRGB');
@@ -76,59 +85,25 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     const backdropImage = document.createElementNS(SVG_NS, 'feImage');
     backdropImage.setAttribute('result', 'map');
     backdropImage.setAttribute('preserveAspectRatio', 'none');
-    /* 边缘色散：**不是**把 R/B 整体平移（那会让整块画面都蒙上色边，看着发紫），
-       而是让三个通道用略微不同的位移量去采样同一张透镜贴图 ——
-       只有被掰弯的边缘才会出现色边，中心（位移为 0）完全干净。
-       物理上也对：不同波长折射率不同 → 位移量不同。 */
-    const channelMatrix = (which: 'r' | 'g' | 'b') => {
-      const matrix = document.createElementNS(SVG_NS, 'feColorMatrix');
-      matrix.setAttribute('in', 'SourceGraphic');
-      matrix.setAttribute('type', 'matrix');
-      matrix.setAttribute(
-        'values',
-        which === 'r'
-          ? '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'
-          : which === 'g'
-            ? '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0'
-            : '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0',
-      );
-      matrix.setAttribute('result', `${which}-only`);
-      return matrix;
-    };
-    const channelDisp = (which: 'r' | 'g' | 'b', offset: number) => {
-      const node = document.createElementNS(SVG_NS, 'feDisplacementMap');
-      node.setAttribute('in', `${which}-only`);
-      node.setAttribute('in2', 'map');
-      node.setAttribute('xChannelSelector', 'R');
-      node.setAttribute('yChannelSelector', 'G');
-      node.setAttribute('data-offset', String(offset)); // 实际 scale 在 update() 里按贴图比例算
-      node.setAttribute('result', which);
-      return node;
-    };
-    const rMatrix = channelMatrix('r');
-    const gMatrix = channelMatrix('g');
-    const bMatrix = channelMatrix('b');
-    const rDisp = channelDisp('r', 1.0);
-    const gDisp = channelDisp('g', 0);
-    const bDisp = channelDisp('b', -1.0);
-    const blendR = document.createElementNS(SVG_NS, 'feBlend');
-    blendR.setAttribute('in', 'r');
-    blendR.setAttribute('in2', 'g');
-    blendR.setAttribute('mode', 'screen');
-    blendR.setAttribute('result', 'rg');
-    const blendB = document.createElementNS(SVG_NS, 'feBlend');
-    blendB.setAttribute('in', 'rg');
-    blendB.setAttribute('in2', 'b');
-    blendB.setAttribute('mode', 'screen');
-    backdropFilter.append(backdropImage, rMatrix, rDisp, gMatrix, gDisp, bMatrix, bDisp, blendR, blendB);
+    const backdropBlur = document.createElementNS(SVG_NS, 'feGaussianBlur');
+    backdropBlur.setAttribute('in', 'SourceGraphic');
+    backdropBlur.setAttribute('result', 'softened');
+    backdropBlur.setAttribute('edgeMode', 'duplicate');
+    const backdropDisp = document.createElementNS(SVG_NS, 'feDisplacementMap');
+    backdropDisp.setAttribute('in', 'softened');
+    backdropDisp.setAttribute('in2', 'map');
+    backdropDisp.setAttribute('xChannelSelector', 'R');
+    backdropDisp.setAttribute('yChannelSelector', 'G');
+    backdropFilter.append(backdropBlur, backdropImage, backdropDisp);
     svg.appendChild(backdropFilter);
     document.body.appendChild(svg);
 
-    const host: LensHost = { filter, blur, image, disp, backdropFilter, key: '' };
+    const host: LensHost = { filter, blur, image, disp, backdropFilter, backdropBlur, backdropDisp, key: '' };
     hostRef.current = host;
     element.style.setProperty('--lg-map-url', `url(#${id})`);
     /* --lg-backdrop 是给 CSS 的「玻璃链」：透镜 + 轻磨砂，直接贴到 backdrop-filter 上。
-       磨砂要**轻**（2px）：折射只在边缘发生，模糊一大就把掰弯的观感抹平了。 */
+       磨砂要**轻**（2px）：折射只在边缘发生，模糊一大就把掰弯的观感抹平了。
+       色散已移除（作者反馈过重），现在只有一条位移链。 */
     element.style.setProperty('--lg-backdrop', `url(#${backdropId}) blur(2px) saturate(1.6)`);
 
     const update = () => {
@@ -149,19 +124,17 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       image.setAttribute('href', map.mapUrl);
       disp.setAttribute('scale', map.scale.toFixed(2));
       blur.setAttribute('stdDeviation', String(Math.max(0.6, params.strength)));
-      /* backdrop 那份：贴图相同、位移收窄到 30% 且封顶 18px ——
-         这是「内容被玻璃边缘掰弯」的可见量级；再大就会出现撕裂感而不是透镜感。
-         三个通道的位移各差 ±offset，差量就是色散的强度（0 即无色边）。 */
-      const backdropScale = Math.min(26, map.scale * 0.4);
+      /* backdrop 那份：贴图相同，但**位移大幅收窄**（作者反馈：边缘扭曲区域太大、显得夸张；
+         苹果的扭曲收在选中框周围一小块、衰减很快）。封顶从 26px 降到 10px、
+         系数从 0.4 降到 0.22 —— 「玻璃翘边」只留在边缘一线，不再整块都在扭。 */
+      const backdropScale = Math.min(10, map.scale * 0.22);
       backdropFilter.setAttribute('width', String(width));
       backdropFilter.setAttribute('height', String(height));
       backdropImage.setAttribute('width', String(width));
       backdropImage.setAttribute('height', String(height));
       backdropImage.setAttribute('href', map.mapUrl);
-      for (const node of [rDisp, gDisp, bDisp]) {
-        const offset = Number(node.getAttribute('data-offset') ?? 0);
-        node.setAttribute('scale', Math.max(0, backdropScale + offset).toFixed(2));
-      }
+      backdropBlur.setAttribute('stdDeviation', String(Math.max(0.4, params.edge * 2)));
+      backdropDisp.setAttribute('scale', backdropScale.toFixed(2));
       element.style.setProperty('--lg-edge-url', `url("${map.edgeUrl}")`);
       element.dataset.lens = 'ready';
     };

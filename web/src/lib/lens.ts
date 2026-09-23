@@ -26,9 +26,18 @@ export interface LensParams {
 }
 
 export const LENS_PLAYER: LensParams = { bezel: 0.58, strength: 1.2, zoom: 0.02, edge: 0.2 };
-export const LENS_PANEL: LensParams = { bezel: 0.9, strength: 2.5, zoom: 0.025, edge: 0.3 };
-/** 底栏专用：比播放条那套更厚更狠 —— 底栏很扁（68 高），bezel 窄了根本看不出掰弯 */
-export const LENS_DOCK: LensParams = { bezel: 0.85, strength: 1.6, zoom: 0.025, edge: 0.26 };
+export const LENS_PANEL: LensParams = { bezel: 0.72, strength: 2.0, zoom: 0.02, edge: 0.24 };
+/**
+ * 底栏专用。
+ *
+ * 调参依据（作者对真机观感的反馈：边缘扭曲区域太大、显得夸张；苹果的扭曲收窄在选中框
+ * 周围一小块、衰减很快，不是整个 dock 都在扭）：
+ *   · bezel 0.85 → **0.46**：扭曲带厚度几乎减半，只留在边缘一线
+ *   · strength 1.6 → **1.0**：位移幅度再收一档，避免「果冻糊掉」
+ *   · zoom 0.025 → **0.015**：背景放大感减弱（放大过头会像鱼眼）
+ * 配合 useLens 里 backdrop 位移封顶 26px → 10px，整体从「整块在扭」变成「边缘翘一点」。
+ */
+export const LENS_DOCK: LensParams = { bezel: 0.46, strength: 1.0, zoom: 0.015, edge: 0.2 };
 
 export interface LensMap {
   mapUrl: string;

@@ -102,6 +102,53 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const movedRef = useRef(false);
   /** 是否已经贴住边界（用于"刚撞上"的那一次触感） */
   const inWallRef = useRef(false);
+  /**
+   * 跟手弹簧的当前值（dock 内坐标，px）。
+   *
+   * 拖动时色块**不直接钉在手指上**：目标位置是手指，实际位置用阻尼弹簧去追，
+   * 于是有一点点滞后与回弹 —— 作者要的「液态跟手感」主要来自这一下
+   * （原来只有松手时的那点 Q 弹，拖动过程是硬的）。
+   * 半隐式欧拉积分：v += (k*(target-x) - c*v) * dt；k/c 按 60fps 调。
+   */
+  const springXRef = useRef(0);
+  const springVelRef = useRef(0);
+  const springRafRef = useRef<number | undefined>(undefined);
+  const SPRING_K = 0.34;
+  const SPRING_C = 0.72;
+
+  const stopSpring = () => {
+    if (springRafRef.current !== undefined) {
+      window.cancelAnimationFrame(springRafRef.current);
+      springRafRef.current = undefined;
+    }
+  };
+
+  /** 让跟手弹簧逐帧逼近 pendingX，直到足够接近（或不再拖动）就收工 */
+  const runSpring = () => {
+    if (springRafRef.current !== undefined) return;
+    const step = () => {
+      const geo = geoRef.current;
+      if (!geo) {
+        springRafRef.current = undefined;
+        return;
+      }
+      const target = clamp(pendingXRef.current - geo.left, 0, geo.width);
+      const dtClamp = 1;
+      const dx = target - springXRef.current;
+      springVelRef.current += (SPRING_K * dx - SPRING_C * springVelRef.current) * dtClamp;
+      springXRef.current += springVelRef.current * dtClamp;
+      applyFrame(springXRef.current);
+      const settled = !draggingRef.current && Math.abs(dx) < 0.4 && Math.abs(springVelRef.current) < 0.4;
+      if (settled) {
+        springXRef.current = target;
+        springVelRef.current = 0;
+        springRafRef.current = undefined;
+        return;
+      }
+      springRafRef.current = window.requestAnimationFrame(step);
+    };
+    springRafRef.current = window.requestAnimationFrame(step);
+  };
 
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -118,13 +165,14 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     return { left: rect.left, width: rect.width, height: rect.height, cell: rect.width / TABS.length, centers };
   };
 
-  /** 把指针位置换算成「色块中心 x」与「拉伸比例」，一帧只写一次 */
-  const applyFrame = () => {
+  /** 把指针位置换算成「色块中心 x」与「拉伸比例」，一帧只写一次。
+   *  @param jx 可选的「跟手位置」：拖动时由弹簧给，未传则用指针原始位置 */
+  const applyFrame = (jx?: number) => {
     frameRef.current = undefined;
     const element = dockRef.current;
     const geo = geoRef.current;
     if (!element || !geo) return;
-    const x = clamp(pendingXRef.current - geo.left, 18, geo.width - 18);
+    const x = clamp((jx ?? pendingXRef.current) - geo.left, 18, geo.width - 18);
     const nearest = clamp(Math.floor(x / geo.cell), 0, TABS.length - 1);
     const offset = Math.abs(x - geo.centers[nearest]);
     // 参考实现：54 → 上限 74（约 1.37 倍），用 scaleX 实现（不触发 layout）
@@ -176,7 +224,12 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   }, [dragging]);
 
   const scheduleFrame = () => {
-    if (frameRef.current === undefined) frameRef.current = window.requestAnimationFrame(applyFrame);
+    // 拖动期间交给跟手弹簧逐帧推进（它内部会调 applyFrame），避免两条动画路径互相打架
+    if (draggingRef.current) {
+      runSpring();
+      return;
+    }
+    if (frameRef.current === undefined) frameRef.current = window.requestAnimationFrame(() => applyFrame());
   };
 
   /** 形变衰减循环：只在按住期间跑 —— 每帧把加速度峰值打折，再重算一次形变量。
@@ -213,6 +266,12 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
 
     // 按住：常驻色块直接跟手（不再弹触摸小球，避免同时出现两个圆）
     pendingXRef.current = event.clientX;
+    // 弹簧从**当前色块位置**起跑，避免按下的瞬间跳一下
+    {
+      const geo0 = geoRef.current;
+      springXRef.current = geo0 ? clamp(event.clientX - geo0.left, 0, geo0.width) : 0;
+      springVelRef.current = 0;
+    }
     draggingRef.current = true;
     setDragging(true);
     velRef.current = 0;
@@ -221,8 +280,9 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     inWallRef.current = false;
     movedRef.current = false;
     lastMoveRef.current = { x: event.clientX, t: performance.now() };
-    applyFrame();
+    applyFrame(springXRef.current);
     startShapeLoop();
+    runSpring();
 
     const onWindowMove = (moveEvent: PointerEvent) => {
       if (!draggingRef.current) return;
@@ -250,21 +310,39 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         if (geo && element) {
           const x = clamp(upEvent.clientX - geo.left, 0, geo.width - 1);
           const index = clamp(Math.floor(x / geo.cell), 0, TABS.length - 1);
-          // 松手：清掉拖动变量 → 色块沿 CSS 的回弹曲线磁吸到选中格（挤压也在这一步弹回）
-          element.style.removeProperty('--pill-x');
-          element.style.removeProperty('--pill-stretch');
-          element.style.removeProperty('--pill-squash');
-          element.style.removeProperty('--pill-bulge');
-          element.style.removeProperty('--pill-deform-x');
-          element.style.removeProperty('--pill-deform-y');
-          element.style.removeProperty('--pill-skew');
+          /* 松手：**先让弹簧跑到选中格的落点**（tag 成 settle 阶段，形变同时衰减），
+             跑到位后再切回「按序号定位」。这样拖动结束不是硬切，而是弹一下再归位。 */
+          const snapCenter = geo.centers[index] ?? x;
+          pendingXRef.current = snapCenter + geo.left;
+          springVelRef.current = (springVelRef.current || 0) * 0.5;
+          const finishSettle = () => {
+            element.style.removeProperty('--pill-x');
+            element.style.removeProperty('--pill-stretch');
+            element.style.removeProperty('--pill-squash');
+            element.style.removeProperty('--pill-bulge');
+            element.style.removeProperty('--pill-deform-x');
+            element.style.removeProperty('--pill-deform-y');
+            element.style.removeProperty('--pill-skew');
+            stopSpring();
+            if (shapeFrameRef.current !== undefined) {
+              window.cancelAnimationFrame(shapeFrameRef.current);
+              shapeFrameRef.current = undefined;
+            }
+          };
+          // 给 settle 限个时长上限（弹簧参数正常时 300ms 内就到），避免极端情况一直跑
+          const settleGuard = window.setTimeout(finishSettle, 420);
+          const waitSettle = () => {
+            if (springRafRef.current === undefined) {
+              window.clearTimeout(settleGuard);
+              finishSettle();
+              return;
+            }
+            window.requestAnimationFrame(waitSettle);
+          };
+          waitSettle();
           velRef.current = 0;
           accelRef.current = 0;
           accelHoldRef.current = 0;
-          if (shapeFrameRef.current !== undefined) {
-            window.cancelAnimationFrame(shapeFrameRef.current);
-            shapeFrameRef.current = undefined;
-          }
           setHoverIndex(null);
           const tab = TABS[index];
           if (tab && index !== activeIndex) {
