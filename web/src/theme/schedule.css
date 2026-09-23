@@ -1347,7 +1347,8 @@ html[data-perf='high'] .m3e-dock {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  /* 列间距从 10px 放到 14px：去掉 '·' 分隔符后，并排时靠间距区分两个句子 */
+  gap: 4px 14px;
   /* 允许本容器被压缩，而不是把子项顶出去 */
   min-width: 0;
 }
@@ -1360,8 +1361,8 @@ html[data-perf='high'] .m3e-dock {
   overflow-wrap: anywhere;
 }
 
-.list-inline-texts > span:not(:last-child)::after {
-  content: '·';
-  margin-left: 10px;
-  opacity: 0.5;
-}
+/* 这里原本有一条 `span:not(:last-child)::after { content: '·' }` 的分隔符。
+   它只在两个 span **并排**时才成立；文字列一旦窄到必须换行（真机 365dp 上必然发生），
+   那个 '·' 就孤零零挂在换行后的行尾 ——「资源就绪：图像处理库 / 识别引擎 / 中文模型 ·」。
+   修复裁字之前它被一起裁掉了，所以看不见；修复之后才暴露出来。
+   两行本就是各自独立的句子，改用间距（gap 的列间距）区分即可。 */
