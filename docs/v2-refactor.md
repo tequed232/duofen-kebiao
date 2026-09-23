@@ -130,7 +130,8 @@
 
 - 版本号统一来源 `web/src/lib/meta.ts` → **`APP_VERSION = 'v2.0.0'`**（APK `versionName=2.0.0`、`versionCode=20000`）
 - 发布物：`duofen-kebiao-2.0.0.apk` + `duofen-kebiao-web-2.0.0.zip`
-- 每轮必须通过：`npm run check:images`、`node scripts/check-secrets.mjs`、`npm run apk:parity`（54/54 哈希一致）、`node scripts/verify.mjs`（目标 91/91）
+- 每轮必须通过：`node scripts/check-secrets.mjs`、`npm run check:web-security`、`npm run apk:parity`（逐文件哈希一致）、`node scripts/verify.mjs`
+  （原有 `npm run check:images` 校验的「笔记图片缓存上限」子系统已在本次重构中删除，脚本随之移除）
 
 ## 执行顺序（P0 → P1 → P2）
 

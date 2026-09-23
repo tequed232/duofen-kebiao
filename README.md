@@ -162,7 +162,8 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | `check-secrets.mjs` `check-web-security.mjs` | 密钥 / 凭据扫描；注入面、密钥进 URL、明文端点守卫 |
 | `check-repo-hygiene.mjs` | 安装包、压缩包、超 2 MB 文件不得被跟踪 |
 | `check-apk-parity.mjs` | APK 内嵌资源与 `dist/` 逐文件哈希比对 |
-| `check-image-cache.mjs` | 图片缓存口径校验 |
+| `check-version.mjs` | 版本号一致性：`meta.ts` 的 `APP_VERSION` 为唯一来源，挡住 `package.json` 与 `RELEASE_NOTES.md` 漂移 |
+| `check-about-credits.mjs` | 关于页名片墙版式（每行一张、头像在左、按钮齐全、无溢出） |
 | `github-release.mjs` | 发布：规范命名上传、归档到私有仓库、只保留最近 5 条 |
 | `collect-licenses.mjs` | 汇总依赖许可 → 设置页「开源相关」与 README 清单 |
 | `import-textbooks.mjs` `rtf-dump.mjs` | 教材数据导入、RTF 解析 |
