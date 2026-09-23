@@ -1,0 +1,53 @@
+name: Deploy web
+
+# 源码留在 main，构建产物不入库：每次推送到 main 后由 CI 重新构建，并把 dist/ 推送到
+# gh-pages 分支，GitHub Pages 从该分支发布。PR 只做构建校验，不发布。
+#
+# 首次启用需要把仓库的 Pages 发布源改成 gh-pages 分支（仓库管理员执行一次）：
+#   gh api -X PUT repos/tequed232/duofen-kebiao/pages -f source.branch=gh-pages -f source.path=/
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the web app
+        run: npm run build
+
+      - name: Publish to the gh-pages branch
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd dist
+          touch .nojekyll
+          git init -q
+          git checkout -q -b gh-pages
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "chore(pages): 部署 ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

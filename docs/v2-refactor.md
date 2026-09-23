@@ -1,14 +1,11 @@
-# 多分课表 v2.0 · 重构总纲
+# v2.0 重构总纲
 
 > 依据：`m3e-canvas.json`（新版设计框架）
 > 目标：按新框架重构全项目，明确 Apple / 酷安 / ColorOS 的多端差异处理，并遵循 Google 的内存管理体系。
 
----
+## 标准与来源（最高裁决依据）
 
-## 〇、标准与来源（最高裁决依据）
-
-**一切设计取舍以 Google 官方产品 / 开发者文档为准**（作者已确认）。第三方风格（酷安、MAA 等）
-仅作为「多端表现」的参考；出现冲突时**一律以 Google 文档为准**。
+**一切设计取舍以 Google 官方产品 / 开发者文档为准**（作者已确认）。第三方风格（酷安、MAA 等）仅作为「多端表现」的参考；出现冲突时**一律以 Google 文档为准**。
 
 | 领域 | 官方文档 |
 | --- | --- |
@@ -23,12 +20,9 @@
 | 可预测式返回 | <https://developer.android.com/guide/navigation/custom-back/predictive-back-gesture> |
 | 进度式通知（Android 16 Live Updates） | <https://developer.android.com/about/versions/16/features/progress-centric-notifications> |
 
-**落地要求**：任何新增组件、动效、间距、形状、颜色，都必须能在上表找到依据；
-文档未覆盖的做法要么不做，要么在 `docs/` 登记为**偏离项**（写明理由与影响）。
+**落地要求**：任何新增组件、动效、间距、形状、颜色，都必须能在上表找到依据；文档未覆盖的做法要么不做，要么在 `docs/` 登记为**偏离项**（写明理由与影响）。
 
----
-
-## 一、前置问题清单（本次重构必须一并结清的账）
+## 前置问题清单（本次重构必须一并结清的账）
 
 ### P0 · 阻塞级
 
@@ -37,7 +31,7 @@
 | 1 | **页面存在一层匿名 div 拦截点击** | Web 自动化 91 步中 3 步失败（API 页填写/对话框/返回）；用 JS 直接 click 正常 | 顺着 `elementFromPoint` 定位来源（怀疑是常驻的 `md-dialog`/sheet 容器），彻底移除；恢复 91/91 |
 | 2 | **底边栏玻璃只是「模糊 + 动态光层」** | Chromium/WebView 会丢弃 `backdrop-filter: url(#f)`，背景未被真正折射 | v2 按 canvas 要求改为「参照 Apple 官方文档的反射/折射/散射」：玻璃层拆分 + 高光/色散分层 + 指针驱动的动态参数；无法实现真背景折射时明确降级到 M3 原生栏 |
 | 3 | **课表导入仍需 AI 导入路径** | 已有 DOC/RTF/HTML/CSV 解析；canvas 要求 **AI 导入**（对话框内与 AI 对话解析课表并写入课表） | 新增「AI 导入」列表项 + 对话式导入对话框，走用户自配的开放平台 API |
-| 4 | **搜索页缺少内置地图** | 现在是"点地点→唤起外部地图 App" | 按 canvas：搜索页中部内嵌 **360×188dp / 圆角 20dp** 地图（SDK 加载期显示图标占位），点选地点即筛选 |
+| 4 | **搜索页缺少内置地图** | 现在是「点地点→唤起外部地图 App」 | 按 canvas：搜索页中部内嵌 **360×188dp / 圆角 20dp** 地图（SDK 加载期显示图标占位），点选地点即筛选 |
 
 ### P1 · 体验级
 
@@ -53,17 +47,14 @@
 | # | 问题 | 处理 |
 | --- | --- | --- |
 | 9 | **素材授权待作者回复** | `docs/asset-permissions.md` 台账 + 每周提醒 workflow 已就绪；未获批前不引入任何第三方素材 |
-| 10 | 图标资产口径未定 | 已改纯矢量（零 PNG）；若你提供自己的图标，`artwork/app-icon.png` 一键生成全密度 |
+| 10 | 图标资产口径未定 | 已改纯矢量（零 PNG）；若提供自己的图标，`artwork/app-icon.png` 一键生成全密度 |
 | 11 | 3 处遗留待确认 | ①「Gemini 第一章」具体指哪一项 ② MAA-Meow 的具体 UI 参考点 ③ 25 张图片上限是否需要可调 |
 
----
-
-## 二、新版设计框架（自 `m3e-canvas.json` 提取）
+## 新版设计框架（自 `m3e-canvas.json` 提取）
 
 **Frames（5）**：设置 · 课表 · 导入课表 · 搜索 · 启动界面
 
-**组件清单（25 组 / 33 项）**：listItem×12、bottomNav×4、topAppBar×4、snackbar×3、switch×2、
-datePicker×2、image、loadingIndicator、text、map、box、textField
+**组件清单（25 组 / 33 项）**：listItem×12、bottomNav×4、topAppBar×4、snackbar×3、switch×2、datePicker×2、image、loadingIndicator、text、map、box、textField
 
 **设计令牌**
 
@@ -77,27 +68,20 @@ datePicker×2、image、loadingIndicator、text、map、box、textField
 
 **关键设计意图（原文要点）**
 
-1. **导入课表**：DOC / EXCEL / HTML 三项点击后**调起系统文件选择器**，按格式转入对应解析流程；
-   **AI 导入**点击后弹对话框，在其中与 AI 对话，由 **AI 解析课表内容并导入课表**。
-2. **设置**：深色模式开关（立即生效 + 持久化 + 「已保存」+ 撤销）、默认跳转地图（选择列表 → 保存为默认；
-   未设置时每次导航前先询问）、关于本软件（跳转 GitHub）。
-3. **bottomNav（3 项）**：以 `surfaceContainer` 为底，叠加**参照 Apple 官方文档实现的玻璃质感
-   —— 反射、折射、散射与滑动效果**；选中项用 `secondaryContainer`。
-4. **搜索页 map**：**360×188dp、圆角 20dp**，位于页面中部；SDK 加载期间在 `surfaceContainerHighest`
-   上显示地图图标；点选地点即按该地点筛选。
-5. **课表 box**：左侧早/中/晚时间轴，上方并排五天课程并随选中日期高亮，容器内左右滑动切日期、
-   竖向滚动查看当天全部课程。
+1. **导入课表**：DOC / EXCEL / HTML 三项点击后**调起系统文件选择器**，按格式转入对应解析流程；**AI 导入**点击后弹对话框，在其中与 AI 对话，由 **AI 解析课表内容并导入课表**。
+2. **设置**：深色模式开关（立即生效 + 持久化 + 「已保存」+ 撤销）、默认跳转地图（选择列表 → 保存为默认；未设置时每次导航前先询问）、关于本软件（跳转 GitHub）。
+3. **bottomNav（3 项）**：以 `surfaceContainer` 为底，叠加**参照 Apple 官方文档实现的玻璃质感 —— 反射、折射、散射与滑动效果**；选中项用 `secondaryContainer`。
+4. **搜索页 map**：**360×188dp、圆角 20dp**，位于页面中部；SDK 加载期间在 `surfaceContainerHighest` 上显示地图图标；点选地点即按该地点筛选。
+5. **课表 box**：左侧早/中/晚时间轴，上方并排五天课程并随选中日期高亮，容器内左右滑动切日期、竖向滚动查看当天全部课程。
 
----
-
-## 三、多端差异处理（Apple / 酷安 / ColorOS）
+## 多端差异处理（Apple / 酷安 / ColorOS）
 
 ### Apple（HIG 对齐，作为玻璃质感的基准）
 
 | 维度 | 落地 |
 | --- | --- |
 | 玻璃材质 | 分层：`backdrop blur`（散射）+ 镜面高光条（反射）+ 边缘色散/位移（折射）+ 指针跟随；关闭时自动落回 M3 原生栏 |
-| 安全区 | 顶部按真实状态栏（**物理像素 ÷ density**，你机器 128px ≈ 42.7dp）+ 8px；底部 8px |
+| 安全区 | 顶部按真实状态栏（**物理像素 ÷ density**，作者机器 128px ≈ 42.7dp）+ 8px；底部 8px |
 | 手势 | 系统返回手势 → 先走应用内历史栈（WebView `canGoBack()`），退无可退才退出 |
 | 排版 | 尊重系统字号（Dynamic Type 对应 `rem`/`clamp` 缩放），字号放大不破版 |
 | 动效 | 弹性曲线 + 可中断；`prefers-reduced-motion` 时降级 |
@@ -120,9 +104,7 @@ datePicker×2、image、loadingIndicator、text、map、box、textField
 | 高刷/省电 | 遵循系统刷新率设置；不申请前台服务常驻，录音结束即释放麦克风 |
 | 后台限制 | 不依赖后台线程；WebView 暂停时停止 rAF 与音频分析 |
 
----
-
-## 四、Google 内存管理体系（Android + Web 双侧）
+## Google 内存管理体系（Android + Web 双侧）
 
 ### Android 侧
 
@@ -144,15 +126,13 @@ datePicker×2、image、loadingIndicator、text、map、box、textField
 | 存储 | 图片 25 张上限 + 手动清理入口（已实现）；`navigator.storage.estimate()` 展示占用 |
 | 语音 | 录音结束即 `track.stop()` + `AudioContext.close()`（波形图已实现） |
 
----
-
-## 五、版本与发布
+## 版本与发布
 
 - 版本号统一来源 `web/src/lib/meta.ts` → **`APP_VERSION = 'v2.0.0'`**（APK `versionName=2.0.0`、`versionCode=20000`）
 - 发布物：`duofen-kebiao-2.0.0.apk` + `duofen-kebiao-web-2.0.0.zip`
 - 每轮必须通过：`npm run check:images`、`node scripts/check-secrets.mjs`、`npm run apk:parity`（54/54 哈希一致）、`node scripts/verify.mjs`（目标 91/91）
 
-## 六、执行顺序（P0 → P1 → P2）
+## 执行顺序（P0 → P1 → P2）
 
 1. 清掉匿名拦截层 → 恢复 91/91（1 轮）
 2. 底边栏改 3 项 + 玻璃分层（Apple 式反射/折射/散射/滑动）（1 轮）
@@ -162,12 +142,9 @@ datePicker×2、image、loadingIndicator、text、map、box、textField
 6. 内存管理双侧接线（`onTrimMemory` 等）＋ 启动界面按 canvas 调整（1 轮）
 7. 全量回归：91 步 + 视觉逐屏 + 发布 v2.0.0
 
----
-
 ## 偏离项登记：原生 Liquid Glass 底边栏（方案 A）
 
-**决定**：作者选定方案 A —— 底边栏玻璃由**原生层**实现（与酷安同款），因此**这一处**不再满足
-「Web 与 APK 完全同源」的硬要求，按本文件第〇章的规定登记为偏离项。
+**决定**：作者选定方案 A —— 底边栏玻璃由**原生层**实现（与酷安同款），因此**这一处**不再满足「Web 与 APK 完全同源」的硬要求，按本文件「标准与来源」章的规定登记为偏离项。
 
 | 项 | 说明 |
 | --- | --- |
