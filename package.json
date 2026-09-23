@@ -1,9 +1,9 @@
 {
-  "name": "m3-expressive-voice-notes",
+  "name": "duofen-kebiao",
   "private": true,
-  "version": "1.0.0",
+  "version": "3.0.1",
   "type": "module",
-  "description": "Material 3 Expressive voice + image note taking web app (412x892dp, light mode first)",
+  "description": "多分课表：Material 3 Expressive 风格的课表应用（四日课表 / 教材识别 / 上课提醒）",
   "scripts": {
     "icons": "node scripts/subset-icons.mjs",
     "dev": "vite",
@@ -11,7 +11,7 @@
     "apk": "gradlew.bat assembleRelease",
     "check:images": "node scripts/check-image-cache.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
-    "apk:parity": "node scripts/check-apk-parity.mjs build/release/duofen-kebiao-latest.apk",
+    "apk:parity": "node scripts/check-apk-parity.mjs",
     "preview": "vite preview --port 4173",
     "verify": "node scripts/verify.mjs"
   },
