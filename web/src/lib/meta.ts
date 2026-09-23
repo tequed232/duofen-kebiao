@@ -14,7 +14,7 @@ export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
 /** 版本号唯一来源：APK 的 versionName / versionCode 由 app/build.gradle.kts 从这里解析。
  *  改这里之后，package.json 与 RELEASE_NOTES.md 最新一条要同步（npm run check:version 会挡）。 */
-export const APP_VERSION = 'v3.0.2';
+export const APP_VERSION = 'v3.0.3';
 /** 应用图标（作者提供的插画，整幅等比、不裁切）。
  *  必须走打包器导入而不是写 `/icon-192.png`：APK 里页面是从 `/assets/www/` 提供的，
  *  绝对路径会 404（启动页与关于页曾经因此「没改」）。 */
