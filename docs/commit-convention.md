@@ -85,41 +85,6 @@ node scripts/check-imports.mjs   # 防「用了没导入」导致白屏
 npm run build              # 构建能过
 ```
 
-## 改动流程：特性改动一律走 PR，不直推 main
-
-**任何特性、修复、构建配置改动都必须走 PR**，即使作者本人有能力直接推 main：
-
-```powershell
-# 1) 建分支（从最新 main）
-git checkout -B feat/xxx origin/main
-
-# 2) 提交 + 推分支（github.com 不通时用 API 通道，支持新建远端分支）
-node scripts/push-via-api.mjs --branch feat/xxx --base main
-
-# 3) 提 PR → 审核 → 合并
-node scripts/pr-flow.mjs --head feat/xxx --title "feat(...): ..." --body-file body.md
-```
-
-### 已知平台限制：不能批准自己的 PR
-
-GitHub 拒绝「PR 创建者批准自己」：
-
-```
-422 Review Can not approve your own pull request
-```
-
-所以 `pr-flow.mjs` 的「自审 APPROVE」这一步在**作者本人账号**下必然失败（脚本会如实报出），
-但**合并仍可完成**，PR 记录会留在历史里。要留下真正的审核记录，需要：
-
-- 把审核者加为仓库协作者（Settings → Collaborators），由他点通过；或
-- 使用一个独立的机器人账号审核。
-
-### API 通道的正确用途
-
-`push-via-api.mjs` **只用来在 `github.com` 不通时传输代码**，
-不应用来跳过评审（曾经这么用过一次，是流程错误 —— 见 PR #9 的说明）。
-它现在支持远端不存在的新分支：`--branch feat/xxx --base main`。
-
 ## 推送：网络不通时走 API 通道
 
 本机到 `github.com:443` 的连接经常被重置（`Failed to connect to github.com:443`、
