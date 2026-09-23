@@ -16,11 +16,26 @@
 import type { OcrProgress } from './localOcrTypes';
 
 const CDN_OPENCV = 'https://docs.opencv.org/4.10.0/opencv.js';
-const LOCAL_URL = './ocr/opencv/opencv.js';
+
+/**
+ * 本地副本的地址。
+ *
+ * 必须走 `import.meta.env.BASE_URL`（本应用 base = './'）而不是写死 `./ocr/...`：
+ * 相对路径是按**当前页面**解析的，页面越深（例如带路由的 /foo/bar）就会解析到
+ * /foo/ocr/... 从而 404 —— 端到端验证时正是这里让本地识别整个不可用。
+ * BASE_URL 在开发、Pages 子路径、以及 APK 的 assets/www/ 三种场景下都能解析对。
+ */
+export function localOcrUrl(rest: string): string {
+  const base = import.meta.env.BASE_URL || './';
+  return `${base}${rest}`.replace(/([^:]\/)\/+/g, '$1');
+}
+
+const localOpenCvUrl = () => localOcrUrl('ocr/opencv/opencv.js');
 
 type CvModule = {
   Mat: new (...args: unknown[]) => CvMat;
-  imread: (canvas: HTMLCanvasElement | string) => CvMat;
+  /** 用 ImageData 构造 Mat（签名稳定，优于各版本不一致的 imread） */
+  matFromImageData: (imageData: ImageData) => CvMat;
   cvtColor: (src: CvMat, dst: CvMat, code: number) => void;
   GaussianBlur: (src: CvMat, dst: CvMat, size: unknown, sigma: number) => void;
   adaptiveThreshold: (
@@ -129,9 +144,10 @@ function injectScript(src: string): Promise<CvModule> {
 
 /** 只用本地副本：准备好就注入并等就绪，没准备就抛错（由外层决定是否回落 CDN） */
 async function loadFromLocal(): Promise<CvModule> {
-  const head = await fetch(LOCAL_URL, { method: 'HEAD' });
-  if (!head.ok) throw new Error(`本地副本不存在（HTTP ${head.status}）`);
-  return injectScript(LOCAL_URL);
+  const url = localOpenCvUrl();
+  const head = await fetch(url, { method: 'HEAD' });
+  if (!head.ok) throw new Error(`本地副本不存在（HTTP ${head.status}）：${url}`);
+  return injectScript(url);
 }
 
 /** 载入 OpenCV（只加载一次）。allowCdn=true 时才允许回落到公网。 */

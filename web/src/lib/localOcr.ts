@@ -10,9 +10,7 @@
  * 需要联网时由 settings.localOcrCdn 显式开启。
  */
 import type { OcrProgress } from './localOcrTypes';
-
-const LOCAL_CORE_PATH = './ocr/tesseract/';
-const LOCAL_LANG_PATH = './ocr/tesseract/lang/';
+import { localOcrUrl } from './opencvLoader';
 
 type RecognizeOutput = {
   text: string;
@@ -33,19 +31,29 @@ type CreateWorkerFn = (
 
 let workerPromise: Promise<WorkerLike> | null = null;
 
-/** 本地是否已经放好模型（HEAD 探测，不下载内容） */
+/**
+ * 本地是否已经放好模型（HEAD 探测，不下载内容）。
+ *
+ * 每个探测都带硬超时：HEAD 打在大文件（3.3 MB 的 wasm）上时可能一直不返回，
+ * 而这个函数在 createWorker 之前同步等待 —— 一旦挂住，外层的识别超时根本来不及生效
+ * （实测表现为识别界面卡死十几分钟，端到端验证时才暴露）。
+ */
 export async function probeLocalModel(): Promise<{ engine: boolean; lang: boolean }> {
   const check = async (url: string) => {
     try {
-      const head = await fetch(url, { method: 'HEAD' });
-      return head.ok;
+      const response = await fetch(url, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(5000),
+      });
+      return response.ok;
     } catch {
       return false;
     }
   };
   const [engine, lang] = await Promise.all([
-    check(`${LOCAL_CORE_PATH}tesseract-core-simd.wasm`),
-    check(`${LOCAL_LANG_PATH}chi_sim.traineddata.gz`),
+    check(localOcrUrl('ocr/tesseract/tesseract-core-simd-lstm.wasm')),
+    // 注意是解压后的 .traineddata：setup:ocr 下载的是 .gz，落盘时已解压
+    check(localOcrUrl('ocr/tesseract/lang/chi_sim.traineddata')),
   ]);
   return { engine, lang };
 }
@@ -83,9 +91,9 @@ async function createWorker(allowCdn: boolean, onProgress?: (p: OcrProgress) => 
     },
   };
   if (useLocal) {
-    options.workerPath = `${LOCAL_CORE_PATH}worker.min.js`;
-    options.corePath = LOCAL_CORE_PATH;
-    options.langPath = LOCAL_LANG_PATH;
+    options.workerPath = localOcrUrl('ocr/tesseract/worker.min.js');
+    options.corePath = localOcrUrl('ocr/tesseract/');
+    options.langPath = localOcrUrl('ocr/tesseract/lang/');
   }
 
   const worker = await createWorker('chi_sim', 1, options);
@@ -104,14 +112,30 @@ function getWorker(allowCdn: boolean, onProgress?: (p: OcrProgress) => void): Pr
   return workerPromise;
 }
 
-/** 识别单张图，返回文字与置信度。 */
+/** 识别超时：超过就放弃这一张，不让界面无限等待 */
+const RECOGNIZE_TIMEOUT_MS = 120_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(
+      () => reject(new Error(`${label}超时（${Math.round(ms / 1000)}s）`)),
+      ms,
+    );
+    promise.then(
+      (value) => { window.clearTimeout(timer); resolve(value); },
+      (error) => { window.clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
+/** 识别单张图，返回文字与置信度。带超时 —— 识别卡住时不能让界面无限等。 */
 export async function recognizeImage(
   dataUrl: string,
   allowCdn = false,
   onProgress?: (p: OcrProgress) => void,
 ): Promise<RecognizeOutput> {
-  const worker = await getWorker(allowCdn, onProgress);
-  const result = await worker.recognize(dataUrl);
+  const worker = await withTimeout(getWorker(allowCdn, onProgress), RECOGNIZE_TIMEOUT_MS, '启动识别引擎');
+  const result = await withTimeout(worker.recognize(dataUrl), RECOGNIZE_TIMEOUT_MS, '识别封面文字');
   return {
     text: (result.data.text ?? '').replace(/\r/g, '').trim(),
     confidence: result.data.confidence ?? 0,

@@ -14,7 +14,7 @@
  * 来源：opencv.js 与 Tesseract 引擎从 node_modules 复制（装好依赖即离线可用）；
  *      中文语言包 npm 上没有稳定直链，从 tesseract.js 官方的 jsDelivr 镜像取一次。
  */
-import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createGunzip } from 'node:zlib';
 import { Readable } from 'node:stream';
@@ -102,17 +102,25 @@ async function main() {
     path.join(TESS_DIR, 'worker.min.js'),
     'worker.min.js',
   );
-  // 只用 SIMD 版：现代 WebView / 浏览器都支持，少带一份能省一半体积
-  const coreOk = await copyFrom(
-    path.resolve('node_modules/tesseract.js-core/tesseract-core-simd.wasm.js'),
-    path.join(TESS_DIR, 'tesseract-core-simd.wasm.js'),
-    'tesseract-core-simd.wasm.js',
+  /*
+   * 核心**整包拷**，不做变体裁剪。
+   *
+   * 走过两次弯路：先只拷 `tesseract-core-simd.*`，运行时要的是 `-lstm`（中文用 LSTM 专用
+   * 数据）；补了 `-lstm` 之后它又要 `relaxedsimd-lstm` —— 变体选择是 tesseract.js 内部
+   * 按 SIMD 支持情况决定的，外部猜不准。
+   * 这些文件只在本机由 setup:ocr 生成（web/public/ocr/ 已 gitignore，构建时也从 dist 剔除），
+   * 多占几十 MB 磁盘换来「一次就对」，比继续猜值得。
+   */
+  const coreDir = path.resolve('node_modules/tesseract.js-core');
+  const coreFiles = (await readdir(coreDir)).filter(
+    (name) => /^tesseract-core.*\.(js|wasm)$/.test(name),
   );
-  const wasmOk = await copyFrom(
-    path.resolve('node_modules/tesseract.js-core/tesseract-core-simd.wasm'),
-    path.join(TESS_DIR, 'tesseract-core-simd.wasm'),
-    'tesseract-core-simd.wasm',
-  );
+  let coreOk = coreFiles.length > 0;
+  for (const name of coreFiles) {
+    const copied = await copyFrom(path.join(coreDir, name), path.join(TESS_DIR, name), name);
+    coreOk = coreOk && copied;
+  }
+  const wasmOk = coreOk;
 
   console.log('\n3) 中文语言包（chi_sim）');
   const langOk = await fetchLang();
@@ -130,7 +138,7 @@ async function main() {
       '| --- | --- | --- |',
       '| `opencv/opencv.js` | 封面预处理（裁切 / 聚焦 / 二值化） | `@techstark/opencv-js` |',
       '| `tesseract/worker.min.js` | OCR worker | `tesseract.js` |',
-      '| `tesseract/tesseract-core-simd.*` | OCR 引擎 wasm | `tesseract.js-core` |',
+      '| `tesseract/tesseract-core-simd-lstm.*` | OCR 引擎 wasm（中文走 LSTM 数据，必须用 lstm 核心） | `tesseract.js-core` |',
       '| `tesseract/lang/chi_sim.traineddata` | 中文识别模型 | `@tesseract.js-data/chi_sim` |',
       '',
       `生成时间：${new Date().toISOString()}`,

@@ -75,12 +75,26 @@ function grayMatToCanvas(mat: CvMat): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * 把 canvas 读成一个 RGBA Mat（调用方负责 delete）。
+ *
+ * 故意不用 `cv.imread`：各版本 opencv.js 对它的签名不一致（有的只接受
+ * image element 或 canvas 的 id 字符串），传 canvas 会抛
+ * 「Please input the valid canvas or img id」。`matFromImageData` 只吃
+ * ImageData，签名稳定、行为确定，也不用猜。
+ */
+function canvasToMat(cv: CvModule, canvas: HTMLCanvasElement): CvMat {
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('画布不可用');
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  return cv.matFromImageData(imageData);
+}
+
 /** 把 canvas 读进一个新建的灰度 Mat（调用方负责 delete） */
 function readGray(cv: CvModule, canvas: HTMLCanvasElement): CvMat {
-  const source = new cv.Mat();
+  const source = canvasToMat(cv, canvas);
   const gray = new cv.Mat();
   try {
-    cv.imread(source, canvas);
     cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
     return gray;
   } catch (error) {
@@ -178,7 +192,15 @@ function findTextBlock(cv: CvModule, gray: CvMat): { x: number; y: number; width
   }
 }
 
-/** 裁一块并缩放到 OCR 友好尺寸（小字必须放大才认得出） */
+/**
+ * 裁一块并缩放到 OCR 友好尺寸。
+ *
+ * 尺寸上限是实测调出来的：最初写成「长边不足 1400 就放大到 1400」，结果裁切后的
+ * 封面上屏到 ~2300px，Tesseract 对这么大的图要切出几百行文本，一张图就要几分钟 ——
+ * 表现为识别「卡死」。现在：
+ *   · 长边上限 1600（再大只是变慢，准确率提升有限）
+ *   · 最多放大 2 倍（避免把小图硬撑成巨图）
+ */
 function cropAndScale(
   source: HTMLCanvasElement,
   box: { x: number; y: number; width: number; height: number },
@@ -189,8 +211,7 @@ function cropAndScale(
   const width = Math.max(1, Math.min(source.width - x, box.width + pad * 2));
   const height = Math.max(1, Math.min(source.height - y, box.height + pad * 2));
   const longest = Math.max(width, height);
-  // OCR 在长边 1400~2200 之间最稳：太小认不出，太大只是变慢
-  const scale = longest < 1400 ? 1400 / longest : longest > 2200 ? 2200 / longest : 1;
+  const scale = Math.min(MAX_EDGE / longest, 2);
   const target = document.createElement('canvas');
   target.width = Math.max(1, Math.round(width * scale));
   target.height = Math.max(1, Math.round(height * scale));

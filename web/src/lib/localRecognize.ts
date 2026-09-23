@@ -46,6 +46,8 @@ export async function recognizeCover(
   const candidates: LocalRecognizeResult['candidates'] = [];
   let bestText = '';
   let bestScore = -1;
+  /** 最后一次失败原因：全部视图都失败时给用户看 */
+  let lastError = '';
 
   for (let index = 0; index < pre.candidates.length; index += 1) {
     const candidate = pre.candidates[index];
@@ -64,12 +66,15 @@ export async function recognizeCover(
       }
     } catch (error) {
       // 单个视图失败不影响其它视图；都没成功时由上层把原因告诉用户
+      const message = error instanceof Error ? error.message : '未知错误';
       candidates.push({
         source: candidate.label,
         text: '',
         score: 0,
       });
-      pre.notes.push(`${candidate.label} 识别失败：${error instanceof Error ? error.message : '未知错误'}`);
+      pre.notes.push(`${candidate.label} 识别失败：${message}`);
+      // 记住最后一次的失败原因：全部视图都失败时，它是给用户看的唯一线索
+      lastError = message;
     }
   }
 
@@ -99,5 +104,7 @@ export async function recognizeCover(
     publisher: publisher || undefined,
     isbn,
     matchedBy: library ? 'library' : bestText ? 'cover' : 'none',
+    /** 一个字都没读出来时，把原因带出去（界面据此提示而不是静默失败） */
+    error: !bestText && lastError ? lastError : undefined,
   };
 }

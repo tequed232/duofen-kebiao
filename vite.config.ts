@@ -1,33 +1,27 @@
-import { cp, mkdir, readdir } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 /**
- * web/public/ 里有一样东西**不该进发布物**：`ocr/`。
+ * web/public/ocr/ 是「本地识别资源」（OpenCV 13 MB + Tesseract 引擎与中文模型，
+ * 合计约 23 MB），由 npm run setup:ocr 生成、已在 .gitignore 中忽略。
  *
- * 它是 npm run setup:ocr 生成的本地识别资源（OpenCV 13 MB + Tesseract 引擎与中文模型，
- * 合计约 23 MB），只服务于「本机开发时识别教材封面」。默认的 publicDir 拷贝会把它
- * 整个塞进 dist/ —— 产物从 2 MB 涨到 25 MB，Pages 每次发版都拖着它，APK 也装不下。
+ * 它有一个矛盾要处理：
+ *   · 开发时要能被服务（`/ocr/...` 直接取），否则识别功能根本跑不起来；
+ *   · 发布时**绝不能进 dist/**（产物会从 2.1 MB 涨到 25 MB，Pages 每次发版都拖着）。
  *
- * 所以这里不用 publicDir，改为显式拷贝：**除了 ocr/ 之外**的 public 内容照旧进 dist
- * （_headers、图标、manifest、授权截图一个都不能少）。
- * 需要它的时候，把 OCR_DIR 指向别处或本地起服务即可；模型本来就该留在本机。
+ * 走过一次弯路：曾用 `publicDir: false` 想一劳永逸，但它把 dev 的 public 服务也一起关了，
+ * `/ocr/...` 会落到 SPA fallback 返回**首页 HTML**，浏览器把 HTML 当 JS 加载而报错
+ * （表现是「本地没有 OpenCV」+ importScripts 404）。
+ * 现在的做法：publicDir 保持默认（dev 正常），构建结束后把 dist/ocr 删掉。
  */
-const OCR_DIR = 'ocr';
-
-function copyPublicExceptOcr(): Plugin {
+function stripLocalOcrFromDist(): Plugin {
   return {
-    name: 'duofen-copy-public-except-ocr',
+    name: 'duofen-strip-local-ocr-from-dist',
     apply: 'build',
-    async writeBundle(options) {
-      const source = path.resolve('web/public');
-      const target = path.resolve(options.dir ?? 'dist');
-      await mkdir(target, { recursive: true });
-      for (const entry of await readdir(source, { withFileTypes: true })) {
-        if (entry.name === OCR_DIR) continue;
-        await cp(path.join(source, entry.name), path.join(target, entry.name), { recursive: true });
-      }
+    async closeBundle() {
+      await rm(path.resolve('dist/ocr'), { recursive: true, force: true });
     },
   };
 }
@@ -38,9 +32,7 @@ function copyPublicExceptOcr(): Plugin {
 export default defineConfig({
   root: 'web',
   base: './',
-  // 关掉自动拷贝，改由插件排除 ocr/（见上）
-  publicDir: false,
-  plugins: [react(), copyPublicExceptOcr()],
+  plugins: [react(), stripLocalOcrFromDist()],
   build: {
     outDir: '../dist',
     emptyOutDir: true,

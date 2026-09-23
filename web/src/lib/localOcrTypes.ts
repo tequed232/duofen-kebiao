@@ -42,4 +42,6 @@ export interface LocalRecognizeResult extends LocalRecognizeText {
   isbn?: string;
   /** library = 内置库命中；cover = 仅靠封面文字 */
   matchedBy: 'library' | 'cover' | 'none';
+  /** 一个字都没读出来时的原因（引擎初始化失败 / 超时等），用于界面提示而不是静默失败 */
+  error?: string;
 }
