@@ -6,14 +6,17 @@
  * 只在「真的要识别封面」时按需从本地取一次，之后由浏览器缓存。
  *
  * 取源顺序（默认全本地）：
- *   1. /ocr/opencv/…        —— npm run setup:ocr 已经放好的本地副本
- *   2. node_modules 里的包  —— 装了依赖的本地开发环境，走 Vite 的 ?url 资源
- * 只有显式把 settings.localOcrCdn 打开，才会去公网 CDN —— 默认「全部挂载在 localhost 运行」。
+ *   1. /ocr/opencv/opencv.js  —— npm run setup:ocr 放好的本地副本（**唯一默认来源**）
+ *   2. 公网 CDN               —— 仅当显式把 settings.localOcrCdn 打开时才回落
+ *
+ * 这里**故意不 import node_modules 里的包**：那样 Vite 会把它打成一个 15 MB 的 chunk，
+ * 构建产物会从 2 MB 涨到 17 MB，每次发版都拖着它 —— 与「大件不入包」的初衷相反。
+ * node_modules 里的那份只作为 setup:ocr 的复制来源。
  */
 import type { OcrProgress } from './localOcrTypes';
 
 const CDN_OPENCV = 'https://docs.opencv.org/4.10.0/opencv.js';
-const LOCAL_DIR = './ocr/opencv/opencv.js';
+const LOCAL_URL = './ocr/opencv/opencv.js';
 
 type CvModule = {
   Mat: new (...args: unknown[]) => CvMat;
@@ -124,20 +127,11 @@ function injectScript(src: string): Promise<CvModule> {
   });
 }
 
+/** 只用本地副本：准备好就注入并等就绪，没准备就抛错（由外层决定是否回落 CDN） */
 async function loadFromLocal(): Promise<CvModule> {
-  // 1) 本地已放好的副本（npm run setup:ocr）
-  try {
-    const head = await fetch(LOCAL_DIR, { method: 'HEAD' });
-    if (head.ok) return await injectScript(LOCAL_DIR);
-  } catch {
-    /* 本地没有副本，继续 */
-  }
-  // 2) 开发环境的 node_modules（Vite 会把 ?url 变成可访问的资源地址）
-  const mod = (await import(/* @vite-ignore */ '@techstark/opencv-js')) as unknown as
-    | CvModule
-    | { default: CvModule };
-  const resolved = (mod as { default?: CvModule }).default ?? (mod as CvModule);
-  return typeof resolved === 'function' ? await (resolved as unknown as () => Promise<CvModule>)() : resolved;
+  const head = await fetch(LOCAL_URL, { method: 'HEAD' });
+  if (!head.ok) throw new Error(`本地副本不存在（HTTP ${head.status}）`);
+  return injectScript(LOCAL_URL);
 }
 
 /** 载入 OpenCV（只加载一次）。allowCdn=true 时才允许回落到公网。 */
