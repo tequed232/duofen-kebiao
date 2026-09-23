@@ -63,24 +63,142 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 
 ## 目录结构
 
-```
-web/index.html             Vite 入口
-web/src/
-  main.tsx bootstrap.tsx   Material Web 注册、主题引导
-  App.tsx                  412×892 舞台 + 屏幕栈 + 消息条
-  components/              md.tsx（Material Web 封装）、layout / overlays / content
-  screens/                 7 个屏幕
-  nav/ state/ lib/ theme/  导航、全局状态、IndexedDB / 课表解析 / 教材识别、设计令牌
-scripts/                   subset-icons.mjs、check-icons.mjs、rtf-dump.mjs、
-                           verify.mjs、github-release.mjs、serve-dist.mjs
-legacy/index.html          上一版单文件页面（保留备查）
-vite.config.ts             root=web，outDir=dist
-app/src/main/java/com/app/m3expressive/
-  MainActivity.kt          首页 / 历史 / 课表 / 设置 四个标签页
-  ScheduleTab.kt           Compose 版四日课表 + 地图选择
-  ScheduleData.kt          内嵌课表（脚本生成）
-  LiveUpdates.kt           Android 16 Live Updates / ColorOS 流体云
-```
+仓库只做四件事：**网页应用**（`web/`）、**Android 宿主**（`app/`）、**自动化与发布**（`scripts/` + `.github/`）、**文档与合规**（`docs/` + 根目录的几份 Markdown）。
+构建产物（`dist/`、`build/`）与签名文件一律不入库。
+
+### 顶层
+
+| 目录 | 作用 | 放进这里的规则 |
+| --- | --- | --- |
+| `web/` | 网页应用本体（唯一设计基准），Vite root | 只有网页端代码；界面、样式、数据解析都进这里 |
+| `app/` | Android 宿主：只做 WebView 外壳与原生能力 | 不写业务界面；界面一律来自 `web/` |
+| `scripts/` | 构建、校验、发布、数据导入脚本 | 一个脚本只做一件事，名字以 `check-` / `verify-` 开头的是验收类 |
+| `docs/` | 文档与授权凭据 | 说明、台账、评估、规范都放这里 |
+| `deploy/` | 部署配置（反爬 / CDN） | 只放配置与对应说明，不放构建产物 |
+| `.github/` | CI 与仓库自动化 | 工作流按用途一个文件一件事 |
+| `legacy/` | 上一版单文件页面，仅供备查 | 不再改动 |
+| `preview/` | 宽屏设计稿（非应用运行时资源） | 只放设计稿，不参与构建 |
+| `artwork/` | 图标原图（1024×1024） | 重新生成全密度图标用，不参与运行时 |
+| `gradle/` | Gradle Wrapper | 仅 Wrapper，勿手工改 |
+
+### 根目录文件
+
+| 文件 | 功能 |
+| --- | --- |
+| `package.json` / `package-lock.json` | npm 依赖与脚本入口（`build` / `verify` / `check:*`） |
+| `vite.config.ts` | 构建配置：`root=web`、`outDir=dist`、相对 `base`（可托管在任意子路径） |
+| `tsconfig.json` | TypeScript 配置 |
+| `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` | Android 构建（产物落 `app/build/outputs/apk/release/`） |
+| `gradlew` / `gradlew.bat` | Gradle 启动器 |
+| `keystore.properties.example` | 正式签名配置模板（真实文件 `keystore.properties` 不入库） |
+| `README.md` / `RELEASE_NOTES.md` / `CONTRIBUTORS.md` | 主文档 / 发布说明 / 贡献者名单 |
+| `.gitignore` | 忽略构建产物、签名文件与安装包 |
+
+### `web/` —— 网页应用
+
+| 路径 | 功能 |
+| --- | --- |
+| `web/index.html` | Vite 入口 HTML |
+| `web/public/` | 原样拷贝进 `dist/` 的静态文件：`manifest.webmanifest`、`_headers`、PWA 图标、`permissions/` 授权截图（关于页点开可看） |
+| `web/src/assets/` | 参与打包的图片：`avatars/` 各人公开头像、`app-icon-192.png` |
+| `web/src/main.tsx` `bootstrap.tsx` | 入口：Material Web 注册、主题与性能档引导 |
+| `web/src/App.tsx` | 412×892 舞台、屏幕栈、消息条、启动页 |
+| `web/src/components/` | 可复用界面件：`md.tsx`（Material Web 封装）、`layout.tsx`（应用栏 / 分节头 / 空态）、`overlays.tsx`（对话框 / 面板）、`schedule.tsx`（课表格）、`splash.tsx`（启动页）、`m3shape.tsx`（M3 形状）、`brands.tsx`（平台剪影图标） |
+| `web/src/screens/` | 八个屏幕，一屏一文件 |
+| `web/src/nav/navigation.tsx` | 屏幕栈与转场（含预测式返回） |
+| `web/src/state/AppState.tsx` | 全局状态：设置、课表、教材、消息条 |
+| `web/src/lib/` | 逻辑层（见下表） |
+| `web/src/theme/` | 设计令牌与样式（见下表） |
+| `web/src/data/` | 内置数据：默认课表、教材词表、许可清单 |
+| `web/src/types/jsx.d.ts` | `<md-*>` 自定义元素的 JSX 类型声明 |
+
+**八个屏幕**（`web/src/screens/`）：
+
+| 文件 | 屏幕 |
+| --- | --- |
+| `ScheduleScreen.tsx` | 课表（首页） |
+| `ScheduleFilterScreen.tsx` | 筛选 |
+| `SettingsScreen.tsx` | 设置 |
+| `TextbooksScreen.tsx` | 教材窗口（导入 / 识别 / 管理） |
+| `AboutScreen.tsx` | 关于：设计说明、致谢名片墙、开源相关入口 |
+| `LicensesScreen.tsx` | 开源相关（许可清单） |
+| `ApiEditScreen.tsx` | 接口配置 |
+| `BlankScreen.tsx` | 空白屏（转场用） |
+
+**逻辑层**（`web/src/lib/`）：
+
+| 文件 | 功能 |
+| --- | --- |
+| `schedule.ts` `scheduleHtml.ts` `scheduleCache.ts` | 课表解析（文本 / HTML 导入）、本地快照与回档 |
+| `textbooks.ts` | 教材识别与词表匹配 |
+| `db.ts` | IndexedDB 读写（数据只在本机） |
+| `api.ts` | 外部接口调用与端点准入（非 https 只放行本机 / 局域网；密钥不外发、报错不回显） |
+| `imaging.ts` | 图片处理与识别结果整理 |
+| `lens.ts` `useLens.ts` | Liquid Glass 透镜：位移贴图生成与滤镜挂载 |
+| `classReminder.ts` `native.ts` | 上课提醒、与 Android 宿主通信（流体云 / 通知 / 返回键） |
+| `meta.ts` | 应用元信息与**贡献者名单唯一数据源** `CREDITS`（README / 关于页同源） |
+| `cdn.ts` `perf.ts` `perf-telemetry.ts` `utils.ts` `types.ts` | CDN 资源地址、性能档与埋点、通用工具与类型 |
+
+**主题**（`web/src/theme/`）：`tokens.css`（色彩 / 字体 / 间距角色）、`palette.ts`（动态配色 SchemeExpressive）、`motion.ts`（M3 Expressive 弹簧转场）、`components.css`（组件样式）、`schedule.css`（课表专有样式）、`base.css`（基础与开屏）、`icon-font.css` + `icon-codepoints.ts`（图标字体与码位）。
+
+### `app/` —— Android 宿主
+
+| 文件 | 功能 |
+| --- | --- |
+| `app/src/main/java/com/app/m3expressive/MainActivity.kt` | WebView 宿主：原生权限、SAF 文件选择、外部跳转、返回键 |
+| `…/LiveUpdates.kt` | Android 16 Live Updates / ColorOS 流体云进度通知 |
+| `…/NativeDock.kt` | 原生底边栏（液态玻璃条，位于 WebView 之下） |
+| `app/src/main/AndroidManifest.xml` | 权限与组件声明 |
+| `app/src/main/res/mipmap-*/` | 自适应图标（5 档密度 + 圆形） |
+| `app/src/main/res/drawable/` `values/` | 通知图标、配色与主题 |
+
+### `scripts/` —— 自动化
+
+| 文件 | 功能 |
+| --- | --- |
+| `subset-icons.mjs` `check-icons.mjs` | 按需裁剪 Material Symbols 子集；构建时校验无图标漏出 |
+| `verify.mjs` `verify-device.ps1` `visual-parity.mjs` | Playwright 真机视口全流程验收与截图、真机核对、视觉比对 |
+| `check-imports.mjs` | 防「用了没导入」导致白屏 |
+| `check-secrets.mjs` `check-web-security.mjs` | 密钥 / 凭据扫描；注入面、密钥进 URL、明文端点守卫 |
+| `check-repo-hygiene.mjs` | 安装包、压缩包、超 2 MB 文件不得被跟踪 |
+| `check-apk-parity.mjs` | APK 内嵌资源与 `dist/` 逐文件哈希比对 |
+| `check-image-cache.mjs` | 图片缓存口径校验 |
+| `github-release.mjs` | 发布：规范命名上传、归档到私有仓库、只保留最近 5 条 |
+| `collect-licenses.mjs` | 汇总依赖许可 → 设置页「开源相关」与 README 清单 |
+| `import-textbooks.mjs` `rtf-dump.mjs` | 教材数据导入、RTF 解析 |
+| `serve-dist.mjs` | 本地起静态服务器预览 `dist/` |
+
+### `docs/` —— 文档与凭据
+
+| 文件 | 内容 |
+| --- | --- |
+| `PROJECT-STATE.md` | 项目现状与坑位记录（接手先看这份） |
+| `commit-convention.md` | 提交信息规范（`类型(范围): 中文描述`） |
+| `writing-style.md` | 协作与表达约定 |
+| `asset-permissions.md` | **素材授权台账**：任何第三方素材进仓库前必须在此留记录 |
+| `permissions/` | 授权凭据（聊天原文截图） |
+| `icon-source.jpg` | 图标原图（896×896，留档） |
+| `security-review.md` | 本地安全审查报告与整改 |
+| `v2-refactor.md` | v2 重构记录 |
+| `coolapk-glass.md` | 酷安液态玻璃实现分析（自研参考） |
+| `dynamic-island.md` `live-activity-plan.md` | 灵动岛 / 实况通知的评估与路线 |
+| `promo-brief.md` | 宣传片创作说明 |
+| `context-links.md` | 外部资料与链接 |
+
+### 新增文件放哪里
+
+| 你要加的东西 | 放这里 |
+| --- | --- |
+| 新界面 | `web/src/screens/` + `web/src/nav/navigation.tsx` 注册 |
+| 可复用界面件 | `web/src/components/` |
+| 课表 / 教材 / 接口相关逻辑 | `web/src/lib/` 对应文件 |
+| 需要被打包的图片 | `web/src/assets/` |
+| 需要原样发布到站点的文件 | `web/public/` |
+| 颜色 / 动效 / 样式 | `web/src/theme/` |
+| 校验脚本 | `scripts/`，命名 `check-*.mjs` 并接入 `package.json` 与 CI |
+| 说明文档 | `docs/` |
+| 第三方素材 | **先**在 `docs/asset-permissions.md` 登记授权，再放进 `web/public/` 或 `app/src/main/res/` |
+
 
 ## 本地开发
 
@@ -120,19 +238,31 @@ gh api -X PUT repos/tequed232/duofen-kebiao/pages -f source.branch=gh-pages -f s
 
 ### Release（APK + Web 构建）
 
+**成品命名与保留规则**（2026-09 起）：
+
+| 规则 | 内容 |
+| --- | --- |
+| 命名 | 一个版本只发两份，文件名统一：`duofen-kebiao-<版本>.apk`、`duofen-kebiao-<版本>-web.zip`（不再用 `enhance-*` 这套旧名） |
+| 别名 | 不再发布 `enhance.apk` 这类「始终最新」别名；要最新版就用下面的 latest 直链 |
+| 保留 | 本仓库 Releases 只保留**最近 5 条**；更早的版本**先归档到私有仓库** [`duofen-kebiao-releases`](https://github.com/tequed232/duofen-kebiao-releases) 再从本仓库移除附件（release 条目与 tag 保留） |
+| 归档 | 归档是 private 仓库，保存所有历史版本的成品；源码始终在主仓库对应 tag |
+
 ```powershell
 # 取出本机已保存的 GitHub 凭据（Git Credential Manager），不会打印 token
 $out = "protocol=https`nhost=github.com`n" | git credential fill
 $env:GITHUB_TOKEN = ($out | Select-String '^password=').Line.Substring(9)
 
-# 版本化资产 + 稳定别名：别名让 releases/latest/download/enhance.apk 永远指向最新
-node --use-system-ca scripts/github-release.mjs --tag v3.0.1 --target main `
-  --name "v3.0.1 · Material 3 Expressive" --notes RELEASE_NOTES.md `
-  --asset "enhance-3.0.1.apk=app/build/outputs/apk/release/app-release.apk" `
-  --asset "enhance.apk=app/build/outputs/apk/release/app-release.apk" `
-  --asset "enhance-web-3.0.1.zip=build/release/enhance-web-3.0.1.zip" `
-  --asset "enhance-web.zip=build/release/enhance-web-3.0.1.zip"
+# 发版：上传两份成品，随后自动执行「归档 + 只留最近 5 条」
+node --use-system-ca scripts/github-release.mjs --tag v3.0.2 --target main `
+  --name "多分课表 v3.0.2 —— 安全审查整改 + 致谢口径" --notes RELEASE_NOTES.md `
+  --asset "duofen-kebiao-3.0.2.apk=app/build/outputs/apk/release/app-release.apk" `
+  --asset "duofen-kebiao-3.0.2-web.zip=build/release/duofen-kebiao-3.0.2-web.zip"
+
+# 只整理历史、不建新版本
+node --use-system-ca scripts/github-release.mjs --tag v3.0.2 --prune-only
 ```
+
+`--asset` 的名字可以省略：省略时按 tag 自动命名（`.apk` → `duofen-kebiao-<版本>.apk`，`.zip` → `duofen-kebiao-<版本>-web.zip`）。
 
 > `--use-system-ca` 是必要的：本机 Node 默认信任链校验不到中间证书（`UNABLE_TO_VERIFY_LEAF_SIGNATURE`）。
 > APK 取的是 Gradle 的实际输出路径 `app/build/outputs/apk/release/app-release.apk`；web zip 需自己打包后放进 `build/release/`。
@@ -147,7 +277,7 @@ release 构建默认**回退 debug 签名**，只够自用。要换成正式签�
 
 - `.gitignore` 忽略 `*.apk` / `*.aab` / `*.zip` 等；
 - `npm run check:hygiene`（`scripts/check-repo-hygiene.mjs`）与 `.github/workflows/repo-hygiene.yml` 在每次推送与 PR 上检查，被跟踪的安装包/压缩包会让 CI 变红（防 `git add -f` 与 PR 里塞二进制）；
-- 下载短链（始终最新）：`https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk`（旧链接 `tequed232.github.io/duofen-kebiao/enhance.apk` 随本次剔除失效）。
+- 最新版直链：`https://github.com/tequed232/duofen-kebiao/releases/latest`（历史版本见私有归档仓库；旧链接 `tequed232.github.io/duofen-kebiao/enhance.apk` 已失效）。
 
 线上部署同样用 `scripts/verify.mjs` 回归：
 
