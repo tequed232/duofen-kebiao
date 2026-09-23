@@ -26,5 +26,5 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: m3-expressive-arm64-release
+          name: duofen-kebiao-arm64-release
           path: app/build/outputs/apk/release/*.apk

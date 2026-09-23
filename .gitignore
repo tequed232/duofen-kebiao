@@ -24,11 +24,14 @@ web/node_modules/
 dist/
 app/src/main/assets/www/
 app/build/
-build/
 screenshots/
 screenshots-device/
-*.log
 screenshots-live/
+
+# 签名配置：keystore.properties 里是真实密钥，绝不入库（示例见 keystore.properties.example）
+keystore.properties
+*.jks
+*.keystore
 
 # 安装包与压缩包：一律不进仓库，只作为 GitHub Release 附件（APK / web zip）
 # 由 scripts/check-repo-hygiene.mjs + .github/workflows/repo-hygiene.yml 双重把关
@@ -38,3 +41,13 @@ screenshots-live/
 *.7z
 *.tar
 *.gz
+
+# GitHub Pages 发布物不进仓库：由 .github/workflows/pages.yml 构建后推送到 gh-pages 分支
+/index.html
+/assets/
+/apple-touch-icon.png
+/icon-192.png
+/icon-512.png
+/manifest.webmanifest
+/_headers
+/.nojekyll

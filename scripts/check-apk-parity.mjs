@@ -10,7 +10,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const apk = process.argv[2] ?? 'build/release/duofen-kebiao-latest.apk';
+const apk = process.argv[2] ?? 'app/build/outputs/apk/release/app-release.apk';
 const distDir = 'dist';
 const short = (buffer) => createHash('sha256').update(buffer).digest('hex').slice(0, 16);
 

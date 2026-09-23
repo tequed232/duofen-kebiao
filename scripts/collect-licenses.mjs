@@ -34,7 +34,7 @@ const CATEGORIES = [
   {
     id: 'test',
     title: '测试与验证',
-    note: '自动化验收（91 步）与逐屏视觉校验',
+    note: '自动化验收与逐屏视觉校验',
     match: [/^playwright$/, /^@playwright\//, /^pixelmatch$/],
   },
   {
