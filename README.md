@@ -237,7 +237,7 @@ AI 抓取器与脚本爬虫，真人首访只有几百毫秒的静默计算。�
 | 名片 | 角色 | 链接 |
 | --- | --- | --- |
 | 罗xx | 作者 · 项目发起 · 界面动效 · 数据与部署 | [GitHub](https://github.com/tequed232) · [Bilibili](https://space.bilibili.com/407275151) · [抖音](https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F) |
-| 饼干233 | 翻译 · 同学 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
+| 饼干233 | 翻译 · 3D 设计 · 同学 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
 | 维舟（来自MAA-Meow） | 该项目顾问 | [GitHub](https://github.com/WhiteMoon319) |
 | 米达达 | 表情包引用 | [Bilibili](https://space.bilibili.com/3546769371695776) |
 | Hanbing | 主美画师 · 同学 | [Bilibili](https://b23.tv/0rKu2FX) |

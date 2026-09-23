@@ -114,7 +114,7 @@ export const CREDITS: CreditPerson[] = [
   },
   {
     displayName: '饼干',
-    role: '翻译 · 同学',
+    role: '翻译 · 3D 设计 · 同学',
     mark: '饼',
     avatar: avatarBinggan,
     links: [

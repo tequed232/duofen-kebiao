@@ -9,7 +9,7 @@
 | 名片 | 角色 | 主要贡献 | 链接 |
 | --- | --- | --- | --- |
 | 罗xx | 作者 | 项目发起；Material 3 Expressive 界面与动效、课表与教材数据、Android 宿主与流体云、Anubis / Cloudflare 部署 | [GitHub](https://github.com/tequed232) · [Bilibili](https://space.bilibili.com/407275151) · [抖音](https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F) |
-| 饼干 | 翻译 · 同学 | 项目文案与界面翻译 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
+| 饼干 | 翻译 · 3D 设计 · 同学 | 项目文案与界面翻译、3D 设计 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
 | 维舟（MAA-Meow） | **该项目顾问** | 项目顾问 | [GitHub](https://github.com/WhiteMoon319) |
 | 米达达 | 表情包引用 | 表情包被项目引用，特此致谢 | [Bilibili](https://space.bilibili.com/3546769371695776) |
 | Hanbing | 主美画师 · 同学 | 主视觉与美术绘制 | [Bilibili](https://b23.tv/0rKu2FX) |
