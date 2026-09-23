@@ -10,6 +10,7 @@
     "build": "node scripts/subset-icons.mjs && node scripts/check-icons.mjs && vite build",
     "apk": "gradlew.bat assembleRelease",
     "check:images": "node scripts/check-image-cache.mjs",
+    "check:credits": "node scripts/check-about-credits.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",
