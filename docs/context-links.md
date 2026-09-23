@@ -88,7 +88,7 @@ APK 直链（按版本）：
 
 ## 当前状态与已知问题（给审阅者的上下文）
 
-- **版本**：v3.0.1（`versionCode 30001` / `versionName 3.0.1`），Release + Pages + APK 均已更新
+- **版本**：v3.0.2（`versionCode 30002` / `versionName 3.0.2`），Release + Pages + APK 均已更新
 - **APK 与网页同源**：APK 内嵌的 Web 构建与网页版逐文件哈希一致（55/55）
 - **已实现**：自绘 M3E 底栏（位置即结果 + 拖拽跟手 + 液态玻璃折射）、纯左右平移过渡、`resetTo` 无竞态标签切换、HTML 课表导入算法、本地缓存课表、教材多选删除、班级隐私清理、关于页致谢
 - **未完成**：**真机复验**（`adb devices` 为空，作者手机未接入），因此底栏真机手感、流体云实况（`promotedOngoing=true`）、界面缩放三档未确认

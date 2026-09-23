@@ -1,16 +1,16 @@
 # 项目当前状态
 
 > 这份文件的目的：把会话里的关键状态**固化到仓库**，这样即使清空对话上下文、或换人接手，也不会丢信息。
-> 最后更新：v3.0.1（内容安全区修复）。
+> 最后更新：v3.0.2（安全审查整改 + 致谢口径）。
 
 ## 当前版本与入口
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | `APP_VERSION = 'v3.0.1'`（`versionCode 30001` / `versionName 3.0.1`） |
-| APK 短链 | https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk （**安装包只作为 Release 附件**，已从仓库剔除；旧的 Pages 短链 `/enhance.apk` 失效） |
+| 版本 | `APP_VERSION = 'v3.0.2'`（`versionCode 30002` / `versionName 3.0.2`） |
+| 发布页 | https://github.com/tequed232/duofen-kebiao/releases/latest （**只展示最近 5 条**；安装包只作为 Release 附件，已从仓库与 Pages 剔除） |
+| 历史版本 | https://github.com/tequed232/duofen-kebiao-releases （**private** 归档仓库，保存所有历史成品） |
 | 网页版 | https://tequed232.github.io/duofen-kebiao/ |
-| 发布页 | https://github.com/tequed232/duofen-kebiao/releases |
 | 仓库 | https://github.com/tequed232/duofen-kebiao |
 
 > 注意：`versionCode` / `versionName` 由 `app/build.gradle.kts` 的 `webVersion()` 从 `web/src/lib/meta.ts` 的 `APP_VERSION` 解析得出，**单一来源**。以前这里是硬编码的 `20600` / `2.6.0`，与解析值并存成了两处真相，已删除。

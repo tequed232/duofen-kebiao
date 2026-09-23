@@ -1,8 +1,8 @@
 ## 多分课表 v3.0.2 —— 安全审查整改 + 致谢口径
 
 ### 下载
-- 安装包：`enhance-3.0.2.apk`（覆盖安装保留数据）
-- 短链（始终最新）：https://github.com/tequed232/duofen-kebiao/releases/latest/download/enhance.apk
+- 安装包：`duofen-kebiao-3.0.2.apk`（覆盖安装保留数据）
+- 发布页（始终最新）：https://github.com/tequed232/duofen-kebiao/releases/latest
 - 网页版：https://tequed232.github.io/duofen-kebiao/
 
 ### 安全（详见 `docs/security-review.md`）
@@ -17,6 +17,8 @@
 ### 其他
 - 「致谢 · 名片墙」中 **饼干** 角色补充为「翻译 · **3D 设计** · 同学」（README / CONTRIBUTORS 同步）
 - 修复：粘贴 HTML 课表必报「没有解析到课表节次」——HTML 路由此前只写在「选文件」那条路上
+- 版本号补记：本次发布时 `APP_VERSION` 忘了跟着改，源码一度停在 v3.0.1（表现为 APK 报 3.0.1）。
+  已修正为 v3.0.2，并新增 `npm run check:version` 挡住 meta.ts / package.json / RELEASE_NOTES 三处漂移。
 
 ---
 
