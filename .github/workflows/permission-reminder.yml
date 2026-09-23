@@ -38,8 +38,23 @@ jobs:
             echo "status=pending" >> "$GITHUB_OUTPUT"
           fi
 
+      # fork 默认关闭 Issues，此时开/关 issue 都会让 `gh` 直接报错退出。
+      # 台账提醒只对开启 Issues 的仓库有意义，先探测能力再决定要不要动 issue。
+      - name: Check whether issues are available
+        id: guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          has_issues=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.has_issues')
+          if [ "$has_issues" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "本仓库未开启 Issues，跳过台账提醒。"
+          fi
+
       - name: Open or update the reminder issue
-        if: steps.ledger.outputs.status == 'pending'
+        if: steps.ledger.outputs.status == 'pending' && steps.guard.outputs.enabled == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -65,7 +80,7 @@ jobs:
           fi
 
       - name: Report a state change
-        if: steps.ledger.outputs.status != 'pending'
+        if: steps.ledger.outputs.status != 'pending' && steps.guard.outputs.enabled == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STATUS: ${{ steps.ledger.outputs.status }}
