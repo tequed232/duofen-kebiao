@@ -10,6 +10,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { MdIcon, MdIconButton, MdTextField, useMdDialog } from './md';
 import { analyzeImage } from '../lib/api';
+import { recognizeCover } from '../lib/localRecognize';
 import { listSnapshots, relativeTime, saveSnapshot, type ScheduleSnapshot } from '../lib/scheduleCache';
 import { guessPublisher, matchCourseByText } from '../lib/textbooks';
 import { ExpandableSheet } from './overlays';
@@ -636,6 +637,8 @@ export function TextbookSection({ courseName }: { courseName: string }) {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** 本地识别的进度文案（OpenCV 预处理 / OCR / 匹配），空串表示不在识别中 */
+  const [ocrProgress, setOcrProgress] = useState('');
   const [cover, setCover] = useState<string | null>(null);
   const [ocrText, setOcrText] = useState('');
   const [title, setTitle] = useState('');
@@ -672,35 +675,69 @@ export function TextbookSection({ courseName }: { courseName: string }) {
     setDialogOpen(true);
   };
 
-  /** 选择封面图片：从相册选图后先识别，再进对话框确认（相机功能已剔除） */
+  /**
+   * 选择封面图片：从相册选图后先识别，再进对话框确认（相机功能已剔除）。
+   *
+   * 识别顺序：**本地优先**（OpenCV 预处理 + Tesseract 中文 OCR，图片不出设备），
+   * 本地拿不到结果且用户配了图片转文字 API 时，才回落到外部多模态模型。
+   */
   const captureCover = async () => {
     const file = await pickFile('教材封面', 'image/*');
     if (!file) return;
     setBusy(true);
+    let localNote = '';
     try {
       const dataUrl = await prepareImageFile(file, settings.cameraSharpness);
       setCover(dataUrl);
+
+      // ① 本地识别
+      try {
+        const result = await recognizeCover(dataUrl, {
+          allowCdn: settings.localOcrCdn,
+          courseNames,
+          onProgress: (progress) => setOcrProgress(progress.text),
+        });
+        if (result.best.trim()) {
+          const text = [result.best, result.isbn ? `ISBN ${result.isbn}` : ''].filter(Boolean).join('\n');
+          const matched = result.course ?? courseName;
+          openDialog({ ocr: text, cover: dataUrl, matched });
+          showSnackbar({
+            message: result.matchedBy === 'library'
+              ? `本地识别完成，匹配到《${matched}》${result.publisher ? ` · ${result.publisher}` : ''}`
+              : `本地识别出封面文字${result.publisher ? `，出版社：${result.publisher}` : ''}`,
+            duration: 4000,
+          });
+          return;
+        }
+        localNote = '本地没读出可用文字';
+      } catch (error) {
+        localNote = error instanceof Error ? error.message : '本地识别不可用';
+      } finally {
+        setOcrProgress('');
+      }
+
+      // ② 回落到外部多模态 API（可选，需用户自行配置）
       if (settings.visionApiUrl.trim()) {
         try {
           const result = await analyzeImage(dataUrl, settings);
           const text = [result.summary, ...result.keyPoints].join('\n');
           const matched = matchCourseByText(text, courseNames)?.course ?? courseName;
           openDialog({ ocr: text, cover: dataUrl, matched });
-          showSnackbar({ message: `封面识别完成，匹配到《${matched}》`, duration: 4000 });
+          showSnackbar({ message: `已用外部 API 识别，匹配到《${matched}》`, duration: 4000 });
+          return;
         } catch (error) {
-          openDialog({ cover: dataUrl, matched: courseName });
-          showSnackbar({
-            message:
-              `封面识别失败：${error instanceof Error ? error.message : '未知错误'}。` +
-              '教材识别需要视觉多模态模型，请在 设置 → API编辑 里把「图片转文字API」换成支持图片输入的模型（如 qwen-vl-max / gpt-4o / glm-4v）。',
-            duration: 8000,
-          });
+          localNote += `；外部 API 也失败：${error instanceof Error ? error.message : '未知错误'}`;
         }
-      } else {
-        openDialog({ cover: dataUrl, matched: courseName });
-        showSnackbar({ message: '已选择封面，可粘贴封面文字自动匹配课程', duration: 5000 });
       }
+
+      // ③ 都没成功：仍然保存封面，让用户手填或粘贴文字
+      openDialog({ cover: dataUrl, matched: courseName });
+      showSnackbar({
+        message: `${localNote}。可点「导入教程」看本地识别怎么准备，或直接粘贴封面文字。`,
+        duration: 8000,
+      });
     } finally {
+      setOcrProgress('');
       setBusy(false);
     }
   };

@@ -7,6 +7,11 @@ export interface AppSettings {
   /** 教材封面识别用的视觉接口 */
   visionApiUrl: string;
   visionApiKey: string;
+  /**
+   * 本地识别（OpenCV + Tesseract）缺资源时，是否允许从公网 CDN 取模型。
+   * 默认 false —— 全部走 localhost，只有用户明确同意才联网。
+   */
+  localOcrCdn: boolean;
   /** default map provider id used when navigating to a course address ('' = ask every time) */
   mapProvider: string;
   /** teaching week 1 Monday, yyyy-mm-dd; '' = use the value embedded in the schedule */
@@ -38,6 +43,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cameraSharpness: 1,
   visionApiUrl: '',
   visionApiKey: '',
+  localOcrCdn: false,
   mapProvider: '',
   termStart: '',
   schoolName: '',
