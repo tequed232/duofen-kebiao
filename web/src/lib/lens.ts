@@ -23,21 +23,43 @@ export interface LensParams {
   zoom: number;
   /** 边缘带强度（写入 --lg-edge-url 的遮罩，由 CSS 决定怎么用） */
   edge: number;
+  /**
+   * 位移随距离的衰减指数，默认 2（原来的平方衰减）。
+   * 值越大，位移越集中在边缘一条窄带上、往中心掉得越快 ——
+   * 苹果的「玻璃翘边」就是这种分布：只在边缘一线，不是整块都在扭。
+   */
+  falloff?: number;
+  /** backdrop 那份位移的封顶（px）。默认 10；底栏要更收，避免整块背景被掰弯 */
+  backdropMax?: number;
+  /** backdrop 位移相对贴图 scale 的系数。默认 0.22；底栏更小 */
+  backdropFactor?: number;
 }
 
 export const LENS_PLAYER: LensParams = { bezel: 0.58, strength: 1.2, zoom: 0.02, edge: 0.2 };
 export const LENS_PANEL: LensParams = { bezel: 0.72, strength: 2.0, zoom: 0.02, edge: 0.24 };
 /**
- * 底栏专用。
+ * 底栏专用 —— **极致液态玻璃版**。
  *
- * 调参依据（作者对真机观感的反馈：边缘扭曲区域太大、显得夸张；苹果的扭曲收窄在选中框
- * 周围一小块、衰减很快，不是整个 dock 都在扭）：
- *   · bezel 0.85 → **0.46**：扭曲带厚度几乎减半，只留在边缘一线
- *   · strength 1.6 → **1.0**：位移幅度再收一档，避免「果冻糊掉」
- *   · zoom 0.025 → **0.015**：背景放大感减弱（放大过头会像鱼眼）
- * 配合 useLens 里 backdrop 位移封顶 26px → 10px，整体从「整块在扭」变成「边缘翘一点」。
+ * 调参依据（作者对真机观感的反馈）：
+ *   「边缘扭曲区域太大，显得夸张；苹果的扭曲是收窄 + 聚焦在选中胶囊周围的一小块，
+ *     衰减很快，不是整个 dock 都在扭」
+ *
+ * 所以不再靠"把强度调小"来收敛（那样只是变淡，分布还是铺满整块），而是改**衰减形状**：
+ *   · falloff **3**（三次方，原来是平方）：位移集中到边缘一条窄带，往中心掉得更快
+ *   · bezel 0.85 → **0.30**：透镜带厚度只剩原来的三分之一强
+ *   · strength **0.9**：幅度收一档，避免「果冻糊掉」
+ *   · zoom **0.012**：背景放大感再减（放大过头会像鱼眼）
+ *   · backdropMax 10 → **7px**、backdropFactor 0.22 → **0.16**：真实背景只被掰弯一点点
  */
-export const LENS_DOCK: LensParams = { bezel: 0.46, strength: 1.0, zoom: 0.015, edge: 0.2 };
+export const LENS_DOCK: LensParams = {
+  bezel: 0.3,
+  strength: 0.9,
+  zoom: 0.012,
+  edge: 0.2,
+  falloff: 3,
+  backdropMax: 7,
+  backdropFactor: 0.16,
+};
 
 export interface LensMap {
   mapUrl: string;
@@ -75,7 +97,8 @@ export function buildLensMap(
   radius: number,
   params: LensParams,
 ): LensMap {
-  const key = [width, height, Math.round(radius), params.bezel, params.strength, params.zoom].join(':');
+  const falloff = params.falloff ?? 2;
+  const key = [width, height, Math.round(radius), params.bezel, params.strength, params.zoom, falloff].join(':');
   const mapWidth = Math.max(8, Math.round(width * MAP_SCALE));
   const mapHeight = Math.max(8, Math.round(height * MAP_SCALE));
   const canvas = document.createElement('canvas');
@@ -100,8 +123,8 @@ export function buildLensMap(
       const cx = x + 0.5 - hw;
       const cy = y + 0.5 - hh;
       const d = roundedRectSDF(cx, cy, hw, hh, scaledRadius);
-      let m = smoothStep(-bezel, 0, d); // 0=深处 → 1=边缘
-      m *= m; // 平滑衰减，中心几乎无形变
+      // 0=深处 → 1=边缘；falloff 越大掉得越快，位移越集中在边缘窄带上
+      const m = Math.pow(smoothStep(-bezel, 0, d), falloff);
       const nx = roundedRectSDF(cx + 0.5, cy, hw, hh, scaledRadius) - roundedRectSDF(cx - 0.5, cy, hw, hh, scaledRadius);
       const ny = roundedRectSDF(cx, cy + 0.5, hw, hh, scaledRadius) - roundedRectSDF(cx, cy - 0.5, hw, hh, scaledRadius);
       const len = Math.hypot(nx, ny) || 1;

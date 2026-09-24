@@ -273,11 +273,19 @@ class MainActivity : ComponentActivity() {
     /** 把系统栏高度写进 CSS 变量（dp，除以 density；网页据此给顶栏留白） */
     private fun injectInsets() {
         val density = resources.displayMetrics.density
+        /* 这里**故意不写 `--native-dock`，也不再打 `data-native-dock` 标记**。
+           原生 Dock 已在 2026-09 回滚停用（见本文件里「【回滚】原生 Dock 在作者真机上不可用」
+           那段：真机上"可见但点击无反应"，现由网页自绘的底栏接管导航），
+           而 `--native-dock` 一旦被设成非 0 值，网页就会给一个**并不存在**的底栏预留高度：
+           `components.css` 里 `.schedule-today-fab` / `.textbook-fab` / `.textbook-action-bar`
+           的 bottom 都是 `calc(80px + var(--native-dock, 0px) + N)`，
+           于是它们在安卓上凭空抬高 74px（`NativeDock.heightPx()/density` = 56+8+10）——
+           表现就是「回到今天」这类悬浮按钮和底栏之间多出一道缝，而网页版没有。
+           将来若真的重新启用原生 Dock，记得把这两行一起加回来。 */
         val js = "(function(){var r=document.documentElement||document.body;if(!r||!r.style)return;" +
             "r.style.setProperty('--native-inset-top','${insetTopPx / density}px');" +
             "r.style.setProperty('--native-inset-bottom','${insetBottomPx / density}px');" +
-            "r.style.setProperty('--native-dock','${NativeDock.heightPx(this) / density}px');" +
-            "r.dataset.nativeDock='1';})();"
+            "})();"
         webView.post { webView.evaluateJavascript(js, null) }
     }
 
