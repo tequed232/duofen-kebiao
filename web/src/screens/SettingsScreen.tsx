@@ -29,6 +29,7 @@ export default function SettingsScreen() {
   const [perfDialogOpen, setPerfDialogOpen] = useState(false);
   const [dispersionDialogOpen, setDispersionDialogOpen] = useState(false);
   const [scatterDialogOpen, setScatterDialogOpen] = useState(false);
+  const [warpDialogOpen, setWarpDialogOpen] = useState(false);
   const [contourDialogOpen, setContourDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 本地识别资源状态：null = 正在探测 */
@@ -152,6 +153,21 @@ export default function SettingsScreen() {
                   {settings.dockScatter === 'strong'
                     ? '强：投射 v3.0.1 那版口径（本体 18px 重磨砂 + 底色 58%）'
                     : '轻（默认）：图内约 2.4px 磨砂，折射看得最清楚'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* ------------------------------- 底栏扭曲：厚透镜（默认）/ 收窄 / 关 */}
+              <md-list-item type="button" className="rounded-middle" onClick={() => setWarpDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="waves" />
+                </div>
+                <div slot="headline">底栏扭曲</div>
+                <div className="md-body-small muted" slot="supporting-text">
+                  {settings.dockWarp === 'thick'
+                    ? '厚透镜（默认）：能明显看到背景被掰弯、文字被横向拉开'
+                    : settings.dockWarp === 'off'
+                      ? '关：不做折射位移，只留边缘高光'
+                      : '收窄：只留在边缘一线（六项整改后那版，几乎看不出来）'}
                 </div>
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
@@ -601,6 +617,36 @@ export default function SettingsScreen() {
               }}
             >
               {settings.dockScatter === value ? '✓ ' : ''}
+              {label}
+            </md-outlined-button>
+          ))}
+        </div>
+      </MdDialog>
+
+      <MdDialog
+        open={warpDialogOpen}
+        headline="底栏扭曲"
+        onClosed={() => setWarpDialogOpen(false)}
+        actions={<md-text-button onClick={() => setWarpDialogOpen(false)}>取消</md-text-button>}
+      >
+        液态玻璃把背后的画面「掰弯」的幅度与范围。只作用于底边栏这一处：
+        <div className="col gap-8 mt-12">
+          {([
+            ['thick', '厚透镜（默认）：掰弯最明显，背景与文字被横向拉开'],
+            ['concise', '收窄：只留在边缘一线（改小过的那版，几乎看不出来）'],
+            ['off', '关：不做折射位移，只留边缘高光'],
+          ] as const).map(([value, label]) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setWarpDialogOpen(false);
+                updateSettings(
+                  { dockWarp: value },
+                  { message: `底栏扭曲：${value === 'thick' ? '厚透镜' : value === 'off' ? '关' : '收窄'}` },
+                );
+              }}
+            >
+              {settings.dockWarp === value ? '✓ ' : ''}
               {label}
             </md-outlined-button>
           ))}

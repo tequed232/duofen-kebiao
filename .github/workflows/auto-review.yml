@@ -104,6 +104,9 @@ jobs:
           run_guard settings-groups node scripts/check-settings-groups.mjs
           # 单色等高线背景：接线（设置项/dataset/渲染/CSS 让出底色）+ 生成器纯逻辑（确定性、边界、密度）
           run_guard contour        node scripts/check-contour.mjs
+          # 底栏扭曲（透镜折射）档位：「厚透镜 / 收窄 / 关」三档齐 + 厚透镜真的更厚更狠
+          #   + 几何与颜色分轴（防"为了压色散把位移删了"重演）
+          run_guard dock-warp      node scripts/check-dock-warp.mjs
           # ③ 需要 Playwright 的 chromium（上一节已装）：量引擎对 backdrop-filter 的真实行为，
           #    不依赖任何服务，跑在 dev server 之前
           run_guard backdrop-refraction node scripts/check-backdrop-refraction.mjs

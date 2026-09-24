@@ -1,10 +1,10 @@
-﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
+/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useNav } from '../nav/navigation';
 import { useAppState } from '../state/AppState';
 import { isNativeShell, haptic } from '../lib/native';
-import { dockLensParams, effectiveDispersion } from '../lib/lens';
+import { dockLensParams, effectiveDispersion, effectiveWarp } from '../lib/lens';
 import { useLens } from '../lib/useLens';
 
 /* ------------------------------------------------------------- app bar --- */
@@ -81,11 +81,17 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
   /* 液态玻璃透镜：按 dock 实际尺寸生成位移贴图（BEZEL / STRENGTH / ZOOM 见 lens.ts）。
-     色散档位（设置 → 底栏材质 → 液态玻璃 → 色散）决定用哪套参数：
-     「简洁」= 现在的收窄口径 + 三通道；「极致」= 0801cb9 那套落差口径 + 六段光谱。
+     两条正交的设置轴：
+       · 扭曲档（dockWarp：厚透镜 / 收窄 / 关）决定**几何** —— 掰弯多少、铺多宽；
+       · 色散档（dispersion：关 / 简洁 / 极致）决定**颜色分离**在哪一档。
+     厚透镜就是 `6aeae6d` 那版口径（bezel 0.85 / strength 1.6 / backdrop 封顶 26px），
+     真机上能明显看到被掰弯；收窄是 `7973ced` 六项整改后的口径（只留在边缘一线）。
      真机核对手续：先关掉开发者选项里的「指针位置」「显示布局边界」再截图，
      否则那些调试叠层会被误认成应用的渲染问题。 */
-  const dockParams = useMemo(() => dockLensParams(effectiveDispersion(settings.dispersion)), [settings.dispersion]);
+  const dockParams = useMemo(
+    () => dockLensParams(effectiveDispersion(settings.dispersion), effectiveWarp(settings.dockWarp)),
+    [settings.dispersion, settings.dockWarp],
+  );
   useLens(dockRef, dockParams);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);

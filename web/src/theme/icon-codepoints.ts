@@ -104,6 +104,7 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "visibility_off": 0xe8f5,
   "volunteer_activism": 0xea70,
   "warning": 0xe002,
+  "waves": 0xe176,
   "widgets": 0xe1bd,
 };
 

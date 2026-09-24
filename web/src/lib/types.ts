@@ -35,9 +35,21 @@ export interface AppSettings {
    *   · 'off'      —— 不做色散，只留折射与高光；
    *   · 'concise'  —— 默认。三通道（R/G/B）只在边缘带分离出"一侧偏冷、一侧偏暖"的一丝彩边；
    *   · 'ultimate' —— 恢复 commit 0801cb9 那套落差口径 + **六段光谱**（紫蓝青绿黄红），数得出七色。
-   * 参数见 web/src/lib/lens.ts 的 LENS_DOCK / LENS_DOCK_ULTIMATE。
+   * 参数见 web/src/lib/lens.ts 的 dockLensParams（几何来自 dockWarp，颜色来自 dispersion）。
    */
   dispersion: 'off' | 'concise' | 'ultimate';
+  /**
+   * 底栏液态玻璃的**扭曲档位**（作者 2026-09-25 要求把"能看出掰弯"的那版找回来）：
+   *   · 'thick'   —— **默认**。commit `6aeae6d`「底栏换厚透镜」那版口径：
+   *                  bezel 0.85 / strength 1.6 / backdrop 位移封顶 26px。
+   *                  当时作者的验收话术是"能明显看到文字被横向拉开 + 蓝橙色边"。
+   *   · 'concise' —— 收窄（`7973ced` 六项整改后的口径）：bezel 0.30、封顶 7px，
+   *                  "只留在边缘一线"，即作者后来嫌"看不出来"的那一档。
+   *   · 'off'     —— 不做折射位移，只留边缘高光（与色散档无关）。
+   * 与色散档**正交**：扭曲管几何（掰弯多少、分布多宽），色散管颜色分离。
+   * 想要 `0801cb9` 那种"大落差 + 七彩虹"= 厚透镜 + 极致色散。
+   */
+  dockWarp: 'off' | 'concise' | 'thick';
   /** 单色等高线背景（模仿《终末地》）：off 不画 / subtle 默认 / bold 更密 */
   contour: 'off' | 'subtle' | 'bold';
   /**
@@ -77,6 +89,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   liquidGlass: true,
   barMaterial: 'solid',
   dispersion: 'concise',
+  dockWarp: 'thick',
   contour: 'subtle',
   dockScatter: 'concise',
   classReminder: true,
