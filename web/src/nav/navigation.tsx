@@ -179,9 +179,11 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   const push = useCallback<NavValue['push']>(
     (route, params = {}, transition = 'slide', direction: 'forward' | 'back' = 'forward') => {
-      // 同路由去重：重复点击底边栏标签不再重复入栈（此前"点两下跳到不知道哪里"）
+      /* 同路由去重：重复点底边栏标签不再重复入栈。
+         **但参数不同的同名路由要放行** —— 设置页的「分类屏 → 选项屏」都叫
+         `settingsSection`，只比 route 的话第二层永远推不动（实测：点「上端安全区」没反应）。 */
       const top = stackRef.current[stackRef.current.length - 1];
-      if (top && top.route === route) return;
+      if (top && top.route === route && JSON.stringify(top.params ?? {}) === JSON.stringify(params ?? {})) return;
       const entry: RouteEntry = { key: uid('scr'), route, params, transition, direction };
       const next = [...stackRef.current, entry];
       window.history.pushState({ m3Stack: next }, '');

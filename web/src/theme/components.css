@@ -410,8 +410,13 @@ md-list-item.rounded-only {
   min-width: 0;
 }
 
-.list-icon-badge {
-  width: 40px;
+/* 选项屏（设置里的「点一个选项进它自己一屏」）顶部的说明段 */
+.settings-note {
+  padding: 4px 8px 12px;
+  line-height: 1.5;
+}
+
+.list-icon-badge {  width: 40px;
   height: 40px;
   border-radius: 999px;
   display: grid;

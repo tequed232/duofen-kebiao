@@ -313,8 +313,7 @@ if (process.env.APP_URL) {
   await clickRow('屏幕安全区');
   const onSafeArea = await visibleSliders();
   check(`「屏幕安全区」屏可见滑块 = 2（实际 ${onSafeArea}）`, onSafeArea === 2, '滑块没跟着进自己的屏');
-  const before = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--inset-top').trim() || '(未设置)');
-  await page.evaluate(() => {
+  const before = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--inset-top').trim() || '(未设置)');  await page.evaluate(() => {
     /* 按 MdSlider 的真实契约触发：先写 value，再派发 change（handler 读的是 target.value） */
     const slider = [...document.querySelectorAll('.screen:not([aria-hidden="true"]) md-slider')].find(
       (el) => el.getBoundingClientRect().width > 4,
@@ -328,8 +327,66 @@ if (process.env.APP_URL) {
   const after = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--inset-top').trim() || '(未设置)');
   check(`拖动滑块真的写进了 --inset-top（${before} → ${after}）`, after === '52px', '滑块没生效');
   await page.screenshot({ path: 'build/settings-safearea.png' });
+
+  /* 选项屏：另开一页，走 设置 → 外观 → 底栏色散，应该进它自己的一屏并能选档 */
+  const p4 = await browser.newPage({ viewport: { width: 460, height: 940 }, deviceScaleFactor: 2 });
+  await p4.goto(process.env.APP_URL, { waitUntil: 'load' });
+  await p4.waitForTimeout(2600);
+  for (const type of ['pointerdown', 'pointerup']) {
+    await p4.evaluate((t) => {
+      const tab = document.querySelectorAll('.m3e-dock-tab')[2];
+      const r = tab.getBoundingClientRect();
+      tab.dispatchEvent(new PointerEvent(t, { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, isPrimary: true }));
+    }, type);
+    await p4.waitForTimeout(110);
+  }
+  await p4.waitForTimeout(900);
+  const clickOn = async (title) => {
+    await p4
+      .locator(`.screen:not([aria-hidden="true"]) md-list-item:has([slot="headline"]:text-is("${title}"))`)
+      .first()
+      .click({ force: true });
+    await p4.waitForTimeout(900);
+  };
+  await clickOn('外观');
+  await clickOn('底栏色散');
+  const optionScreen = await p4.evaluate(() => {
+    const screen = document.querySelector('.screen:not([aria-hidden="true"])');
+    return {
+      title: screen?.querySelector('.app-bar-title')?.textContent?.trim() ?? '',
+      rows: [...screen.querySelectorAll('md-list-item')]
+        .filter((el) => el.getBoundingClientRect().height > 4)
+        .map((el) => el.querySelector('[slot="headline"]')?.textContent?.trim())
+        .filter(Boolean),
+      hasDialog: Boolean(document.querySelector('md-dialog[open]')),
+    };
+  });
+  check(`点「底栏色散」进了它自己的屏（标题「${optionScreen.title}」）`, optionScreen.title === '底栏色散', '没进选项屏');
+  check(`选项屏里有三档（${optionScreen.rows.length} 行）`, optionScreen.rows.length === 3, JSON.stringify(optionScreen.rows));
+  check('选项屏不是弹层', !optionScreen.hasDialog, '还在用弹层');
+  await p4.locator('.screen:not([aria-hidden="true"]) md-list-item:has([slot="headline"]:text-is("极致：六段光谱（紫蓝青绿黄红），边缘虹带拉到最宽"))').first().click({ force: true });
+  await p4.waitForTimeout(900);
+  const applied = await p4.evaluate(() => ({
+    bands: document.querySelector('.m3e-dock')?.dataset.lensDispersion ?? '(无)',
+    checked: [...document.querySelectorAll('.screen:not([aria-hidden="true"]) md-list-item')]
+      .filter((el) => el.getBoundingClientRect().height > 4 && /radio_button_checked/.test(el.querySelector('md-icon')?.textContent ?? ''))
+      .map((el) => el.querySelector('[slot="headline"]')?.textContent?.trim()),
+  }));
+  check(`选「极致」真的生效（滤镜链 = ${applied.bands}）`, applied.bands === 'bands-6', '设置没写进去');
+  await p4.screenshot({ path: 'build/settings-option-screen.png' });
   await browser.close();
 }
+
+console.log('\n=== 选项屏：点一个选项进它自己一屏（Clash Verge 的"语言/主题"那种）===');
+check('底栏色散那一行改成推「选项屏」而不是开弹层', /nav\.push\('settingsSection',\s*\{\s*option:\s*'dispersion'\s*\}/.test(source), '还是走弹层');
+check('选项屏标题表里有它', /OPTION_TITLES[\s\S]{0,120}dispersion:\s*'底栏色散'/.test(source), 'OPTION_TITLES 缺底栏色散');
+check('选项屏里有三档选择', /atOption\('dispersion'\)[\s\S]{0,900}\['off'[\s\S]{0,400}\['concise'[\s\S]{0,400}\['ultimate'/.test(source), '三档没渲染出来');
+check('底栏色散的旧弹层已删除（不留死代码）', !/dispersionDialogOpen/.test(source), '旧的 dispersionDialogOpen 还在');
+check(
+  '同路由不同参数要能入栈（push 的去重键含参数）',
+  /JSON\.stringify\(top\.params[\s\S]{0,80}JSON\.stringify\(params/.test(await readFile('web/src/nav/navigation.tsx', 'utf8')),
+  'push 只比 route，选项屏推不动',
+);
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

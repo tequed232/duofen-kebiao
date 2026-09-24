@@ -26,8 +26,15 @@ export default function SettingsScreen() {
    *   section === 'appearance'  → 外观子屏（只显示外观那一段，其余用 display:none 收起）
    */
   const section = useRouteParams().section ?? '';
-  const atHub = section === '';
+  /**
+   * **选项屏**（Clash Verge 里"语言 / 主题"那种：点一个选项，进它自己的一屏）。
+   * 与分类屏同一个路由名，靠 `option` 参数区分；`nav.push` 的去重已经改成"路由 + 参数"，
+   * 所以 `settingsSection{section} → settingsSection{option}` 推得动。
+   */
+  const option = useRouteParams().option ?? '';
+  const atHub = section === '' && option === '';
   const show = (id: string) => section === id;
+  const atOption = (id: string) => option === id;
   const SECTION_TITLES: Record<string, string> = {
     appearance: '外观',
     notify: '实时通知',
@@ -35,6 +42,10 @@ export default function SettingsScreen() {
     nav: '导航与学校',
     ocr: '图像识别与资源',
     about: '关于',
+  };
+  /** 选项屏的标题（与分类屏共用顶栏） */
+  const OPTION_TITLES: Record<string, string> = {
+    dispersion: '底栏色散',
   };
   const { settings, updateSettings, seed, dynamicColor, schedule, showSnackbar } = useAppState();
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
@@ -45,7 +56,6 @@ export default function SettingsScreen() {
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
   const [perfDialogOpen, setPerfDialogOpen] = useState(false);
-  const [dispersionDialogOpen, setDispersionDialogOpen] = useState(false);
   const [scatterDialogOpen, setScatterDialogOpen] = useState(false);
   const [warpDialogOpen, setWarpDialogOpen] = useState(false);
   const [contourDialogOpen, setContourDialogOpen] = useState(false);
@@ -107,7 +117,10 @@ export default function SettingsScreen() {
   return (
     <>
       <div className="screen-inner">
-        <TopAppBar title={atHub ? '设置' : SECTION_TITLES[section] ?? '设置'} onBack={atHub ? undefined : () => nav.pop()} />
+        <TopAppBar
+          title={atHub ? '设置' : atOption('dispersion') ? OPTION_TITLES.dispersion : SECTION_TITLES[section] ?? '设置'}
+          onBack={atHub ? undefined : () => nav.pop()}
+        />
 
         <div className="screen-content">
           <div ref={listRef}>
@@ -142,6 +155,39 @@ export default function SettingsScreen() {
                       {summary}
                     </div>
                     <MdIcon slot="end" name="chevron_right" />
+                  </md-list-item>
+                ))}
+              </div>
+            ) : null}
+
+            {/* --------------- 选项屏：Clash Verge 里"语言/主题"那种，点一个选项进它自己一屏 ------ */}
+            {atOption('dispersion') ? (
+              <div className="list-group">
+                <div className="settings-note md-body-small muted">
+                  液态玻璃边缘的<strong>颜色分离</strong>（真玻璃把不同波长的光掰开的角度不一样）。只作用于底边栏这一处。
+                </div>
+                {(
+                  [
+                    ['off', '关：只留折射与高光'],
+                    ['concise', '简洁（默认）：边缘一丝冷暖彩边，克制'],
+                    ['ultimate', '极致：六段光谱（紫蓝青绿黄红），边缘虹带拉到最宽'],
+                  ] as const
+                ).map(([value, label], index, all) => (
+                  <md-list-item
+                    key={value}
+                    type="button"
+                    className={index === 0 ? 'rounded-outer-top' : index === all.length - 1 ? 'rounded-outer-bottom' : 'rounded-middle'}
+                    onClick={() =>
+                      updateSettings(
+                        { dispersion: value },
+                        { message: `底栏色散：${value === 'off' ? '关' : value === 'ultimate' ? '极致' : '简洁'}` },
+                      )
+                    }
+                  >
+                    <div slot="start" className="list-icon-badge">
+                      <MdIcon name={settings.dispersion === value ? 'radio_button_checked' : 'radio_button_unchecked'} />
+                    </div>
+                    <div slot="headline">{label}</div>
                   </md-list-item>
                 ))}
               </div>
@@ -182,7 +228,11 @@ export default function SettingsScreen() {
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
               {/* --------------------------- 底栏色散：关 / 简洁 / 极致（作者要求单开一项） */}
-              <md-list-item type="button" className="rounded-middle" onClick={() => setDispersionDialogOpen(true)}>
+              <md-list-item
+                type="button"
+                className="rounded-middle"
+                onClick={() => nav.push('settingsSection', { option: 'dispersion' }, 'slide')}
+              >
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="blur_on" />
                 </div>
@@ -590,36 +640,8 @@ export default function SettingsScreen() {
 
       
 
-      <MdDialog
-        open={dispersionDialogOpen}
-        headline="底栏色散"
-        onClosed={() => setDispersionDialogOpen(false)}
-        actions={<md-text-button onClick={() => setDispersionDialogOpen(false)}>取消</md-text-button>}
-      >
-        液态玻璃边缘的**颜色分离**（真玻璃把不同波长的光掰开的角度不一样）。
-        只作用于底边栏这一处，页面其它部分不受影响：
-        <div className="col gap-8 mt-12">
-          {([
-            ['off', '关：只留折射与高光'],
-            ['concise', '简洁（默认）：边缘一丝冷暖彩边，克制'],
-            ['ultimate', '极致：六段光谱（紫蓝青绿黄红）+ 当年那套更大落差，能数出七色'],
-          ] as const).map(([value, label]) => (
-            <md-outlined-button
-              key={value}
-              onClick={() => {
-                setDispersionDialogOpen(false);
-                updateSettings(
-                  { dispersion: value },
-                  { message: `底栏色散：${value === 'off' ? '关' : value === 'ultimate' ? '极致' : '简洁'}` },
-                );
-              }}
-            >
-              {settings.dispersion === value ? '✓ ' : ''}
-              {label}
-            </md-outlined-button>
-          ))}
-        </div>
-      </MdDialog>
+      {/* 底栏色散原来的弹层已删除：它现在是一屏（见上面的 atOption('dispersion')），
+          留着就是一份"看起来还在用"的死代码。 */}
 
       <MdDialog
         open={contourDialogOpen}
