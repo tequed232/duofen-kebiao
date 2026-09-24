@@ -8,7 +8,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | `APP_VERSION = 'v3.5.2'`（`versionCode 30502` / `versionName 3.5.2`） |
+| 版本 | `APP_VERSION = 'v3.5.3'`（`versionCode 30503` / `versionName 3.5.3`） |
 | 发布页 | https://github.com/tequed232/duofen-kebiao/releases/latest （**只展示最近 5 条**；安装包只作为 Release 附件，已从仓库与 Pages 剔除） |
 | 历史版本 | https://github.com/tequed232/duofen-kebiao-releases （**private** 归档仓库，保存所有历史成品） |
 | 网页版 | https://tequed232.github.io/duofen-kebiao/ |
@@ -42,7 +42,7 @@
 
 ### A. 可自主完成（无外部依赖）
 
-1. ~~**发布名片墙改动**~~ —— **已完成**。`gh-pages` 上的当前构建就是 v3.5.2（`assets/bootstrap-genovrcY.js`，实测含「致谢 · 名片墙」、`miratsu`、版权行、设置页「本地识别」行）；而 `npm run apk:parity` 现在能通过，并**证明 APK 内嵌资源与网页产物逐文件哈希一致** —— 「APK 还停在旧『关于』页」这个风险从此由这条守卫长期兜住（它此前一直假失败，见下方「易踩的坑」补充）。
+1. ~~**发布名片墙改动**~~ —— **已完成**。`gh-pages` 上的当前构建就是 v3.5.3（`assets/bootstrap-EjpZRdwV.js`，2026-09-24 实测；同版本一并确认含「致谢 · 名片墙」）；而 `npm run apk:parity` 能通过并**证明 APK 内嵌资源与网页产物逐文件哈希一致** —— 「APK 还停在旧『关于』页」这个风险从此由这条守卫长期兜住（它此前一直假失败，见下方「易踩的坑」补充）。
 2. ~~**重写 `scripts/verify.mjs` 的选择器**~~ —— **已完成**。它写于 v2 之前，一度 **19 步里 11 步失败**，而它当时不在 CI 里跑，所以烂了很久没被发现。修掉三处**静默失效**后 **19/0 全绿**：
    - 底栏搬出屏幕栈后，`.screen … .m3e-dock-tab` 作用域永不匹配，且失败不报错、只静默回落到 `md-navigation-tab` 超时；
    - 底栏切换不由 button 的 `click` 驱动（整个 `<nav>` 用 pointerdown/up 判定拖动 vs 轻点），`el.click()` 点了没反应**却仍然返回成功** —— 点 index 0 的步骤「通过」只是因为应用本来就停在首页；

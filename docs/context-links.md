@@ -90,8 +90,8 @@ APK 直链（按版本）：
 
 ## 当前状态与已知问题（给审阅者的上下文）
 
-- **版本**：v3.5.2（`versionCode 30502` / `versionName 3.5.2`），Release + Pages + APK 均已更新
-- **APK 与网页同源**：APK 内嵌的 Web 构建与网页版共用同一份 `dist/`（bundle 哈希一致）
+- **版本**：v3.5.3（`versionCode 30503` / `versionName 3.5.3`），Release + Pages + APK 均已更新
+- **APK 与网页同源**：APK 内嵌的 Web 构建与网页版共用同一份 `dist/`（bundle 哈希一致，`npm run apk:parity` 逐文件核对）
 - **已实现**：自绘 M3E 底栏（位置即结果 + 拖拽跟手 + 液态玻璃折射）、纯左右平移过渡、`resetTo` 无竞态标签切换、HTML 课表导入算法、本地缓存课表、教材多选删除、班级隐私清理、关于页致谢、**本地封面识别**（OpenCV 预处理 → Tesseract 中文 OCR → ISBN 校验 → 内置库匹配，识别资源打进 APK）
 - **真机复验（已完成）**：realme GT7 / Android 16 / arm64-v8a 上覆盖安装 v3.0.2 → v3.5.2 数据保留；设置页「本地识别」报告 `资源就绪：图像处理库 / 识别引擎 / 中文模型`；合成封面走完「选图识别封面」链路，识别出 `ISBN 9787040396638`
 - **仍未确认**：流体云实况（`promotedOngoing=true`）、界面缩放三档

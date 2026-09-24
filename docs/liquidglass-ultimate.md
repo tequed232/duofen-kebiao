@@ -2,7 +2,7 @@
 
 > **这是一条测试分支，不是主项目的发布分支。**
 > 上游主项目：[tequed232/duofen-kebiao](https://github.com/tequed232/duofen-kebiao)（`main`）。
-> 本分支从 `main` 的 v3.5.2 切出，**只改底栏（dock）这一处**的材质与交互，
+> 本分支从 `main`（v3.5.3）切出并已 rebase 到最新 `main`，**只改底栏（dock）这一处**的材质与交互，
 > 页面其余部分仍走 Material 3 Expressive，画风不作改动。
 > 结论未定之前不合入 `main`；正式版本仍以 `main` 为准。
 
