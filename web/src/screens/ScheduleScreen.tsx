@@ -10,8 +10,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SectionHeader, TopAppBar, useScrolled } from '../components/layout';
-import { MdDialog, MdIcon, MdIconButton } from '../components/md';
-import { ConfirmDialog } from '../components/overlays';
+import { MdIcon, MdIconButton } from '../components/md';
+import { ConfirmDialog, ExpandableSheet } from '../components/overlays';
 import {
   CourseDetailSheet,
   DayTimeline,
@@ -138,6 +138,8 @@ export default function ScheduleScreen() {
   /* 顶部两个小组件也用液态玻璃透镜（参数与底栏同一套） */
   const dateLensRef = useRef<HTMLButtonElement>(null);
   const weekLensRef = useRef<HTMLDivElement>(null);
+  /* 「导航课程」半屏弹层的展开源矩形：没有具体来源元素时传空 ref（弹层从自身位置展开） */
+  const navSheetRef = useRef<HTMLElement | null>(null);
   useLens(dateLensRef, LENS_PLAYER);
   useLens(weekLensRef, LENS_PLAYER);
 
@@ -435,24 +437,32 @@ export default function ScheduleScreen() {
         </md-fab>
       </div>
 
-      {/* 导航课程说明 + 确认：先把「最近」是怎么算的说清楚，再给出这一节的具体信息 */}
-      <MdDialog
+      {/* 导航课程：「导航到 XX 地点」这套也走抖音式半遮蔽弹层（与课程详情同一套手感） */}
+      <ExpandableSheet
         open={navTarget !== undefined}
-        headline="导航课程"
-        onClosed={() => setNavTarget(undefined)}
+        onClose={() => setNavTarget(undefined)}
+        sourceRef={navSheetRef}
+        icon="near_me"
+        title="导航课程"
+        variant="half"
         actions={
-          <>
-            <md-text-button onClick={() => setNavTarget(undefined)}>取消</md-text-button>
-            <md-filled-button
-              onClick={() => {
-                const target = navTarget;
-                setNavTarget(undefined);
-                if (target) openNavigation(target.course.room, target.course);
-              }}
-            >
-              导航至 {navTarget?.course.room || '上课地点'}
-            </md-filled-button>
-          </>
+          navTarget ? (
+            <>
+              <md-text-button onClick={() => setNavTarget(undefined)}>取消</md-text-button>
+              <span className="flex-1" />
+              <md-filled-button
+                onClick={() => {
+                  const target = navTarget;
+                  setNavTarget(undefined);
+                  if (target) openNavigation(target.course.room, target.course);
+                }}
+              >
+                导航至 {navTarget.course.room || '上课地点'}
+              </md-filled-button>
+            </>
+          ) : (
+            <md-text-button onClick={() => setNavTarget(undefined)}>知道了</md-text-button>
+          )
         }
       >
         {navTarget === null ? (
@@ -480,7 +490,7 @@ export default function ScheduleScreen() {
             </div>
           </>
         ) : null}
-      </MdDialog>
+      </ExpandableSheet>
 
       <CourseDetailSheet
         open={detailOpen}

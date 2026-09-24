@@ -152,17 +152,39 @@ if (process.env.APP_URL) {
   await page.locator('.schedule-nav-fab').click();
   await page.waitForTimeout(700);
   const text = await page.evaluate(() => document.body.innerText);
+  /* 作者要求「导航到 XX 地点也套用抖音式的做法」：这套弹层必须是**贴底的半屏弹层**，
+     和课程详情同一套手感（不能退回居中对话框）。 */
+  const sheet = await page.evaluate(() => {
+    const phone = document.querySelector('.phone')?.getBoundingClientRect();
+    const panel = document.querySelector('.sheet-panel.half, .sheet-panel, md-dialog');
+    const rect = panel?.getBoundingClientRect();
+    return rect && phone
+      ? {
+          isHalf: panel.classList.contains('half'),
+          ratio: rect.height / phone.height,
+          bottomGap: phone.bottom - rect.bottom,
+          topRatio: (rect.top - phone.top) / phone.height,
+        }
+      : null;
+  });
+  check('导航课程弹层是贴底半屏（抖音式，不是居中对话框）', Boolean(sheet) && sheet.isHalf, sheet ? '不是 half 变体' : '没找到弹层');
+  if (sheet) {
+    check(`贴底（距屏底 ${sheet.bottomGap.toFixed(1)}px ≤ 2）`, sheet.bottomGap <= 2, '没贴底');
+    check(`半遮蔽（高 ${(sheet.ratio * 100).toFixed(0)}% ≤ 66%）`, sheet.ratio <= 0.66, '占满整屏了');
+  }
   /* 真实时钟下可能是"有目标"也可能是"一周内没课"（第 4 周周五之后、第 5 周只有部分课），
      两种状态都必须是**有话说**的；目标分支另用固定时钟单独验一遍。 */
   const targetBranch = /时间上离现在最近/.test(text) && /导航至/.test(text);
   const emptyBranch = /没有可导航的课/.test(text);
   check('点开后弹出「导航课程」弹层（有目标 / 空态二者之一）', targetBranch || emptyBranch, '弹层内容不符合任何一个状态');
   const confirm = await page.evaluate(() => {
-    const buttons = [...document.querySelectorAll('md-filled-button, button')];
-    const hit = buttons.find((b) => /导航至/.test(b.innerText || ''));
+    const buttons = [...document.querySelectorAll('md-filled-button, md-text-button, md-filled-tonal-button, button')];
+    const hit = buttons.find((b) => /导航至|知道了/.test(b.innerText || ''));
     return hit ? hit.innerText.replace(/\s+/g, ' ').trim() : '(没找到)';
   });
-  check(`确认按钮是「导航至 <地点>」（实际「${confirm}」）`, /^导航至/.test(confirm), '文案不对');
+  /* 真实时钟下可能落在"一周内没课"的空态（那时操作是「知道了」），
+     所以这里只断言"操作条有话说"；「导航至 <地点>」的文案由固定时钟那一遍专门验。 */
+  check(`操作条有主操作（实际「${confirm}」）`, /导航至\s*\S/.test(confirm) || /知道了/.test(confirm), '文案不对');
   await page.screenshot({ path: 'build/nav-course-dialog.png' });
 
   /* 固定时钟：2026-09-24（第 4 周周四）08:40 —— 内置课表这一节"智慧财经素养"正在上，

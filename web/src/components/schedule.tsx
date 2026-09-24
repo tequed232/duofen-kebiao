@@ -922,7 +922,9 @@ export function MapChooserDialog({
 }) {
   const [selected, setSelected] = useState(MAP_PROVIDERS[0].id);
   const [remember, setRemember] = useState(false);
-  const dialogRef = useMdDialog(open);
+  /* 半屏弹层的展开动画需要一个"从哪儿长出来"的源矩形；这里没有具体来源元素，
+     传一个空 ref 即可（内部会退化成从弹层自身位置展开）。 */
+  const sourceRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (open) {
       setSelected(MAP_PROVIDERS[0].id);
@@ -931,10 +933,24 @@ export function MapChooserDialog({
   }, [open]);
 
   return (
-    <md-dialog ref={dialogRef} onCancel={onCancel} className="app-dialog">
-      <div slot="headline">选择地图应用</div>
-      <div slot="content" className="md-body-medium">
-        <div className="mb-8 muted">将为「{address}」启动导航</div>
+    /* 「导航到 XX 地点」这套也走抖音式半遮蔽弹层：与课程详情同一套手感（贴底、半屏、可点遮罩关） */
+    <ExpandableSheet
+      open={open}
+      onClose={onCancel}
+      sourceRef={sourceRef}
+      icon="place"
+      title="导航到"
+      variant="half"
+      actions={
+        <>
+          <md-text-button onClick={onCancel}>取消</md-text-button>
+          <span className="flex-1" />
+          <md-filled-button onClick={() => onConfirm(selected, remember)}>打开地图</md-filled-button>
+        </>
+      }
+    >
+      <div className="col gap-8">
+        <div className="muted">将为「{address}」启动导航</div>
         {MAP_PROVIDERS.map((provider) => (
           <div
             key={provider.id}
@@ -958,11 +974,7 @@ export function MapChooserDialog({
           <span className="md-body-medium">记住选择（写入设置，之后不再询问）</span>
         </label>
       </div>
-      <div slot="actions">
-        <md-text-button onClick={onCancel}>取消</md-text-button>
-        <md-text-button onClick={() => onConfirm(selected, remember)}>打开地图</md-text-button>
-      </div>
-    </md-dialog>
+    </ExpandableSheet>
   );
 }
 
