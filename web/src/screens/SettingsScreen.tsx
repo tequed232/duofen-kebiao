@@ -315,8 +315,13 @@ export default function SettingsScreen() {
             </div>
 
             {show('safearea') ? <SectionHeader icon="aspect_ratio" title="屏幕安全区" /> : null}
-            <div className="list-group" style={show('safearea') ? undefined : { display: 'none' }}>
-              {/* ------------------------- 安全区：上下端各一个滑块，自由调节 */}
+            <div
+              className="list-group"
+              style={show('safearea') ? undefined : { display: 'none' }}
+            >
+              {/* Clash Verge 式：这一屏就是「屏幕安全区」的**独立设置屏**，两个滑块都在这里。
+                  注意不能做成"再点一层进上端/下端" —— `nav.push` 有同路由去重
+                  （`top.route === route` 直接 return），`settingsSection → settingsSection` 推不动。 */}
               <md-list-item type="text" className="rounded-outer-top">
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="vertical_align_top" />
@@ -366,7 +371,7 @@ export default function SettingsScreen() {
                     : `手动：${settings.insetBottom}dp（推荐 16dp，0 = 贴底）`}
                 </div>
               </md-list-item>
-              {/* --------------------------- 下端安全区滑块：紧跟上端滑块，同属本组 */}
+              {/* 下端滑块与上端滑块同属这一屏 */}
               <div className="list-control-row">
                 <MdSlider
                   className="expressive-slider flex-1"

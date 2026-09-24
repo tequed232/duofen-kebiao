@@ -238,5 +238,98 @@ check(
 check('子屏标题表覆盖六个分类', HUB_IDS.every((id) => new RegExp(`${id}:\\s*'`).test(source)), 'SECTION_TITLES 缺项');
 check('子屏顶栏有返回（点了能回去）', /onBack=\{atHub \? undefined : \(\) => nav\.pop\(\)\}/.test(source), '子屏没有返回按钮');
 
+/* 「滑块只存在于它自己的屏里」——作者原话是「滑块选项什么的都不许出错」。
+   静态可判定的部分：设置页里每个滑块都必须挂在一行**带 show(...) 门**的控件行里，
+   而入口区（atHub 那一块）里一个滑块都不许有。 */
+console.log('\n=== 滑块只许待在自己的屏里 ===');
+const sliderIdx = [...source.matchAll(/<MdSlider/g)].map((m) => m.index ?? 0);
+const enclosingGroupGated = sliderIdx.every((idx) => {
+  const groupStart = source.lastIndexOf('<div className="list-group"', idx);
+  if (groupStart < 0) return false;
+  const tag = source.slice(groupStart, source.indexOf('>', groupStart) + 1);
+  return /style=\{show\('/.test(tag);
+});
+check(
+  `两个滑块都待在"带门的分类容器"里（${sliderIdx.length} 个）`,
+  sliderIdx.length === 2 && enclosingGroupGated,
+  '有滑块不在带门的容器里，会漏到别的屏上',
+);
+const sliderCount = (source.match(/<MdSlider/g) ?? []).length;
+check(`设置页里只有安全区那两个滑块（实际 ${sliderCount}）`, sliderCount === 2, '多出来的滑块要收进各自的屏');
+const hubBlock = source.slice(source.indexOf('{atHub ? ('), source.indexOf(') : null}', source.indexOf('{atHub ? (')));
+check('入口区（首页）里没有任何滑块', Boolean(hubBlock) && !/MdSlider/.test(hubBlock), '首页出现了滑块');
+check('两个安全区滑块都在这一个屏里（不再嵌套子屏）', /safearea: '屏幕安全区'/.test(source) && !/insetTop: '上端安全区'/.test(source), '安全区结构不对');
+/* 同路由去重：`nav.push` 里 `top.route === route` 会直接 return，
+   所以"子屏再点一层进子屏"根本推不动 —— 这条断言把这个平台限制钉住。 */
+check(
+  '没有"子屏套子屏"的写法（同路由 push 会被去重掉）',
+  !/nav\.push\('settingsSection',\s*\{\s*section:\s*'[a-z]+'\s*\},\s*'slide'\)[\s\S]{0,400}nav\.push\('settingsSection'/.test(source),
+  '存在子屏套子屏，点不动',
+);
+
+/* 渲染层（给了 APP_URL 才跑，CI 的 dev server 阶段再跑一遍这个脚本）：
+   首页与「屏幕安全区」屏上**一个可见滑块都没有**，点进「上端安全区」才有且只有一个。 */
+if (process.env.APP_URL) {
+  console.log('\n=== 真实渲染：首页不许出现滑块 ===');
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({ channel: 'chromium' });
+  const page = await browser.newPage({ viewport: { width: 460, height: 940 }, deviceScaleFactor: 2 });
+  await page.goto(process.env.APP_URL, { waitUntil: 'load' });
+  await page.waitForTimeout(2600);
+  const openSettings = async () => {
+    await page.evaluate(() => {
+      const tab = document.querySelectorAll('.m3e-dock-tab')[2];
+      const r = tab.getBoundingClientRect();
+      tab.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, isPrimary: true }));
+    });
+    await page.waitForTimeout(110);
+    await page.evaluate(() => {
+      const tab = document.querySelectorAll('.m3e-dock-tab')[2];
+      const r = tab.getBoundingClientRect();
+      tab.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1, isPrimary: true }));
+    });
+    await page.waitForTimeout(900);
+  };
+  const visibleSliders = () =>
+    page.evaluate(() =>
+      /* 只数**当前这一屏**里的滑块：导航栈会把上一屏留在 DOM 里（aria-hidden），
+         它的滑块同样有矩形 —— 不限定的话会把"幽灵屏"一起数进来。 */
+      [...document.querySelectorAll('.screen:not([aria-hidden="true"]) md-slider')].filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 4 && r.height > 4;
+      }).length,
+    );
+  const clickRow = async (title) => {
+    /* 必须限定在**当前这一屏**里点：导航栈会把上一屏留在 DOM 里（aria-hidden），
+       直接点旧屏的元素，坐标会落到新屏上，于是点出第二次同样的跳转。 */
+    await page
+      .locator(`.screen:not([aria-hidden="true"]) md-list-item:has([slot="headline"]:text-is("${title}"))`)
+      .first()
+      .click({ timeout: 5000, force: true });
+    await page.waitForTimeout(900);
+  };
+  await openSettings();
+  check(`设置首页可见滑块 = 0（实际 ${await visibleSliders()}）`, (await visibleSliders()) === 0, '首页有滑块');
+  await clickRow('屏幕安全区');
+  const onSafeArea = await visibleSliders();
+  check(`「屏幕安全区」屏可见滑块 = 2（实际 ${onSafeArea}）`, onSafeArea === 2, '滑块没跟着进自己的屏');
+  const before = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--inset-top').trim() || '(未设置)');
+  await page.evaluate(() => {
+    /* 按 MdSlider 的真实契约触发：先写 value，再派发 change（handler 读的是 target.value） */
+    const slider = [...document.querySelectorAll('.screen:not([aria-hidden="true"]) md-slider')].find(
+      (el) => el.getBoundingClientRect().width > 4,
+    );
+    if (slider) {
+      slider.value = 52;
+      slider.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+  await page.waitForTimeout(400);
+  const after = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--inset-top').trim() || '(未设置)');
+  check(`拖动滑块真的写进了 --inset-top（${before} → ${after}）`, after === '52px', '滑块没生效');
+  await page.screenshot({ path: 'build/settings-safearea.png' });
+  await browser.close();
+}
+
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

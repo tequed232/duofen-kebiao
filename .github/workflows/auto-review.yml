@@ -139,6 +139,10 @@ jobs:
           # 主页「导航课程」：纯逻辑（正在上 > 今天下一节 > 顺延 7 天）+ 接线文案 + 真实渲染
           #   （两个按钮同底边、间距 12px、固定时钟下弹层给出课名/节次/地点）
           APP_URL=http://127.0.0.1:5173/ run_guard nav-course node scripts/check-nav-course.mjs
+          # 设置页结构（Clash Verge 式）：首页只放六个分类入口、滑块只在自己的屏里。
+          #   同一条守卫在静态阶段已经跑过一次；这里补渲染层断言（首页可见滑块必须为 0、
+          #   安全区屏恰好 2 个、拖动真的写进 --inset-top）。
+          APP_URL=http://127.0.0.1:5173/ run_guard settings-hub node scripts/check-settings-groups.mjs
           kill "$dev_pid" 2>/dev/null || true
 
           # ⑤ 逐屏验收（19 步）：需要**生产构建 + preview server**。
