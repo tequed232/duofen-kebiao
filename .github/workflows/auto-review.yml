@@ -133,6 +133,9 @@ jobs:
           # 后者是 2026-09-25 真 bug 的探针：弹簧用底栏内坐标、applyFrame 又减一次 geo.left，
           # 色块拖动时整体偏左一个左边距（实测残余 39px 不收敛；修好后 3px）。
           APP_URL=http://127.0.0.1:5173/ run_guard dock-motion node scripts/check-dock-motion.mjs
+          # 色散在两种散射档下都必须看得见：量灰阶棋盘背后底栏的 |R−B| 边缘/中间带。
+          # 这一条兜住的是"参数把效果压没"——滤链与 dataset 都在、静态检查全绿，只有像素能发现。
+          APP_URL=http://127.0.0.1:5173/ run_guard dock-dispersion node scripts/check-dock-scatter-dispersion.mjs
           kill "$dev_pid" 2>/dev/null || true
 
           # ⑤ 逐屏验收（19 步）：需要**生产构建 + preview server**。

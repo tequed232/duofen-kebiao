@@ -962,18 +962,24 @@ html[data-perf='low'] .screen {
    压在底栏上会让内容看起来蒙了一层纱 —— 作者要求「能直接透过底栏看列表」，
    玻璃质感改由透镜折射（rim）+ 描边 + 滑块表达。） */
 
-/* ===== 设置 → 底栏散射「强」：把 v3.0.1（09-23 04:11 那个 release）的散射口径投射回来 =====
-   当年那一版是：**本体 blur(18px) saturate(1.6) + 底色 surface-container 58%**，散射层 11px。
-   现在这一版为了"看得见折射/能透出列表"，本体只留图内 ~2.4px 轻磨砂 + 底色 alpha 0%，
-   散射层的 11px 也一起降过 8px。
-   实测（build/check-dock-scatter.cjs，灰阶棋盘量高频能量）：散射层 8↔11px **几乎量不出差别**
-   （边缘 0.2%~0.6%，而且 8px 已经把细棋盘糊平了）——也就是说"看着更毛"的功劳基本在本体那 18px 上。
-   所以「强」档投的是本体，而不是只把 11px 写回去。
-   默认档（不加这个属性）一个字不改，折射观感与现在完全一致。 */
+/* ===== 设置 → 底栏散射「强」：加重磨砂，但**不许把色散盖掉** =====
+   当年 v3.0.1 那一版是：本体 blur(18px) saturate(1.6) + 底色 surface-container 58%。
+   作者 2026-09-25 的反馈：「dock 栏毛玻璃效果太重了，没有展示出色散效果」——
+   实测（build/check-dock-scatter-dispersion.cjs，灰阶棋盘，色散=极致档）：
+
+     散射=轻（底色 alpha 0%）：上边缘带 |R−B| **23.06**、下边缘带 9.54
+     散射=强（底色 alpha 58%）：上边缘带 **6.55**、下边缘带 3.54   ← 色散被那层 58% 底色盖掉了
+
+   所以这一档改成「比轻档更毛、但色散照样看得见」：只把底色提到 **30%**，
+   **不再叠尾部模糊** —— 色散是"三通道位移之差"，滤链尾巴上再加模糊会把刚分开的
+   R/B 又糊回去（这也是当初把 2px 磨砂挪进滤镜图内部的原因）。
+   参考实现（Gemini 那份）的玻璃底色是 rgba(255,255,255,0.08) + blur(20px) saturate(180%)，
+   本项目的「轻」档本来就更透（alpha 0%），真正过头的只有这一档。
+   默认档（不加这个属性）一个字不改。 */
 html[data-dock-scatter='strong'] .m3e-dock {
-  background: color-mix(in srgb, var(--md-sys-color-surface-container) 58%, transparent);
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 30%, transparent);
+  backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
+  -webkit-backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
 }
 
 /* 选中滑块：一格的宽度，按选中序号平移。
