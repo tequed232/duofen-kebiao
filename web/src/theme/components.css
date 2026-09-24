@@ -547,6 +547,44 @@ md-switch {
 }
 
 /* ------------------------------------------------------ expandable sheet -- */
+
+/* 真机事故（作者 2026-09-25）：弹层里的按钮点不到 —— 因为**屏幕本身是层叠上下文**
+   （`.screen` z-index 30），底栏是它的兄弟（z-index 40），子元素 z-index 再高也翻不过去。
+   两条一起才成立：
+     ① 打开弹层 / 居中对话框的那一屏自己抬到 50 → 越过底栏的 40；
+     ② 抽屉底部抬起 `--dock-band`（由底栏自己测量并发布，见 layout.tsx 的 publishDockBand），
+        于是"盖住底栏的层"与"不压住底栏按钮"不再矛盾 —— 抽屉正好停在底栏上方。 */
+.screen:has(.sheet-layer.open),
+.screen:has(md-dialog[open]) {
+  z-index: 50;
+}
+
+/* 抽屉抓手：抖音那种一眼认得出的横杠，**可上下拖**（半屏 ↔ 全屏，往下拖够多即关闭）。
+   做成真实元素（不是 ::before）才能接指针事件；热区比横杠本身高，手指好抓。 */
+.sheet-grabber {
+  flex: 0 0 auto;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheet-grabber::before {
+  content: '';
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 45%, transparent);
+}
+
+.sheet-panel[data-dragging='1'] {
+  transition: none;
+}
+
+.sheet-panel.half {
+  transition: height 220ms cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
 .sheet-layer {
   position: absolute;
   inset: 0;
@@ -592,11 +630,11 @@ md-switch {
    与整屏的 .sheet-panel 区别只有三行：改成 bottom 定位、限高、顶角圆角。
    底部再让开设备安全区（--inset-bottom 由「屏幕安全区」设置写入）。 */
 .sheet-panel.half {
-  inset: auto 0 0 0;
-  max-height: 62%;
+  inset: auto 0 var(--dock-band, 0px) 0;
+  max-height: min(62%, calc(100% - var(--dock-band, 0px) - 12px));
   height: auto;
   border-radius: 28px 28px 0 0;
-  padding-bottom: var(--inset-bottom, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* 半屏弹层的主操作（例如「导航至 16-203」）：贴底一条，跟着弹层走 */

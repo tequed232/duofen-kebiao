@@ -93,6 +93,36 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     [settings.dispersion, settings.dockWarp],
   );
   useLens(dockRef, dockParams);
+
+  /**
+   * 「不许和底栏重叠」的**算法**：底栏把自己占的那条带子发布成 `--dock-band`，
+   * 之后任何浮层（抽屉 / 悬浮按钮 / 提示条）只要写 `bottom: var(--dock-band)` 就天然避开它。
+   *
+   * 为什么由底栏**自己测**而不是写常量：底栏高度受「屏幕安全区」设置、字体缩放、设备手势条影响，
+   * 写死的数字总会在某台机器上错位 —— 错位的表现就是真机事故那种「抽屉压住底栏按钮，点不到」。
+   * 基准取手机框（.phone）：底栏顶边到框底的距离。
+   */
+  useEffect(() => {
+    const element = dockRef.current;
+    if (!element) return undefined;
+    const frame = element.closest('.phone') ?? element.parentElement;
+    const publish = () => {
+      const frameRect = frame?.getBoundingClientRect();
+      const dockRect = element.getBoundingClientRect();
+      if (!frameRect || dockRect.height === 0) return;
+      document.documentElement.style.setProperty('--dock-band', `${Math.max(0, Math.round(frameRect.bottom - dockRect.top))}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+    if (frame) observer.observe(frame);
+    window.addEventListener('resize', publish);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', publish);
+      document.documentElement.style.removeProperty('--dock-band');
+    };
+  }, []);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
