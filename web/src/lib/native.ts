@@ -1,3 +1,4 @@
+import type { PhraseBaseState, PhraseConfig } from './phrases';
 /**
  * Android 原生桥（可选增强，不影响网页行为）。
  *
@@ -296,5 +297,95 @@ export function nativeCalendarRemoveAll(): NativeCalendarResult {
     return parseJson<NativeCalendarResult>(api.calendarRemoveAll(), { ok: false, count: 0, error: 'empty' });
   } catch (error) {
     return { ok: false, count: 0, error: String(error) };
+  }
+}
+
+/* ------------------------------------------------------ 预制语料常驻通知 -- */
+/* 通知栏「桌宠」：前台服务 + 常驻通知（渠道 m3expressive_phrase / id 1002）。
+   浏览、点选、翻页、收起全在通知栏完成；网页这边只管下发配置与基础状态。
+   浏览器（无桥）一律安全返回 false / null，与上面几节风格一致。 */
+
+interface DuofenPhraseBridge {
+  startPhraseService?: () => void;
+  stopPhraseService?: () => void;
+  phrasesConfig?: (json: string) => void;
+  phrasesStatus?: () => string;
+  phrasePoke?: () => void;
+  setPhraseBaseState?: (kind: string, destination: string) => void;
+}
+
+function phraseBridge(): DuofenPhraseBridge | undefined {
+  return (window as unknown as { DuofenNative?: DuofenPhraseBridge }).DuofenNative;
+}
+
+/** 是否具备原生常驻通知能力（浏览器里没有，设置页据此显示"仅安卓版"） */
+export function hasNativePhrases(): boolean {
+  return typeof phraseBridge()?.phrasesConfig === 'function';
+}
+
+export function nativeStartPhraseService(): boolean {
+  const api = phraseBridge();
+  if (typeof api?.startPhraseService !== 'function') return false;
+  try {
+    api.startPhraseService();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativeStopPhraseService(): boolean {
+  const api = phraseBridge();
+  if (typeof api?.stopPhraseService !== 'function') return false;
+  try {
+    api.stopPhraseService();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativePhrasesConfig(config: PhraseConfig): boolean {
+  const api = phraseBridge();
+  if (typeof api?.phrasesConfig !== 'function') return false;
+  try {
+    api.phrasesConfig(JSON.stringify(config));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativePhrasesStatus(): Record<string, unknown> | null {
+  const api = phraseBridge();
+  if (typeof api?.phrasesStatus !== 'function') return null;
+  try {
+    return JSON.parse(api.phrasesStatus()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** 从网页触发一次「戳一下」（与通知栏那颗按钮同一条路径） */
+export function nativePhrasePoke(): boolean {
+  const api = phraseBridge();
+  if (typeof api?.phrasePoke !== 'function') return false;
+  try {
+    api.phrasePoke();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 告诉原生服务当前基础状态：空闲 / 导航中（语料展示完要还原回它） */
+export function nativeSetPhraseBaseState(state: PhraseBaseState): boolean {
+  const api = phraseBridge();
+  if (typeof api?.setPhraseBaseState !== 'function') return false;
+  try {
+    api.setPhraseBaseState(state.kind, state.kind === 'navigating' ? state.destination : '');
+    return true;
+  } catch {
+    return false;
   }
 }

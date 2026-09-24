@@ -90,355 +90,371 @@ export default function SettingsScreen() {
         <TopAppBar title="设置" />
 
         <div className="screen-content">
-          <div className="list-group" ref={listRef}>
-            {/* ------------------------------------------------ 1 深色模式 */}
-            <md-list-item type="text" className="rounded-outer-top">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="dark_mode" />
-              </div>
-              <div slot="headline">深色模式</div>
-              <div slot="supporting-text">
-                {settings.darkMode ? '当前为深色模式' : '当前为浅色模式（默认设计目标）'}
-              </div>
-              <div slot="end">
-                <MdSwitch
-                  selected={settings.darkMode}
-                  onSelectedChange={toggleDarkMode}
-                  ariaLabel="深色模式开关"
-                />
-              </div>
-            </md-list-item>
+          <div ref={listRef}>
 
-            {/* -------------------------------------- 界面缩放（窄屏适配） */}
-            <md-list-item type="button" className="rounded-middle" onClick={() => setScaleDialogOpen(true)}>
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="aspect_ratio" />
-              </div>
-              <div slot="headline">界面缩放</div>
-              <div className="md-body-small muted" slot="supporting-text">
-                {settings.uiScale === 'small'
-                  ? '小：整页 92%（窄屏推荐，状态栏与 Dock 留白同步缩小）'
-                  : settings.uiScale === 'large'
-                    ? '大：整页 108%'
-                    : '标准：100%（当前）'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-            {/* --------------------------- 底栏色散：关 / 简洁 / 极致（作者要求单开一项） */}
-            <md-list-item type="button" className="rounded-middle" onClick={() => setDispersionDialogOpen(true)}>
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="blur_on" />
-              </div>
-              <div slot="headline">底栏色散</div>
-              <div className="md-body-small muted" slot="supporting-text">
-                {settings.dispersion === 'ultimate'
-                  ? '极致：六段光谱（紫蓝青绿黄红），边缘能数出七色'
-                  : settings.dispersion === 'off'
-                    ? '关：只留折射与高光，不做颜色分离'
-                    : '简洁（默认）：边缘一丝冷暖彩边'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-            {/* ------------- 底栏散射：轻磨砂（现在）/ 重磨砂（v3.0.1 那版投射） ------------- */}
-            <md-list-item type="button" className="rounded-middle" onClick={() => setScatterDialogOpen(true)}>
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="blur_circular" />
-              </div>
-              <div slot="headline">底栏散射</div>
-              <div className="md-body-small muted" slot="supporting-text">
-                {settings.dockScatter === 'strong'
-                  ? '强：投射 v3.0.1 那版口径（本体 18px 重磨砂 + 底色 58%）'
-                  : '轻（默认）：图内约 2.4px 磨砂，折射看得最清楚'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-            {/* ------------------------------- 性能模式：高性能 / 自动 / 低性能 */}
-            <md-list-item type="button" className="rounded-middle" onClick={() => setPerfDialogOpen(true)}>
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="speed" />
-              </div>
-              <div slot="headline">性能模式</div>
-              <div slot="supporting-text">
-                {settings.perfMode === 'high'
-                  ? '高性能：液态玻璃模糊/折射/散射 + 流体拉伸 + 弹性过渡（观感最佳）'
-                  : settings.perfMode === 'low'
-                    ? '低性能：无滤镜、无流体拉伸、瞬时切换（最省电、最稳）'
-                    : '自动：出现掉帧时自动降级（默认）'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-            {/* ------------------------- 安全区：上下端各一个滑块，自由调节 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="vertical_align_top" />
-              </div>
-              <div slot="headline">上端安全区</div>
-              <div slot="supporting-text">
-                {settings.insetTop < 0
-                  ? '自动：跟随系统状态栏/刘海（本机实测约 40dp）'
-                  : `手动：${settings.insetTop}dp（推荐 40dp，0 = 沉浸全屏）`}
-              </div>
-            </md-list-item>
-            <div className="list-control-row">
-              <MdSlider
-                className="expressive-slider flex-1"
-                value={settings.insetTop < 0 ? 40 : settings.insetTop}
-                min={0}
-                max={64}
-                step={1}
-                ariaLabel="上端安全区"
-                onInput={(value) => document.documentElement.style.setProperty('--inset-top', `${Math.round(value)}px`)}
-                onChange={(value) => {
-                  const next = Math.round(value);
-                  document.documentElement.style.setProperty('--inset-top', `${next}px`);
-                  updateSettings({ insetTop: next }, { message: `上端安全区：${next}dp` });
-                }}
-              />
-              <button
-                type="button"
-                className="overlay-value editable md-label-medium"
-                aria-label="上端安全区复位为自动"
-                onClick={() => {
-                  document.documentElement.style.removeProperty('--inset-top');
-                  updateSettings({ insetTop: -1 }, { message: '上端安全区：自动' });
-                }}
-              >
-                {settings.insetTop < 0 ? '自动' : `${settings.insetTop}dp`}
-              </button>
+            <SectionHeader icon="palette" title="外观" />
+            <div className="list-group">
+              {/* ------------------------------------------------ 1 深色模式 */}
+              <md-list-item type="text" className="rounded-outer-top">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="dark_mode" />
+                </div>
+                <div slot="headline">深色模式</div>
+                <div slot="supporting-text">
+                  {settings.darkMode ? '当前为深色模式' : '当前为浅色模式（默认设计目标）'}
+                </div>
+                <div slot="end">
+                  <MdSwitch
+                    selected={settings.darkMode}
+                    onSelectedChange={toggleDarkMode}
+                    ariaLabel="深色模式开关"
+                  />
+                </div>
+              </md-list-item>
+              {/* -------------------------------------- 界面缩放（窄屏适配） */}
+              <md-list-item type="button" className="rounded-middle" onClick={() => setScaleDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="aspect_ratio" />
+                </div>
+                <div slot="headline">界面缩放</div>
+                <div className="md-body-small muted" slot="supporting-text">
+                  {settings.uiScale === 'small'
+                    ? '小：整页 92%（窄屏推荐，状态栏与 Dock 留白同步缩小）'
+                    : settings.uiScale === 'large'
+                      ? '大：整页 108%'
+                      : '标准：100%（当前）'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* --------------------------- 底栏色散：关 / 简洁 / 极致（作者要求单开一项） */}
+              <md-list-item type="button" className="rounded-middle" onClick={() => setDispersionDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="blur_on" />
+                </div>
+                <div slot="headline">底栏色散</div>
+                <div className="md-body-small muted" slot="supporting-text">
+                  {settings.dispersion === 'ultimate'
+                    ? '极致：六段光谱（紫蓝青绿黄红），边缘能数出七色'
+                    : settings.dispersion === 'off'
+                      ? '关：只留折射与高光，不做颜色分离'
+                      : '简洁（默认）：边缘一丝冷暖彩边'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* ------------- 底栏散射：轻磨砂（现在）/ 重磨砂（v3.0.1 那版投射） ------------- */}
+              <md-list-item type="button" className="rounded-middle" onClick={() => setScatterDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="blur_circular" />
+                </div>
+                <div slot="headline">底栏散射</div>
+                <div className="md-body-small muted" slot="supporting-text">
+                  {settings.dockScatter === 'strong'
+                    ? '强：投射 v3.0.1 那版口径（本体 18px 重磨砂 + 底色 58%）'
+                    : '轻（默认）：图内约 2.4px 磨砂，折射看得最清楚'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* ------------------------------- 性能模式：高性能 / 自动 / 低性能 */}
+              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => setPerfDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="speed" />
+                </div>
+                <div slot="headline">性能模式</div>
+                <div slot="supporting-text">
+                  {settings.perfMode === 'high'
+                    ? '高性能：液态玻璃模糊/折射/散射 + 流体拉伸 + 弹性过渡（观感最佳）'
+                    : settings.perfMode === 'low'
+                      ? '低性能：无滤镜、无流体拉伸、瞬时切换（最省电、最稳）'
+                      : '自动：出现掉帧时自动降级（默认）'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
             </div>
 
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="vertical_align_bottom" />
-              </div>
-              <div slot="headline">下端安全区</div>
-              <div slot="supporting-text">
-                {settings.insetBottom < 0
-                  ? '自动：跟随系统手势条（本机实测约 16dp）'
-                  : `手动：${settings.insetBottom}dp（推荐 16dp，0 = 贴底）`}
-              </div>
-            </md-list-item>
-            <div className="list-control-row">
-              <MdSlider
-                className="expressive-slider flex-1"
-                value={settings.insetBottom < 0 ? 16 : settings.insetBottom}
-                min={0}
-                max={64}
-                step={1}
-                ariaLabel="下端安全区"
-                onInput={(value) => document.documentElement.style.setProperty('--inset-bottom', `${Math.round(value)}px`)}
-                onChange={(value) => {
-                  const next = Math.round(value);
-                  document.documentElement.style.setProperty('--inset-bottom', `${next}px`);
-                  updateSettings({ insetBottom: next }, { message: `下端安全区：${next}dp` });
-                }}
-              />
-              <button
-                type="button"
-                className="overlay-value editable md-label-medium"
-                aria-label="下端安全区复位为自动"
-                onClick={() => {
-                  document.documentElement.style.removeProperty('--inset-bottom');
-                  updateSettings({ insetBottom: -1 }, { message: '下端安全区：自动' });
-                }}
-              >
-                {settings.insetBottom < 0 ? '自动' : `${settings.insetBottom}dp`}
-              </button>
+            <SectionHeader icon="notifications_active" title="实时通知" />
+            <div className="list-group">
+              {/* -------------------------------------- 上课提醒（灵动岛 / 流体云） */}
+              <md-list-item type="text" className="rounded-outer-top">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="notifications_active" />
+                </div>
+                <div slot="headline">上课提醒（灵动岛）</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>{settings.classReminder ? '已开启' : '已关闭'}</span>
+                  <span>{settings.classReminder ? `提前 ${settings.classReminderLead} 分钟` : '上课前不提醒'}</span>
+                  <span>通知可「导航去 / 我到了」</span>
+                </div>
+                <div slot="end">
+                  <MdSwitch
+                    selected={settings.classReminder}
+                    onSelectedChange={(value) =>
+                      updateSettings({ classReminder: value }, { message: value ? '已开启上课提醒' : '已关闭上课提醒' })
+                    }
+                    ariaLabel="上课提醒开关"
+                  />
+                </div>
+              </md-list-item>
+              {/* -------------------------------- 台词管理（通知栏桌宠的语料与播放设置） */}
+              <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('phraseManager', {}, 'slide')}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="forum" />
+                </div>
+                <div slot="headline">台词管理</div>
+                <div className="md-body-small muted" slot="supporting-text">
+                  通知栏桌宠：常驻状态条，戳一下说一句；到点自动轮播
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* -------------------------------------- 实时通知（流体云 / 实况）自检 */}
+              <md-list-item type="text" className="rounded-outer-bottom">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="notifications_active" />
+                </div>
+                <div slot="headline">实时通知（流体云）自检</div>
+                <div slot="supporting-text">
+                  上课提醒会在状态栏显示实况进度；点下面的按钮立刻发一条，确认流体云是否出现
+                </div>
+              </md-list-item>
             </div>
 
-            {/* -------------------------------------- 2 默认跳转地图 */}
-            <md-list-item type="button" className="rounded-middle" onClick={() => setMapDialogOpen(true)}>
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="map" />
-              </div>
-              <div slot="headline">默认跳转地图</div>
-              <div slot="supporting-text">
-                {mapProvider ? `${mapProvider.label} · 课表点击地址直接启动导航` : '未设置，课表点击地址时先询问'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-            {/* -------------------------------------- 3 学校名称（导航用） */}
-            <md-list-item
-              type="button"
-              className="rounded-middle"
-              onClick={() => {
-                setSchoolDraft(settings.schoolName);
-                setSchoolDialogOpen(true);
-              }}
-            >
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="school" />
-              </div>
-              <div slot="headline">学校名称</div>
-              <div slot="supporting-text">
-                导航时拼在教室前：{settings.schoolName || '未设置（点这里填写，例如「某某学院」）'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-            {/* -------------------------------------- 实时通知（流体云 / 实况）自检 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="notifications_active" />
-              </div>
-              <div slot="headline">实时通知（流体云）自检</div>
-              <div slot="supporting-text">
-                上课提醒会在状态栏显示实况进度；点下面的按钮立刻发一条，确认流体云是否出现
-              </div>
-            </md-list-item>
-            <div className="list-control-row">
-              <md-filled-tonal-button className="btn-s" onClick={() => nativeTestLiveUpdate()}>
-                <MdIcon slot="icon" name="play_arrow" />
-                发送实况测试
-              </md-filled-tonal-button>
-              <span className="md-body-small muted">仅 Android 16 / ColorOS 生效</span>
-            </div>
-
-            {/* -------------------------------------- 本地识别资源状态 + CDN 开关 */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name={ocrStatus === null ? 'speed' : ocrStatus.ready ? 'check_circle' : 'error'} />
-              </div>
-              <div slot="headline">本地识别</div>
-              <div className="list-inline-texts" slot="supporting-text">
-                {ocrStatus === null ? (
-                  <span>正在检查识别资源…</span>
-                ) : ocrStatus.ready ? (
-                  <>
-                    <span>资源就绪：图像处理库 / 识别引擎 / 中文模型</span>
-                    <span>封面识别全程在本机，图片不出设备</span>
-                  </>
-                ) : (
-                  <>
-                    <span>
-                      缺少{!ocrStatus.opencv ? ' 图像处理库' : ''}
-                      {!ocrStatus.engine ? ' 识别引擎' : ''}
-                      {!ocrStatus.lang ? ' 中文模型' : ''}
-                    </span>
-                    <span>开发者执行 npm run setup:ocr 补齐</span>
-                  </>
-                )}
-              </div>
-              <div slot="end">
-                <MdIconButton
-                  icon="refresh"
-                  label="重新检查识别资源"
-                  onClick={() => {
-                    haptic('select');
-                    setOcrStatus(null);
-                    void probeOcrAssets().then(setOcrStatus);
+            <SectionHeader icon="aspect_ratio" title="屏幕安全区" />
+            <div className="list-group">
+              {/* ------------------------- 安全区：上下端各一个滑块，自由调节 */}
+              <md-list-item type="text" className="rounded-outer-top">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="vertical_align_top" />
+                </div>
+                <div slot="headline">上端安全区</div>
+                <div slot="supporting-text">
+                  {settings.insetTop < 0
+                    ? '自动：跟随系统状态栏/刘海（本机实测约 40dp）'
+                    : `手动：${settings.insetTop}dp（推荐 40dp，0 = 沉浸全屏）`}
+                </div>
+              </md-list-item>
+              <div className="list-control-row">
+                <MdSlider
+                  className="expressive-slider flex-1"
+                  value={settings.insetTop < 0 ? 40 : settings.insetTop}
+                  min={0}
+                  max={64}
+                  step={1}
+                  ariaLabel="上端安全区"
+                  onInput={(value) => document.documentElement.style.setProperty('--inset-top', `${Math.round(value)}px`)}
+                  onChange={(value) => {
+                    const next = Math.round(value);
+                    document.documentElement.style.setProperty('--inset-top', `${next}px`);
+                    updateSettings({ insetTop: next }, { message: `上端安全区：${next}dp` });
                   }}
                 />
+                <button
+                  type="button"
+                  className="overlay-value editable md-label-medium"
+                  aria-label="上端安全区复位为自动"
+                  onClick={() => {
+                    document.documentElement.style.removeProperty('--inset-top');
+                    updateSettings({ insetTop: -1 }, { message: '上端安全区：自动' });
+                  }}
+                >
+                  {settings.insetTop < 0 ? '自动' : `${settings.insetTop}dp`}
+                </button>
               </div>
-            </md-list-item>
-
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name={settings.localOcrCdn ? 'download' : 'storage'} />
-              </div>
-              <div slot="headline">允许联网取识别资源</div>
-              <div className="list-inline-texts" slot="supporting-text">
-                <span>{settings.localOcrCdn ? '允许：缺资源时从 CDN 取引擎' : '禁止：只用本机资源'}</span>
-                <span>中文模型与图片始终在本机，不上传</span>
-              </div>
-              <div slot="end">
-                <MdSwitch
-                  selected={settings.localOcrCdn}
-                  onSelectedChange={(value) =>
-                    updateSettings(
-                      { localOcrCdn: value },
-                      {
-                        message: value
-                          ? '已允许联网取识别资源（图片仍不出设备）'
-                          : '已禁止联网：识别只使用本机资源',
-                      },
-                    )
-                  }
-                />
-              </div>
-            </md-list-item>
-
-            {/* ------------------------------------------------ 5 API编辑 */}
-            <md-list-item
-              type="button"
-              className="rounded-middle"
-              onClick={() => nav.push('apiEdit', {}, 'slide')}
-            >
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="menu_book" />
-              </div>
-              <div slot="headline">接口配置</div>
-              <div slot="supporting-text">
-                {apiConfigured ? '已配置，点击可修改' : '唯一的通用接口配置：图片识别（教材封面用）'}
-              </div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
-
-            {/* -------------------------------------- 上课提醒（灵动岛 / 流体云） */}
-            <md-list-item type="text" className="rounded-middle">
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="notifications_active" />
-              </div>
-              <div slot="headline">上课提醒（灵动岛）</div>
-              <div className="list-inline-texts" slot="supporting-text">
-                <span>{settings.classReminder ? '已开启' : '已关闭'}</span>
-                <span>{settings.classReminder ? `提前 ${settings.classReminderLead} 分钟` : '上课前不提醒'}</span>
-                <span>通知可「导航去 / 我到了」</span>
-              </div>
-              <div slot="end">
-                <MdSwitch
-                  selected={settings.classReminder}
-                  onSelectedChange={(value) =>
-                    updateSettings({ classReminder: value }, { message: value ? '已开启上课提醒' : '已关闭上课提醒' })
-                  }
-                  ariaLabel="上课提醒开关"
-                />
-              </div>
-            </md-list-item>
-            <div className="list-control-row">
-              <md-outlined-button className="btn-s" onClick={() => setLeadDialogOpen(true)}>
-                <MdIcon slot="icon" name="schedule" />
-                提前 {settings.classReminderLead} 分钟
-              </md-outlined-button>
-              <span className="md-body-small muted">提前量可调：5 / 10 / 15 / 20 / 30 分钟</span>
+              <md-list-item type="text" className="rounded-outer-bottom">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="vertical_align_bottom" />
+                </div>
+                <div slot="headline">下端安全区</div>
+                <div slot="supporting-text">
+                  {settings.insetBottom < 0
+                    ? '自动：跟随系统手势条（本机实测约 16dp）'
+                    : `手动：${settings.insetBottom}dp（推荐 16dp，0 = 贴底）`}
+                </div>
+              </md-list-item>
             </div>
 
-            {/* ------------------------------------------------ 8 关于本软件 */}
-            <md-list-item
-              type="button"
-              className="rounded-outer-bottom"
-              onClick={() => nav.push('about', {}, 'slide')}
-            >
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="info" />
+            <SectionHeader icon="map" title="导航与学校" />
+            <div className="list-group">
+              <div className="list-control-row">
+                <MdSlider
+                  className="expressive-slider flex-1"
+                  value={settings.insetBottom < 0 ? 16 : settings.insetBottom}
+                  min={0}
+                  max={64}
+                  step={1}
+                  ariaLabel="下端安全区"
+                  onInput={(value) => document.documentElement.style.setProperty('--inset-bottom', `${Math.round(value)}px`)}
+                  onChange={(value) => {
+                    const next = Math.round(value);
+                    document.documentElement.style.setProperty('--inset-bottom', `${next}px`);
+                    updateSettings({ insetBottom: next }, { message: `下端安全区：${next}dp` });
+                  }}
+                />
+                <button
+                  type="button"
+                  className="overlay-value editable md-label-medium"
+                  aria-label="下端安全区复位为自动"
+                  onClick={() => {
+                    document.documentElement.style.removeProperty('--inset-bottom');
+                    updateSettings({ insetBottom: -1 }, { message: '下端安全区：自动' });
+                  }}
+                >
+                  {settings.insetBottom < 0 ? '自动' : `${settings.insetBottom}dp`}
+                </button>
               </div>
-              <div slot="headline">关于本软件</div>
-              <div slot="supporting-text">应用信息 · Material 3 设计说明 · 致谢与开源链接</div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
+              {/* -------------------------------------- 2 默认跳转地图 */}
+              <md-list-item type="button" className="rounded-outer-top" onClick={() => setMapDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="map" />
+                </div>
+                <div slot="headline">默认跳转地图</div>
+                <div slot="supporting-text">
+                  {mapProvider ? `${mapProvider.label} · 课表点击地址直接启动导航` : '未设置，课表点击地址时先询问'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* -------------------------------------- 3 学校名称（导航用） */}
+              <md-list-item
+                type="button"
+                className="rounded-outer-bottom"
+                onClick={() => {
+                  setSchoolDraft(settings.schoolName);
+                  setSchoolDialogOpen(true);
+                }}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="school" />
+                </div>
+                <div slot="headline">学校名称</div>
+                <div slot="supporting-text">
+                  导航时拼在教室前：{settings.schoolName || '未设置（点这里填写，例如「某某学院」）'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+            </div>
 
-            {/* -------------------------------------- 开源相关（分类清单） */}
-            <md-list-item type="button" className="rounded-outer-bottom" onClick={() => nav.push('licenses', {}, 'slide')}>
-              <div slot="start" className="list-icon-badge">
-                <MdIcon name="inventory_2" />
+            <SectionHeader icon="image_search" title="图像识别与资源" />
+            <div className="list-group">
+              <div className="list-control-row">
+                <md-filled-tonal-button className="btn-s" onClick={() => nativeTestLiveUpdate()}>
+                  <MdIcon slot="icon" name="play_arrow" />
+                  发送实况测试
+                </md-filled-tonal-button>
+                <span className="md-body-small muted">仅 Android 16 / ColorOS 生效</span>
               </div>
-              <div slot="headline">开源相关</div>
-              <div slot="supporting-text">本项目引入的全部开源依赖（按用途分类）与参考实现</div>
-              <MdIcon slot="end" name="chevron_right" />
-            </md-list-item>
+              {/* -------------------------------------- 本地识别资源状态 + CDN 开关 */}
+              <md-list-item type="text" className="rounded-outer-top">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name={ocrStatus === null ? 'speed' : ocrStatus.ready ? 'check_circle' : 'error'} />
+                </div>
+                <div slot="headline">本地识别</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  {ocrStatus === null ? (
+                    <span>正在检查识别资源…</span>
+                  ) : ocrStatus.ready ? (
+                    <>
+                      <span>资源就绪：图像处理库 / 识别引擎 / 中文模型</span>
+                      <span>封面识别全程在本机，图片不出设备</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        缺少{!ocrStatus.opencv ? ' 图像处理库' : ''}
+                        {!ocrStatus.engine ? ' 识别引擎' : ''}
+                        {!ocrStatus.lang ? ' 中文模型' : ''}
+                      </span>
+                      <span>开发者执行 npm run setup:ocr 补齐</span>
+                    </>
+                  )}
+                </div>
+                <div slot="end">
+                  <MdIconButton
+                    icon="refresh"
+                    label="重新检查识别资源"
+                    onClick={() => {
+                      haptic('select');
+                      setOcrStatus(null);
+                      void probeOcrAssets().then(setOcrStatus);
+                    }}
+                  />
+                </div>
+              </md-list-item>
+              <md-list-item type="text" className="rounded-middle">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name={settings.localOcrCdn ? 'download' : 'storage'} />
+                </div>
+                <div slot="headline">允许联网取识别资源</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>{settings.localOcrCdn ? '允许：缺资源时从 CDN 取引擎' : '禁止：只用本机资源'}</span>
+                  <span>中文模型与图片始终在本机，不上传</span>
+                </div>
+                <div slot="end">
+                  <MdSwitch
+                    selected={settings.localOcrCdn}
+                    onSelectedChange={(value) =>
+                      updateSettings(
+                        { localOcrCdn: value },
+                        {
+                          message: value
+                            ? '已允许联网取识别资源（图片仍不出设备）'
+                            : '已禁止联网：识别只使用本机资源',
+                        },
+                      )
+                    }
+                  />
+                </div>
+              </md-list-item>
+              {/* ------------------------------------------------ 5 API编辑 */}
+              <md-list-item
+                type="button"
+                className="rounded-outer-bottom"
+                onClick={() => nav.push('apiEdit', {}, 'slide')}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="menu_book" />
+                </div>
+                <div slot="headline">接口配置</div>
+                <div slot="supporting-text">
+                  {apiConfigured ? '已配置，点击可修改' : '唯一的通用接口配置：图片识别（教材封面用）'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+            </div>
 
-
-
-
+            <SectionHeader icon="info" title="关于" />
+            <div className="list-group">
+              <div className="list-control-row">
+                <md-outlined-button className="btn-s" onClick={() => setLeadDialogOpen(true)}>
+                  <MdIcon slot="icon" name="schedule" />
+                  提前 {settings.classReminderLead} 分钟
+                </md-outlined-button>
+                <span className="md-body-small muted">提前量可调：5 / 10 / 15 / 20 / 30 分钟</span>
+              </div>
+              {/* ------------------------------------------------ 8 关于本软件 */}
+              <md-list-item
+                type="button"
+                className="rounded-outer-top"
+                onClick={() => nav.push('about', {}, 'slide')}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="info" />
+                </div>
+                <div slot="headline">关于本软件</div>
+                <div slot="supporting-text">应用信息 · Material 3 设计说明 · 致谢与开源链接</div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* -------------------------------------- 开源相关（分类清单） */}
+              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => nav.push('licenses', {}, 'slide')}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="inventory_2" />
+                </div>
+                <div slot="headline">开源相关</div>
+                <div slot="supporting-text">本项目引入的全部开源依赖（按用途分类）与参考实现</div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+            </div>
           </div>
 
           <div className="mt-16">
-            <SectionHeader icon="palette" title="外观与数据" />
+            <SectionHeader icon="palette" title="动态取色" />
             <div className="col gap-8">
               <div className="row gap-8">
                 <MdIcon name="colorize" size={18} />

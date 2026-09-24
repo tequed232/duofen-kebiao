@@ -98,6 +98,10 @@ jobs:
           # 课表 → 系统日历的映射（节次时间 / 周次 / 标记 / ICS 折行）：真机写入路径在 CI 里跑不了，
           # 但这段纯映射能被机器判定 —— 而「一键清除」全靠那条标记字符串
           run_guard calendar-export node scripts/check-calendar-export.mjs
+          # 预制语料常驻通知（通知栏桌宠）：manifest 契约 + 桥接两端成对 + 路由注册 + 纯逻辑状态机
+          run_guard phrases        node scripts/check-phrases.mjs
+          # 设置页的分组结构（作者要求按主题归拢）：分组标题、顺序、归属、每组圆角成套
+          run_guard settings-groups node scripts/check-settings-groups.mjs
           # ③ 需要 Playwright 的 chromium（上一节已装）：量引擎对 backdrop-filter 的真实行为，
           #    不依赖任何服务，跑在 dev server 之前
           run_guard backdrop-refraction node scripts/check-backdrop-refraction.mjs
