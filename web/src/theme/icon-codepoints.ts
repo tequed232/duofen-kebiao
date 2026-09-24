@@ -9,6 +9,7 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "article": 0xef42,
   "aspect_ratio": 0xe85b,
   "auto_stories": 0xe666,
+  "blur_circular": 0xe3a2,
   "blur_on": 0xe3a5,
   "bolt": 0xea0b,
   "calendar_month": 0xebcc,

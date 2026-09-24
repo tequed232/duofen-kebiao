@@ -121,6 +121,13 @@ export default function App() {
     document.documentElement.dataset.dispersion = mode ?? 'concise';
   }, [settings.dispersion]);
 
+  // 底栏散射强度：写到 <html data-dock-scatter>，CSS 据此决定用轻磨砂还是 v3.0.1 那版重磨砂
+  useEffect(() => {
+    const override = new URLSearchParams(window.location.search).get('scatter');
+    const strong = override === 'strong' || override === 'concise' ? override : settings.dockScatter;
+    document.documentElement.dataset.dockScatter = strong ?? 'concise';
+  }, [settings.dockScatter]);
+
   // 过渡模式：写到 <html data-transition> 上，由 CSS 决定动画（none = 瞬时切换）
   useEffect(() => {
     document.documentElement.dataset.transition = settings.transition;
