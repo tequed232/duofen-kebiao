@@ -108,6 +108,15 @@ export default function App() {
     document.documentElement.dataset.glassMaterial = settings.barMaterial ?? 'solid';
   }, [settings.barMaterial]);
 
+  /* 色散档位：写到 <html data-dispersion>，并允许用 `?dispersion=ultimate` 覆盖一次 ——
+     后者是**给守卫与真机核对用的**（build/check-dock-dispersion.cjs 靠它把两档各量一遍），
+     因为是白名单取值，所以没有注入面。 */
+  useEffect(() => {
+    const override = new URLSearchParams(window.location.search).get('dispersion');
+    const mode = override === 'off' || override === 'concise' || override === 'ultimate' ? override : settings.dispersion;
+    document.documentElement.dataset.dispersion = mode ?? 'concise';
+  }, [settings.dispersion]);
+
   // 过渡模式：写到 <html data-transition> 上，由 CSS 决定动画（none = 瞬时切换）
   useEffect(() => {
     document.documentElement.dataset.transition = settings.transition;
