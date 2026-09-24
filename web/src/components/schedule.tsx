@@ -821,32 +821,30 @@ export function TextbookSection({ courseName }: { courseName: string }) {
               {[book?.publisher, book?.edition, book?.series].filter(Boolean).join(' · ') || '未填写出版社'}
             </span>
           </div>
-          <div className="row" style={{ gap: 0 }}>
-            <MdIconButton icon="edit" label="修改教材" onClick={() => openDialog()} />
-            <MdIconButton
-              icon="delete"
-              label="移除教材"
-              onClick={() => {
-                setTextbook(courseName, null);
-                showSnackbar({ message: '已移除该课程的教材', duration: 3000 });
-              }}
-            />
-          </div>
+          {/* 作者要求：已有教材时**不留「添加」入口**，只在旁边放一颗圆形修改按钮，
+              直径与课本封面容器等高（见 .textbook-edit 的 align-self:stretch + aspect-ratio:1）。
+              移除动作移进「标记教材」对话框，避免再加第二颗圆钮。 */}
+          <button type="button" className="textbook-edit" aria-label="修改教材" onClick={() => openDialog()}>
+            <MdIcon name="edit" size={20} />
+          </button>
         </div>
       ) : (
         <div className="md-body-small muted">尚未识别教材，可拍一张封面或手动填写。</div>
       )}
 
-      <div className="button-group" style={{ justifyContent: 'flex-start' }}>
-        <md-filled-tonal-button className="btn-s" onClick={() => void captureCover()} disabled={busy ? '' : undefined}>
-          <MdIcon slot="icon" name="photo_camera" />
-          选图识别封面
-        </md-filled-tonal-button>
-        <md-outlined-button className="btn-s" onClick={() => openDialog()}>
-          <MdIcon slot="icon" name="edit_note" />
-          手动填写
-        </md-outlined-button>
-      </div>
+      {/* 「添加课程（选图识别 / 手动填写）」只在**还没有教材**时出现 */}
+      {hasBook ? null : (
+        <div className="button-group" style={{ justifyContent: 'flex-start' }}>
+          <md-filled-tonal-button className="btn-s" onClick={() => void captureCover()} disabled={busy ? '' : undefined}>
+            <MdIcon slot="icon" name="photo_camera" />
+            选图识别封面
+          </md-filled-tonal-button>
+          <md-outlined-button className="btn-s" onClick={() => openDialog()}>
+            <MdIcon slot="icon" name="edit_note" />
+            手动填写
+          </md-outlined-button>
+        </div>
+      )}
 
       <md-dialog ref={dialogRef} className="app-dialog">
         <div slot="headline">标记教材</div>
@@ -899,6 +897,17 @@ export function TextbookSection({ courseName }: { courseName: string }) {
           ) : null}
         </div>
         <div slot="actions">
+          {hasBook ? (
+            <md-text-button
+              onClick={() => {
+                setDialogOpen(false);
+                setTextbook(courseName, null);
+                showSnackbar({ message: '已移除该课程的教材', duration: 3000 });
+              }}
+            >
+              移除教材
+            </md-text-button>
+          ) : null}
           <md-text-button onClick={() => setDialogOpen(false)}>取消</md-text-button>
           <md-text-button onClick={saveBook}>保存并标记</md-text-button>
         </div>

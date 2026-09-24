@@ -617,12 +617,15 @@ md-primary-tab {
   padding: 10px;
   border-radius: 20px;
   background: var(--md-sys-color-surface-container-low);
+  /* 课本容器的高度**只有一个来源**：封面与那颗圆形修改按钮都读它，
+     这样"圆钮直径 = 课本容器高"是构造上成立的，而不是靠两处写同一个数。 */
+  --textbook-cover-h: 64px;
 }
 
 .textbook-cover {
   flex: 0 0 auto;
   width: 46px;
-  height: 64px;
+  height: var(--textbook-cover-h, 64px);
   border-radius: 8px;
   object-fit: cover;
   background: var(--md-sys-color-surface-container-highest);
@@ -634,9 +637,30 @@ md-primary-tab {
   color: var(--md-sys-color-on-surface-variant);
 }
 
+/* 已有教材时唯一的操作：一颗**圆形修改按钮**。
+   作者要求「直径和课本容器相等」—— 封面与它都读同一个 `--textbook-cover-h`，
+   于是直径 = 课本容器高是**构造上成立**的（不是两处各写一个 64）。
+   不用 MdIconButton 是因为它带 40px 固定触摸盒，做不出"等直径"。 */
+.textbook-edit {
+  flex: 0 0 auto;
+  width: var(--textbook-cover-h, 64px);
+  height: var(--textbook-cover-h, 64px);
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.textbook-edit:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 24%, var(--md-sys-color-primary-container));
+}
+
 .textbook-select {
-  display: block;
-  width: 100%;
+  display: block;  width: 100%;
   margin-top: 6px;
   height: 56px;
   padding: 0 12px;
