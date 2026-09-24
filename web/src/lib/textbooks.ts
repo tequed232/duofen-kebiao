@@ -2,13 +2,18 @@
  * 教材库与教材识别。
  *
  * 数据来源：用户提供的 12 张教材封面照片（2026-09-19 拍摄），整理为
- * web/src/data/textbooks.json（同一份数据也用 scripts/import-textbooks.mjs 生成
- * Android 的 TextbookData.kt）。其中《IT终端设备的配置与维护》与「国产化设备基础」
+ * web/src/data/textbooks.json。其中《IT终端设备的配置与维护》与「国产化设备基础」
  * 属于推断匹配，标记为 reference，界面上会提示可修改。
  *
+ * **这份 JSON 是唯一数据源**：Android 侧没有对应拷贝 —— 曾经有一条
+ * `scripts/import-textbooks.mjs` 把它生成成 Kotlin 的 `TextbookData.kt`，
+ * 但在「Web 是每个功能的唯一设计基线」之后那个文件已被删除、也没有任何 Kotlin 引用它，
+ * 生成器随之作废（连同它一起在 2026-09 清掉，需要时可在 git 历史里找到）。
+ * 提醒里要显示「带：某教材」时，书名由 WebView 传给原生，原生不需要自己存一份。
+ *
  * 识别流程（web/src/components/schedule.tsx）：
- *   拍照/选择封面 → 配置了图片转文字API 时调用它读封面文字 → 关键词匹配课程；
- *   未配置 API 时可粘贴/输入封面文字，同样本地匹配。结果写入 IndexedDB，
+ *   选封面图 → 本地 OpenCV + Tesseract 识别（或可选的外部多模态接口）；
+ *   也可粘贴/输入封面文字，同样本地匹配。结果写入 IndexedDB，
  *   在「课程详情 → 教材」里显示。
  */
 import library from '../data/textbooks.json';

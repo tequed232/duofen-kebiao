@@ -24,6 +24,16 @@ import path from 'node:path';
 const CHECK = process.argv.includes('--check');
 /** 收集到的「已过期」目标，最后统一报出来 */
 const stale = [];
+/**
+ * 比对前统一换行符。
+ *
+ * 为什么必须有它：生成的内容用的是 `\n`，而本仓库在 Windows 上 `core.autocrlf=true`，
+ * **工作区文件本来就是 CRLF** —— 直接 `includes()` / `!==` 会在 Windows 上恒判「过期」，
+ * 与内容是否真的漂移无关。（这条守卫的第一版就栽在这上面：用编辑工具改过 README 之后，
+ * 它立刻开始报「README.md 的开源区块已过期」，而那只是换行符差异。）
+ * 换行符是平台约定，不是内容漂移；要判的是内容。
+ */
+const norm = (s) => s.replace(/\r\n/g, '\n');
 
 /** 分类规则：命中即归入该类（顺序即优先级） */
 const CATEGORIES = [
@@ -261,7 +271,7 @@ export const REFERENCE_LIBS: LicenseEntry[] = ${JSON.stringify(REFERENCES, null,
 `;
 if (CHECK) {
   const current = await readFile('web/src/data/licenses.ts', 'utf8').catch(() => '');
-  if (current !== ts) stale.push('web/src/data/licenses.ts');
+  if (norm(current) !== norm(ts)) stale.push('web/src/data/licenses.ts');
 } else {
   await writeFile('web/src/data/licenses.ts', ts, 'utf8');
 }
@@ -310,7 +320,7 @@ if (readme.includes(BEGIN)) {
   readme = `${readme.trimEnd()}\n\n---\n\n${block}\n`;
 }
 if (CHECK) {
-  if (!readmeBefore.includes(block)) stale.push('README.md 的开源区块');
+  if (!norm(readmeBefore).includes(norm(block))) stale.push('README.md 的开源区块');
 } else {
   await writeFile('README.md', readme, 'utf8');
 }
