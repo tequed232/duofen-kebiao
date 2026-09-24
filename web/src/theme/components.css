@@ -395,6 +395,21 @@ md-list-item.rounded-only {
   border-radius: 28px;
 }
 
+/* 控件行：挂在某一条设置项下面的滑块 / 按钮（自己不带卡片底，靠上下留白和那一组连在一起）。
+   必须显式给布局 —— 这条 div 曾经完全没有样式，于是按钮后面的说明文字在真机上
+   直接排到屏幕外被裁掉（窄屏 366dp 放不下「仅 Android 16 / ColorOS 生效」这种长度）。 */
+.list-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 2px 0 4px;
+}
+.list-control-row > .md-body-small {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .list-icon-badge {
   width: 40px;
   height: 40px;

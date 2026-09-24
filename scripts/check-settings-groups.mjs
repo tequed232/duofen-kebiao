@@ -113,5 +113,110 @@ for (let i = 0; i < GROUPS.length; i += 1) {
   }
 }
 
+console.log('\n=== 控件行（滑块 / 按钮）必须绑在自己那一条上 ===');
+/**
+ * 真实回归：作者反馈「流体云自检跑到其他位置去了😡」——
+ * 发送实况测试的按钮被一次重排脚本从「实时通知」拽到了「图像识别与资源」的**组头**上，
+ * 页面照常渲染、不报错，肉眼要滚到设置页中段才看得出来。
+ * 所以控件行不能只存在，还必须：①属于声明的分组 ②上方最近的那一条正好是它的主人。
+ * 控件行本身没有文案（`slot="headline"`），只能靠内容特征 + 行号锚定。
+ */
+const CONTROL_OWNERS = [
+  { id: '提前量按钮', match: 'setLeadDialogOpen(true)', owner: '上课提醒（灵动岛）', group: '实时通知' },
+  { id: '上端安全区滑块', match: 'ariaLabel="上端安全区"', owner: '上端安全区', group: '屏幕安全区' },
+  { id: '下端安全区滑块', match: 'ariaLabel="下端安全区"', owner: '下端安全区', group: '屏幕安全区' },
+  { id: '流体云自检按钮', match: 'nativeTestLiveUpdate()', owner: '实时通知（流体云）自检', group: '实时通知' },
+];
+
+/** 控件行的行区间：靠 div 深度配平，不依赖缩进 */
+const controlRows = [];
+lines.forEach((line, index) => {
+  if (!line.includes('list-control-row')) return;
+  let depth = 0;
+  let end = index + 1;
+  for (let i = index; i < lines.length; i += 1) {
+    depth += (lines[i].match(/<div\b/g) ?? []).length;
+    depth -= (lines[i].match(/<\/div>/g) ?? []).length;
+    if (depth <= 0) {
+      end = i + 1;
+      break;
+    }
+  }
+  controlRows.push({ line: index + 1, end, text: lines.slice(index, end).join('\n') });
+});
+
+check(
+  `控件行共 ${CONTROL_OWNERS.length} 个（无重复、无迁移残留）`,
+  controlRows.length === CONTROL_OWNERS.length,
+  `实际 ${controlRows.length} 个，行号 ${controlRows.map((row) => row.line).join('、') || '(无)'}`,
+);
+
+for (const spec of CONTROL_OWNERS) {
+  const hits = controlRows.filter((row) => row.text.includes(spec.match));
+  if (hits.length !== 1) {
+    check(`${spec.id} 存在且唯一`, false, `匹配到 ${hits.length} 个`);
+    continue;
+  }
+  const row = hits[0];
+  const index = GROUPS.findIndex((group) => group.title === spec.group);
+  const from = headerLineOf(spec.group);
+  const nextTitle = GROUPS[index + 1]?.title;
+  const to = nextTitle ? headerLineOf(nextTitle) : Number.MAX_SAFE_INTEGER;
+  check(`${spec.id} 留在「${spec.group}」内`, row.line > from && row.line < to, `行 ${row.line}，组区间 ${from}–${to}`);
+  const above = rows.filter((item) => item.line < row.line).sort((a, b) => b.line - a.line)[0];
+  check(`${spec.id} 紧跟在「${spec.owner}」之后`, above?.title === spec.owner, `实际跟在「${above?.title ?? '(无)'}」之后`);
+  const owner = rows.find((item) => item.title === spec.owner);
+  check(`「${spec.owner}」本身在「${spec.group}」内`, Boolean(owner) && owner.line > from && owner.line < to, `主人行 ${owner?.line ?? '(缺)'}`);
+}
+
+console.log('\n=== JSX 结构：条目不得相互嵌套 ===');
+/**
+ * 真实事故：等高线背景那一整块被插进了「性能模式」的 `<md-list-item>` **内部**（插在了图标 div 之后、
+ * 标题之前）。源码看着"有条目、行号也对"，React 也不报错 —— 但渲染出来是一张卡片套在另一张卡片里，
+ * 而且两个 onClick 都会触发：点一次等高线会同时弹出「性能模式」和「等高线背景」两个对话框。
+ * 文本行号断不出来，所以这里补一条 JSX 配平/嵌套断言。
+ */
+let itemDepth = 0;
+let itemOpens = 0;
+let itemCloses = 0;
+const nestedAt = [];
+lines.forEach((line, index) => {
+  const opens = (line.match(/<md-list-item\b/g) ?? []).length;
+  const closes = (line.match(/<\/md-list-item>/g) ?? []).length;
+  for (let i = 0; i < opens; i += 1) {
+    itemDepth += 1;
+    itemOpens += 1;
+    if (itemDepth > 1) nestedAt.push(index + 1);
+  }
+  for (let i = 0; i < closes; i += 1) {
+    itemCloses += 1;
+    itemDepth -= 1;
+    if (itemDepth < 0) nestedAt.push(index + 1);
+  }
+});
+check(`条目标签配平（开 ${itemOpens} / 闭 ${itemCloses}）`, itemOpens === itemCloses && itemDepth === 0, `收尾深度 ${itemDepth}`);
+check(
+  '没有条目套条目（否则一次点击弹两个对话框）',
+  nestedAt.length === 0,
+  `疑似嵌套/越界行号：${[...new Set(nestedAt)].join('、')}`,
+);
+
+console.log('\n=== 控件行的样式必须真的存在（否则真机上说明文字会排出屏幕）===');
+/**
+ * 真实事故：`.list-control-row` 在**任何 CSS 里都没有定义**，全靠 inline 默认排布。
+ * 浏览器 460dp 宽时看着没问题；真机 366dp 上按钮后面那行说明（「仅 Android 16 / ColorOS 生效」）
+ * 直接排到屏幕外被裁掉。所以除了结构，连"这条行有没有布局规则"也要钉住。
+ */
+const componentsCss = await readFile('web/src/theme/components.css', 'utf8');
+const rule = /\.list-control-row\s*\{([^}]*)\}/.exec(componentsCss);
+const ruleBody = rule?.[1] ?? '';
+check('.list-control-row 有样式定义', Boolean(rule), 'components.css 里找不到这条规则');
+check('控件行是可换行的 flex（窄屏不裁字）', /display:\s*flex/.test(ruleBody) && /flex-wrap:\s*wrap/.test(ruleBody), `规则内容：${ruleBody.replace(/\s+/g, ' ').trim() || '(空)'}`);
+check(
+  '控件行里的说明文字可收缩（min-width: 0）',
+  /\.list-control-row\s*>\s*\.md-body-small\s*\{[^}]*min-width:\s*0/.test(componentsCss),
+  '缺少 `.list-control-row > .md-body-small { min-width: 0 }`，文字不会换行',
+);
+
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

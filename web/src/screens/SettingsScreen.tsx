@@ -159,17 +159,6 @@ export default function SettingsScreen() {
               <md-list-item type="button" className="rounded-middle" onClick={() => setPerfDialogOpen(true)}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="speed" />
-              {/* ----------------------------------------- 等高线背景（单色 · 终末地风） */}
-              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => setContourDialogOpen(true)}>
-                <div slot="start" className="list-icon-badge">
-                  <MdIcon name="graphic_eq" />
-                </div>
-                <div slot="headline">等高线背景</div>
-                <div className="md-body-small muted" slot="supporting-text">
-                  {settings.contour === 'off' ? '关：纯色底' : settings.contour === 'bold' ? '密：线条更多更明显' : '细（默认）：单色地形线条' }
-                </div>
-                <MdIcon slot="end" name="chevron_right" />
-              </md-list-item>
                 </div>
                 <div slot="headline">性能模式</div>
                 <div slot="supporting-text">
@@ -178,6 +167,17 @@ export default function SettingsScreen() {
                     : settings.perfMode === 'low'
                       ? '低性能：无滤镜、无流体拉伸、瞬时切换（最省电、最稳）'
                       : '自动：出现掉帧时自动降级（默认）'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              {/* ----------------------------------------- 等高线背景（单色 · 终末地风） */}
+              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => setContourDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="graphic_eq" />
+                </div>
+                <div slot="headline">等高线背景</div>
+                <div className="md-body-small muted" slot="supporting-text">
+                  {settings.contour === 'off' ? '关：纯色底' : settings.contour === 'bold' ? '密：线条更多更明显' : '细（默认）：单色地形线条'}
                 </div>
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
@@ -206,6 +206,14 @@ export default function SettingsScreen() {
                   />
                 </div>
               </md-list-item>
+              {/* --------------------------- 提前量按钮：属于上面这条上课提醒，不许漂到别的组 */}
+              <div className="list-control-row">
+                <md-outlined-button className="btn-s" onClick={() => setLeadDialogOpen(true)}>
+                  <MdIcon slot="icon" name="schedule" />
+                  提前 {settings.classReminderLead} 分钟
+                </md-outlined-button>
+                <span className="md-body-small muted">提前量可调：5 / 10 / 15 / 20 / 30 分钟</span>
+              </div>
               {/* -------------------------------- 台词管理（通知栏桌宠的语料与播放设置） */}
               <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('phraseManager', {}, 'slide')}>
                 <div slot="start" className="list-icon-badge">
@@ -227,6 +235,14 @@ export default function SettingsScreen() {
                   上课提醒会在状态栏显示实况进度；点下面的按钮立刻发一条，确认流体云是否出现
                 </div>
               </md-list-item>
+              {/* --------------------------- 自检按钮：始终跟随本组最后一项，不跨组漂移 */}
+              <div className="list-control-row">
+                <md-filled-tonal-button className="btn-s" onClick={() => nativeTestLiveUpdate()}>
+                  <MdIcon slot="icon" name="play_arrow" />
+                  发送实况测试
+                </md-filled-tonal-button>
+                <span className="md-body-small muted">仅 Android 16 / ColorOS 生效</span>
+              </div>
             </div>
 
             <SectionHeader icon="aspect_ratio" title="屏幕安全区" />
@@ -281,10 +297,7 @@ export default function SettingsScreen() {
                     : `手动：${settings.insetBottom}dp（推荐 16dp，0 = 贴底）`}
                 </div>
               </md-list-item>
-            </div>
-
-            <SectionHeader icon="map" title="导航与学校" />
-            <div className="list-group">
+              {/* --------------------------- 下端安全区滑块：紧跟上端滑块，同属本组 */}
               <div className="list-control-row">
                 <MdSlider
                   className="expressive-slider flex-1"
@@ -312,6 +325,10 @@ export default function SettingsScreen() {
                   {settings.insetBottom < 0 ? '自动' : `${settings.insetBottom}dp`}
                 </button>
               </div>
+            </div>
+
+            <SectionHeader icon="map" title="导航与学校" />
+            <div className="list-group">
               {/* -------------------------------------- 2 默认跳转地图 */}
               <md-list-item type="button" className="rounded-outer-top" onClick={() => setMapDialogOpen(true)}>
                 <div slot="start" className="list-icon-badge">
@@ -345,13 +362,6 @@ export default function SettingsScreen() {
 
             <SectionHeader icon="image_search" title="图像识别与资源" />
             <div className="list-group">
-              <div className="list-control-row">
-                <md-filled-tonal-button className="btn-s" onClick={() => nativeTestLiveUpdate()}>
-                  <MdIcon slot="icon" name="play_arrow" />
-                  发送实况测试
-                </md-filled-tonal-button>
-                <span className="md-body-small muted">仅 Android 16 / ColorOS 生效</span>
-              </div>
               {/* -------------------------------------- 本地识别资源状态 + CDN 开关 */}
               <md-list-item type="text" className="rounded-outer-top">
                 <div slot="start" className="list-icon-badge">
@@ -433,13 +443,6 @@ export default function SettingsScreen() {
 
             <SectionHeader icon="info" title="关于" />
             <div className="list-group">
-              <div className="list-control-row">
-                <md-outlined-button className="btn-s" onClick={() => setLeadDialogOpen(true)}>
-                  <MdIcon slot="icon" name="schedule" />
-                  提前 {settings.classReminderLead} 分钟
-                </md-outlined-button>
-                <span className="md-body-small muted">提前量可调：5 / 10 / 15 / 20 / 30 分钟</span>
-              </div>
               {/* ------------------------------------------------ 8 关于本软件 */}
               <md-list-item
                 type="button"
