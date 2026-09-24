@@ -1,10 +1,10 @@
-/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useNav } from '../nav/navigation';
 import { useAppState } from '../state/AppState';
 import { isNativeShell, haptic } from '../lib/native';
-import { LENS_DOCK } from '../lib/lens';
+import { dockLensParams, effectiveDispersion } from '../lib/lens';
 import { useLens } from '../lib/useLens';
 
 /* ------------------------------------------------------------- app bar --- */
@@ -77,12 +77,16 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
    *   · 滑块上不挂 SVG 滤镜（每帧重算滤镜链是另一个主因）；拖动时临时降级折射层，松手立刻恢复
    */
   const navSelectTab = useNav().selectTab;
+  const { settings } = useAppState();
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
   /* 液态玻璃透镜：按 dock 实际尺寸生成位移贴图（BEZEL / STRENGTH / ZOOM 见 lens.ts）。
+     色散档位（设置 → 底栏材质 → 液态玻璃 → 色散）决定用哪套参数：
+     「简洁」= 现在的收窄口径 + 三通道；「极致」= 0801cb9 那套落差口径 + 六段光谱。
      真机核对手续：先关掉开发者选项里的「指针位置」「显示布局边界」再截图，
      否则那些调试叠层会被误认成应用的渲染问题。 */
-  useLens(dockRef, LENS_DOCK);
+  const dockParams = useMemo(() => dockLensParams(effectiveDispersion(settings.dispersion)), [settings.dispersion]);
+  useLens(dockRef, dockParams);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);

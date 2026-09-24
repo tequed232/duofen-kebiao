@@ -45,6 +45,15 @@ export interface LensParams {
    * 省略 / 0 = 不做色散。
    */
   fringe?: number;
+  /**
+   * 色散拆成几段光谱。默认 **3**（R / G / B 各留一个通道，精确无损）——
+   * 那是「简洁」档：肉眼是"一侧偏冷、一侧偏暖"的两三条边。
+   *
+   * 设成 **6** 就是「极致」档：把画面拆成六段色向量（紫/蓝/青/绿/黄/红）分别位移再叠回，
+   * 六段之和 = 白（颜色空间里的分区单位），所以位移为 0 的地方叠回来 ≈ 原画面、不整体偏色。
+   * 这才是肉眼能数出「红橙黄绿青蓝紫」的量级 —— 三通道最多只给互补的两三条边。
+   */
+  bands?: number;
 }
 
 export const LENS_PLAYER: LensParams = { bezel: 0.58, strength: 1.2, zoom: 0.02, edge: 0.2 };
@@ -89,6 +98,64 @@ export const LENS_DOCK: LensParams = {
      想更明显就调大，想彻底关掉写 0。 */
   fringe: 3.2,
 };
+
+/**
+ * 底栏「极致」色散档 —— 把作者记得的那版彩虹按档恢复。
+ *
+ * 出处：commit **0801cb9**（`fix(glass): 色散改为「三通道用不同位移量采样同一张透镜贴图」，治掉整屏发紫`）
+ * 当时的落差口径是 backdrop 位移**封顶 14px、系数 0.3**，配合 `zoom 0.012`；
+ * 后来的 `a61a7df`（按反馈减配）把 bezel 0.46→0.30、strength 1.0→0.9，
+ * `7973ced`（六项整改）又把三通道位移整条删掉 —— 于是"彩虹"就没了，只剩 1px 冷暖描边（还写在死代码里）。
+ *
+ * 这一档 = **恢复 0801cb9 的落差口径**（bezel/strength/zoom/backdrop 全按当年）
+ * + **通道从 3 段扩到 6 段光谱** —— 3 段最多只能给出互补的两三条边，数不出七色。
+ *
+ * 范围仍然只有底栏这一处（作者定的规矩：极致液态玻璃只在这一个 dock 里做）。
+ * 代价是滤镜链节点更多（6 位移 + 6 矩阵 + 5 叠加），所以它**不是默认档**：
+ * 默认「简洁」，要彩虹得自己在 设置 → 底栏材质 → 液态玻璃 → 色散 里选。
+ */
+export const LENS_DOCK_ULTIMATE: LensParams = {
+  /* 透镜带比简洁档厚一档（0.30 → 0.46，即减配前那版），彩虹才有地方铺开 */
+  bezel: 0.46,
+  strength: 1.0,
+  /* 但 **zoom 与 falloff 保持收窄口径**：实测把 zoom 拉回当年的 0.012、falloff 拉回 2，
+     中间带的 |R−B| 会从 0.46 涨到 **3.56**（噪声底是 0.42）——
+     那就是作者当初否掉的「整面出彩边」。所以极致档只放大"边缘的彩虹"，
+     不放大"整面的偏色"。（想要当年那种整面泛色：把这两行改成 zoom 0.012 / falloff 2 即可。） */
+  zoom: 0.004,
+  edge: 0.2,
+  falloff: 3,
+  backdropMax: 14,
+  backdropFactor: 0.3,
+  /* 六段光谱的总分离量：边缘处 6px（= 简洁档 3.2px 的将近两倍） */
+  fringe: 6,
+  bands: 6,
+};
+
+/** 底栏色散档位（设置项） */
+export type DockDispersion = 'off' | 'concise' | 'ultimate';
+
+/**
+ * 生效的色散档位：设置项 + 允许用 `?dispersion=` **覆盖一次**。
+ *
+ * 为什么要这个覆盖：守卫 `build/check-dock-dispersion.cjs` 要把两档各量一遍，
+ * 但它没法去点设置页的弹层；真机核对时也一样（想临时看看极致档什么效果）。
+ * 取值是白名单里的三个字面量，所以不构成注入面（`?dispersion=xxx` 只会落回设置值）。
+ */
+export function effectiveDispersion(setting: DockDispersion | undefined): DockDispersion {
+  if (typeof window !== 'undefined') {
+    const override = new URLSearchParams(window.location.search).get('dispersion');
+    if (override === 'off' || override === 'concise' || override === 'ultimate') return override;
+  }
+  return setting ?? 'concise';
+}
+
+/** 档位 → 透镜参数。默认「简洁」，与作者此刻看到的观感完全一致。 */
+export function dockLensParams(mode: DockDispersion = 'concise'): LensParams {
+  if (mode === 'ultimate') return LENS_DOCK_ULTIMATE;
+  if (mode === 'off') return { ...LENS_DOCK, fringe: 0 };
+  return LENS_DOCK;
+}
 
 export interface LensMap {
   mapUrl: string;

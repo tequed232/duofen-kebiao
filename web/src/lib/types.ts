@@ -30,6 +30,14 @@ export interface AppSettings {
   liquidGlass: boolean;
   /** 底边栏材质：液态玻璃 / Material 3 实心（默认）/ 半透明 */
   barMaterial: 'glass' | 'solid' | 'translucent';
+  /**
+   * 底栏液态玻璃的**色散档位**（作者 2026-09-24 要求单开一个选择项）：
+   *   · 'off'      —— 不做色散，只留折射与高光；
+   *   · 'concise'  —— 默认。三通道（R/G/B）只在边缘带分离出"一侧偏冷、一侧偏暖"的一丝彩边；
+   *   · 'ultimate' —— 恢复 commit 0801cb9 那套落差口径 + **六段光谱**（紫蓝青绿黄红），数得出七色。
+   * 参数见 web/src/lib/lens.ts 的 LENS_DOCK / LENS_DOCK_ULTIMATE。
+   */
+  dispersion: 'off' | 'concise' | 'ultimate';
   /** 上课提醒：临近上课时用实况通知（灵动岛 / 流体云）提醒 */
   classReminder: boolean;
   /** 界面缩放：小 / 标准 / 大（窄屏设备可调小以免拥挤） */
@@ -57,6 +65,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   schoolName: '',
   liquidGlass: true,
   barMaterial: 'solid',
+  dispersion: 'concise',
   classReminder: true,
   uiScale: 'normal',
   insetTop: -1,

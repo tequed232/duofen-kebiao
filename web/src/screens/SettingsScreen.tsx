@@ -27,6 +27,7 @@ export default function SettingsScreen() {
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
   const [perfDialogOpen, setPerfDialogOpen] = useState(false);
+  const [dispersionDialogOpen, setDispersionDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 本地识别资源状态：null = 正在探测 */
   const [ocrStatus, setOcrStatus] = useState<OcrAssetStatus | null>(null);
@@ -119,6 +120,22 @@ export default function SettingsScreen() {
                   : settings.uiScale === 'large'
                     ? '大：整页 108%'
                     : '标准：100%（当前）'}
+              </div>
+              <MdIcon slot="end" name="chevron_right" />
+            </md-list-item>
+
+            {/* --------------------------- 底栏色散：关 / 简洁 / 极致（作者要求单开一项） */}
+            <md-list-item type="button" className="rounded-middle" onClick={() => setDispersionDialogOpen(true)}>
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="blur_on" />
+              </div>
+              <div slot="headline">底栏色散</div>
+              <div className="md-body-small muted" slot="supporting-text">
+                {settings.dispersion === 'ultimate'
+                  ? '极致：六段光谱（紫蓝青绿黄红），边缘能数出七色'
+                  : settings.dispersion === 'off'
+                    ? '关：只留折射与高光，不做颜色分离'
+                    : '简洁（默认）：边缘一丝冷暖彩边'}
               </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
@@ -452,6 +469,37 @@ export default function SettingsScreen() {
       
 
       
+
+      <MdDialog
+        open={dispersionDialogOpen}
+        headline="底栏色散"
+        onClosed={() => setDispersionDialogOpen(false)}
+        actions={<md-text-button onClick={() => setDispersionDialogOpen(false)}>取消</md-text-button>}
+      >
+        液态玻璃边缘的**颜色分离**（真玻璃把不同波长的光掰开的角度不一样）。
+        只作用于底边栏这一处，页面其它部分不受影响：
+        <div className="col gap-8 mt-12">
+          {([
+            ['off', '关：只留折射与高光'],
+            ['concise', '简洁（默认）：边缘一丝冷暖彩边，克制'],
+            ['ultimate', '极致：六段光谱（紫蓝青绿黄红）+ 当年那套更大落差，能数出七色'],
+          ] as const).map(([value, label]) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setDispersionDialogOpen(false);
+                updateSettings(
+                  { dispersion: value },
+                  { message: `底栏色散：${value === 'off' ? '关' : value === 'ultimate' ? '极致' : '简洁'}` },
+                );
+              }}
+            >
+              {settings.dispersion === value ? '✓ ' : ''}
+              {label}
+            </md-outlined-button>
+          ))}
+        </div>
+      </MdDialog>
 
       <MdDialog
         open={perfDialogOpen}
