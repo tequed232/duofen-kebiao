@@ -1,6 +1,18 @@
 /**
  * 关于页「致谢 · 名片墙」1×3 列表版式自检：
  * 每人一整行（头像 1 栏 + 信息 2 栏），无溢出、无运行时错误，并截图。
+ *
+ * 怎么跑（默认端口容易让人卡住，所以写在这里）：
+ *   默认连 `http://127.0.0.1:4174/` —— 那是 **`node scripts/serve-dist.mjs` 的端口**
+ *   （静态服务 `dist/`，验的是生产构建）：
+ *       npm run build && node scripts/serve-dist.mjs &
+ *       node scripts/check-about-credits.mjs
+ *   想对着别的服务跑就传 APP_URL，例如 dev server 或 preview：
+ *       APP_URL=http://127.0.0.1:5173/ node scripts/check-about-credits.mjs
+ *
+ * 为什么特别写明：本仓库的脚本自述普遍没写前置，结果**有几个守卫长期没人跑**
+ * （这条与 check-imports 此前没有任何 workflow 引用）。现在它已接进 auto-review，
+ * CI 里对着 preview（4173）跑。
  */
 import { chromium } from 'playwright';
 

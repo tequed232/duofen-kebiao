@@ -90,6 +90,9 @@ jobs:
           run_guard version        node scripts/check-version.mjs
           # 开源署名清单是否跟得上依赖（本地识别引入 opencv-js / tesseract.js 时曾漏掉署名）
           run_guard licenses       node scripts/collect-licenses.mjs --check
+          # 导入自检：防「用了没导入」导致整页白屏。它此前**没有任何 workflow 跑它**
+          # （仓库 12 个 check 脚本里有 2 个是这种状态），所以随时可能悄悄烂掉。
+          run_guard imports        node scripts/check-imports.mjs
           # ② 需要 esbuild（依赖已 npm ci）
           run_guard isbn           node scripts/check-isbn.mjs
           # ③ 需要 Playwright 的 chromium（上一节已装）：量引擎对 backdrop-filter 的真实行为，
@@ -119,6 +122,9 @@ jobs:
             sleep 1
           done
           run_guard verify         node scripts/verify.mjs
+          # 关于页「致谢 · 名片墙」版式自检。它默认连 4174（那是 serve-dist.mjs 的端口），
+          # 和 verify 一样曾是「有效但没有任何 workflow 跑」的守卫之一 —— 这里指到 preview 上。
+          APP_URL=http://127.0.0.1:4173/ run_guard about-credits node scripts/check-about-credits.mjs
           kill "$preview_pid" 2>/dev/null || true
 
           echo "overall=$overall" >> "$GITHUB_OUTPUT"
