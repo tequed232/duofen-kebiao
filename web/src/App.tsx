@@ -12,6 +12,7 @@ import AboutScreen from './screens/AboutScreen';
 import TextbooksScreen from './screens/TextbooksScreen';
 import LicensesScreen from './screens/LicensesScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import PhraseManagerScreen from './screens/PhraseManagerScreen';
 import ApiEditScreen from './screens/ApiEditScreen';
 import BlankScreen from './screens/BlankScreen';
 
@@ -23,6 +24,7 @@ const SCREENS = {
   apiEdit: ApiEditScreen,
   textbookList: TextbooksScreen,
   licenses: LicensesScreen,
+  phraseManager: PhraseManagerScreen,
   settings: SettingsScreen,
 };
 
@@ -31,7 +33,9 @@ const SNACKBAR_BOTTOM = 96;
 
 /** 路由 → 标签：底栏的选中项由当前路由推导（唯一事实来源） */
 function tabForRoute(route: RouteName): 'schedule' | 'search' | 'settings' {
-  if (route === 'settings' || route === 'about' || route === 'licenses' || route === 'apiEdit') return 'settings';
+  if (route === 'settings' || route === 'about' || route === 'licenses' || route === 'apiEdit' || route === 'phraseManager') {
+    return 'settings';
+  }
   if (route === 'scheduleFilter') return 'search';
   return 'schedule';
 }
@@ -116,6 +120,13 @@ export default function App() {
     const mode = override === 'off' || override === 'concise' || override === 'ultimate' ? override : settings.dispersion;
     document.documentElement.dataset.dispersion = mode ?? 'concise';
   }, [settings.dispersion]);
+
+  // 底栏散射强度：写到 <html data-dock-scatter>，CSS 据此决定用轻磨砂还是 v3.0.1 那版重磨砂
+  useEffect(() => {
+    const override = new URLSearchParams(window.location.search).get('scatter');
+    const strong = override === 'strong' || override === 'concise' ? override : settings.dockScatter;
+    document.documentElement.dataset.dockScatter = strong ?? 'concise';
+  }, [settings.dockScatter]);
 
   // 过渡模式：写到 <html data-transition> 上，由 CSS 决定动画（none = 瞬时切换）
   useEffect(() => {

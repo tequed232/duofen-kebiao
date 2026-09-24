@@ -158,7 +158,20 @@ object LiveUpdates {
                 ).build(),
             )
         }
-        // 动作 2：我到了（回到应用并跳到教材窗口，同时结束这次提醒）
+        // 动作 2：戳一下（作者要求：实时通知上也要能戳 —— 展示一条预制语料，随后自动还原）
+        builder.addAction(
+            Notification.Action.Builder(
+                null,
+                "戳一下",
+                PendingIntent.getService(
+                    context,
+                    4,
+                    Intent(context, PhraseService::class.java).setAction(PhraseService.ACTION_POKE),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            ).build(),
+        )
+        // 动作 3：我到了（回到应用并跳到教材窗口，同时结束这次提醒）
         builder.addAction(
             Notification.Action.Builder(
                 null,

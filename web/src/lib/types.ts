@@ -38,6 +38,15 @@ export interface AppSettings {
    * 参数见 web/src/lib/lens.ts 的 LENS_DOCK / LENS_DOCK_ULTIMATE。
    */
   dispersion: 'off' | 'concise' | 'ultimate';
+  /**
+   * 底栏**散射（磨砂）强度**档位：
+   *   · 'concise' —— 默认。本体图内 ~2.4px 轻磨砂 + 底色 alpha 0%，看得见折射、透得出列表；
+   *   · 'strong'  —— 把 v3.0.1（09-23 04:11 那个 release）的散射口径投射回来：
+   *                  本体 blur(18px) saturate(1.6) + 底色 surface-container 58%。
+   * 实测（build/check-dock-scatter.cjs）：散射层自身 8↔11px 几乎量不出差别，
+   * "看着更毛"基本来自本体那 18px，所以这一档投的是本体。
+   */
+  dockScatter: 'concise' | 'strong';
   /** 上课提醒：临近上课时用实况通知（灵动岛 / 流体云）提醒 */
   classReminder: boolean;
   /** 界面缩放：小 / 标准 / 大（窄屏设备可调小以免拥挤） */
@@ -66,6 +75,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   liquidGlass: true,
   barMaterial: 'solid',
   dispersion: 'concise',
+  dockScatter: 'concise',
   classReminder: true,
   uiScale: 'normal',
   insetTop: -1,

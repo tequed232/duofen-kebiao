@@ -490,6 +490,30 @@ class MainActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun calendarRemoveAll(): String = CalendarExport.removeAll(this@MainActivity)
+
+        /* -------------------------------------------------------- 预制语料通知 -- */
+        /* 通知栏「桌宠」：常驻前台服务 + 语料浏览/点选/还原（见 PhraseService.kt）。
+           网页只管两件事：下发配置、告诉服务当前基础状态（空闲 / 导航中）。 */
+
+        @JavascriptInterface
+        fun startPhraseService() = PhraseService.start(this@MainActivity)
+
+        @JavascriptInterface
+        fun stopPhraseService() = PhraseService.stop(this@MainActivity)
+
+        @JavascriptInterface
+        fun phrasesConfig(json: String) = PhraseService.updateConfig(this@MainActivity, json)
+
+        @JavascriptInterface
+        fun phrasesStatus(): String = PhraseService.statusJson(this@MainActivity)
+
+        /** 「戳一下」也可以从网页触发（与通知栏那颗按钮走同一条路径） */
+        @JavascriptInterface
+        fun phrasePoke() = PhraseService.poke(this@MainActivity)
+
+        @JavascriptInterface
+        fun setPhraseBaseState(kind: String, destination: String) =
+            PhraseService.setBaseState(this@MainActivity, kind, destination)
     }
 
     /** 应用已在前台时点通知里的动作：走同一套逻辑 */
