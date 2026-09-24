@@ -131,11 +131,6 @@ export default function SettingsScreen() {
   const [styleDialogOpen, setStyleDialogOpen] = useState(false);
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
-  const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
-  const [perfDialogOpen, setPerfDialogOpen] = useState(false);
-  const [scatterDialogOpen, setScatterDialogOpen] = useState(false);
-  const [warpDialogOpen, setWarpDialogOpen] = useState(false);
-  const [contourDialogOpen, setContourDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 本地识别资源状态：null = 正在探测 */
   const [ocrStatus, setOcrStatus] = useState<OcrAssetStatus | null>(null);
@@ -159,27 +154,8 @@ export default function SettingsScreen() {
    *  - 靠近 0/25/50/75/100 这五个卡扣时跟手变慢（阻尼 0.55），进入 ±3 直接吸附（卡扣）；
    *  - 松开时若在 ±6 内也对齐到卡扣。
    */
-  const ANCHORS = [0, 25, 50, 75, 100];
-  const dampen = (raw: number) => {
-    const anchor = ANCHORS.reduce((best, value) => (Math.abs(value - raw) < Math.abs(best - raw) ? value : best), 0);
-    const distance = Math.abs(raw - anchor);
-    if (distance <= 3) return anchor;
-    if (distance <= 12) return Math.round(anchor + (raw - anchor) * 0.55);
-    return Math.round(raw);
-  };
-  const settle = (raw: number) => {
-    const anchor = ANCHORS.reduce((best, value) => (Math.abs(value - raw) < Math.abs(best - raw) ? value : best), 0);
-    return Math.abs(raw - anchor) <= 6 ? anchor : Math.round(raw);
-  };
   const apiConfigured = Boolean(settings.visionApiUrl.trim());
   const mapProvider = mapProviderById(settings.mapProvider);
-
-  const toggleLiquidGlass = () => {
-    updateSettings(
-      { liquidGlass: !settings.liquidGlass },
-      { message: settings.liquidGlass ? '已关闭液态玻璃底边栏' : '已开启液态玻璃底边栏' },
-    );
-  };
 
   const toggleDarkMode = () => {
     updateSettings(
@@ -712,149 +688,10 @@ export default function SettingsScreen() {
       {/* 底栏色散原来的弹层已删除：它现在是一屏（见上面的 atOption('dispersion')），
           留着就是一份"看起来还在用"的死代码。 */}
 
-      <MdDialog
-        open={contourDialogOpen}
-        headline="等高线背景"
-        onClosed={() => setContourDialogOpen(false)}
-        actions={<md-text-button onClick={() => setContourDialogOpen(false)}>取消</md-text-button>}
-      >
-        整页单色底上叠一层地形等高线（工业风那套）。只画一条颜色（跟随主题的 on-surface），
-        卡片与对话框仍是各自的不透明表面：
-        <div className="col gap-8 mt-12">
-          {([
-            ['off', '关：纯色底'],
-            ['subtle', '细（默认）：线条克制，不抢内容'],
-            ['bold', '密：线条更多、更明显'],
-          ] as const).map(([value, label]) => (
-            <md-outlined-button
-              key={value}
-              onClick={() => {
-                setContourDialogOpen(false);
-                updateSettings(
-                  { contour: value },
-                  { message: value === 'off' ? '等高线背景：关' : value === 'bold' ? '等高线背景：密' : '等高线背景：细' },
-                );
-              }}
-            >
-              {settings.contour === value ? '✓ ' : ''}
-              {label}
-            </md-outlined-button>
-          ))}
-        </div>
-      </MdDialog>
 
-      <MdDialog
-        open={scatterDialogOpen}
-        headline="底栏散射"
-        onClosed={() => setScatterDialogOpen(false)}
-        actions={<md-text-button onClick={() => setScatterDialogOpen(false)}>取消</md-text-button>}
-      >
-        内容穿过底栏边界时被「散开」的程度。只作用于底边栏这一处：
-        <div className="col gap-8 mt-12">
-          {([
-            ['concise', '轻（默认）：图内约 2.4px 磨砂 + 底色全透明，折射看得最清楚'],
-            ['strong', '强：投射 v3.0.1（09-23 04:11）那版 —— 本体 18px 磨砂 + 底色 58%，更毛更实'],
-          ] as const).map(([value, label]) => (
-            <md-outlined-button
-              key={value}
-              onClick={() => {
-                setScatterDialogOpen(false);
-                updateSettings(
-                  { dockScatter: value },
-                  { message: value === 'strong' ? '底栏散射：强（v3.0.1 口径）' : '底栏散射：轻' },
-                );
-              }}
-            >
-              {settings.dockScatter === value ? '✓ ' : ''}
-              {label}
-            </md-outlined-button>
-          ))}
-        </div>
-      </MdDialog>
 
-      <MdDialog
-        open={warpDialogOpen}
-        headline="底栏扭曲"
-        onClosed={() => setWarpDialogOpen(false)}
-        actions={<md-text-button onClick={() => setWarpDialogOpen(false)}>取消</md-text-button>}
-      >
-        液态玻璃把背后的画面「掰弯」的幅度与范围。只作用于底边栏这一处：
-        <div className="col gap-8 mt-12">
-          {([
-            ['thick', '厚透镜（默认）：掰弯最明显，背景与文字被横向拉开'],
-            ['concise', '收窄：只留在边缘一线（改小过的那版，几乎看不出来）'],
-            ['off', '关：不做折射位移，只留边缘高光'],
-          ] as const).map(([value, label]) => (
-            <md-outlined-button
-              key={value}
-              onClick={() => {
-                setWarpDialogOpen(false);
-                updateSettings(
-                  { dockWarp: value },
-                  { message: `底栏扭曲：${value === 'thick' ? '厚透镜' : value === 'off' ? '关' : '收窄'}` },
-                );
-              }}
-            >
-              {settings.dockWarp === value ? '✓ ' : ''}
-              {label}
-            </md-outlined-button>
-          ))}
-        </div>
-      </MdDialog>
 
-      <MdDialog
-        open={perfDialogOpen}
-        headline="性能模式"
-        onClosed={() => setPerfDialogOpen(false)}
-        actions={<md-text-button onClick={() => setPerfDialogOpen(false)}>取消</md-text-button>}
-      >
-        同一个安装包内置两档，随时可切（Web 与安卓共用同一份构建，两端一致）：
-        <div className="col gap-8 mt-12">
-          {([
-            ['high', '高性能：玻璃模糊 + 折射 + 散射 + 流体拉伸 + 弹性过渡'],
-            ['auto', '自动（推荐）：掉帧时自动降级'],
-            ['low', '低性能：无滤镜、无流体拉伸、瞬时切换'],
-          ] as const).map(([value, label]) => (
-            <md-outlined-button
-              key={value}
-              onClick={() => {
-                setPerfDialogOpen(false);
-                updateSettings({ perfMode: value }, { message: `性能模式：${label.split('：')[0]}` });
-              }}
-            >
-              {settings.perfMode === value ? '✓ ' : ''}
-              {label}
-            </md-outlined-button>
-          ))}
-        </div>
-      </MdDialog>
 
-      <MdDialog
-        open={scaleDialogOpen}
-        headline="界面缩放"
-        onClosed={() => setScaleDialogOpen(false)}
-        actions={<md-text-button onClick={() => setScaleDialogOpen(false)}>取消</md-text-button>}
-      >
-        窄屏设备（例如 1080×2362 @3.5x ≈ 309×675dp）建议选「小」，元素不会挤在一起：
-        <div className="col gap-8 mt-12">
-          {([
-            ['small', '小：92%'],
-            ['normal', '标准：100%'],
-            ['large', '大：108%'],
-          ] as const).map(([value, label]) => (
-            <md-outlined-button
-              key={value}
-              onClick={() => {
-                setScaleDialogOpen(false);
-                updateSettings({ uiScale: value }, { message: `界面缩放：${label}` });
-              }}
-            >
-              {settings.uiScale === value ? '✓ ' : ''}
-              {label}
-            </md-outlined-button>
-          ))}
-        </div>
-      </MdDialog>
 
       <MdDialog
         open={leadDialogOpen}
