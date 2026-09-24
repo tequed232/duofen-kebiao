@@ -129,17 +129,6 @@ export function nativeGlassScroll(impulse: number): void {
   }
 }
 
-
-/** 同步原生 Dock 的选中项（0=首页 1=搜索 2=设置） */
-export function nativeDockActive(index: number): void {
-  const api = (window as unknown as { DuofenNative?: { dockActive?: (i: number) => void } }).DuofenNative;
-  try {
-    api?.dockActive?.(index);
-  } catch {
-    /* 忽略 */
-  }
-}
-
 export type HapticKind = 'wall' | 'select' | 'tick' | 'heavy';
 
 /** 同一帧里最多响一次：拖动时 applyFrame 每帧都可能命中边界，不去重会连成一片嗡嗡声 */

@@ -101,6 +101,11 @@ jobs:
           # 应用图标是否还与 docs/icon-source.jpg 同步（换原图后漏跑生成就会红 ——
           # 这是"桌面上图标还是旧的、却没有任何东西报错"的唯一防线）
           run_guard app-icons     node scripts/check-app-icons.mjs
+          # 已下线子系统的残留检查：原生 Dock 回滚后仍留下整类死代码 + 网页接口 +
+          #    CSS 变量（见 scripts/check-decommissioned.mjs 头部注释）。这类残留「看起来
+          #    还在工作」，编译不报错，只能靠守卫长期兜住。加这一条时按「先证明它能红」验过：
+          #    旧树（残留仍在）→ 报红；清理后 → 通过。
+          run_guard decommissioned node scripts/check-decommissioned.mjs
           # ④ 需要 dev server（它从源码 import TS，解析依赖 DOMParser）
           npm run dev -- --port 5173 --strictPort > /tmp/guard-report/dev.log 2>&1 &
           dev_pid=$!

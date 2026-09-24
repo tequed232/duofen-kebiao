@@ -105,6 +105,7 @@ pwsh -File scripts/verify-device.ps1   # 一键：安装 + 截图 + 点底栏三
     - Android 的原生 Dock 在真机上「可见但点击无反应」被停用，但 `injectInsets()` 仍在给网页写 `--native-dock = 74px`。网页会为一个**并不存在**的底栏让位，于是「回到今天」等悬浮按钮在安卓上凭空抬高 74px（与底栏的缝从 14px 变 88px）—— **网页版正常、只有安卓版错位**，最容易在浏览器里验证时漏掉。量化脚本：`build/check-native-dock-offset.cjs`。
     - 教材数据的 Kotlin 拷贝在「Web 是唯一基线」时被删掉，但生成它的脚本 `import-textbooks.mjs` 留了下来，只产出一个没人编译、也没被 gitignore 的文件。
     停用一个子系统时，请连着清掉**它的宿主注入、它的数据产物、生成它的脚本、以及文档里"我们决定用它"的记载**；否则留下一堆"看起来还在工作"的管道。
+    **2026-09-24 补充**：原生 Dock 停用后残留的一整套死代码（`NativeDock.kt` 死类、`dock` 死字段、`dockActive` 空桥、网页 `DuofenDock`/`nativeDockActive`、CSS 三处 `var(--native-dock,0px)`）已整类清掉，并新增守卫 `scripts/check-decommissioned.mjs`（已进 CI，双向验证：旧树全红 → 清完后通过），这类残留从此会被长期兜住。
 11. **同一个选择器在文件后面再写一遍，前面的规则会整条失效 —— 而编辑器不会告诉你**。
     `schedule.css` 里 `.m3e-dock-slider` 出现了 6 次，其中第 1021 行那条写的
     `background` 与 `box-shadow`（「选中胶囊上缘偏冷、下缘偏暖」那圈色散描边）
