@@ -1442,12 +1442,24 @@ button.credit-license:focus-visible {
   z-index: 20;
 }
 
-/* 主课表右下角的「回到今天」：拇指够得到的位置（顶栏最右边够不着） */
-.schedule-today-fab {
+/* 主课表右下角常驻按钮组：「导航课程」+「回到今天」，并排对称、间距 12px。
+   原来只有一个绝对定位的「回到今天」；两个按钮的文字长度不同，硬算 right 偏移迟早错位，
+   所以改成同一行 flex：间距与底对齐都由布局保证。 */
+.schedule-fab-row {
   position: absolute;
   right: 16px;
   bottom: calc(80px + 12px);
   z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.schedule-today-fab,
+.schedule-nav-fab {
+  position: static;
+  right: auto;
+  bottom: auto;
 }
 
 .textbook-action-bar {

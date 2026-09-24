@@ -136,6 +136,9 @@ jobs:
           # 色散在两种散射档下都必须看得见：量灰阶棋盘背后底栏的 |R−B| 边缘/中间带。
           # 这一条兜住的是"参数把效果压没"——滤链与 dataset 都在、静态检查全绿，只有像素能发现。
           APP_URL=http://127.0.0.1:5173/ run_guard dock-dispersion node scripts/check-dock-scatter-dispersion.mjs
+          # 主页「导航课程」：纯逻辑（正在上 > 今天下一节 > 顺延 7 天）+ 接线文案 + 真实渲染
+          #   （两个按钮同底边、间距 12px、固定时钟下弹层给出课名/节次/地点）
+          APP_URL=http://127.0.0.1:5173/ run_guard nav-course node scripts/check-nav-course.mjs
           kill "$dev_pid" 2>/dev/null || true
 
           # ⑤ 逐屏验收（19 步）：需要**生产构建 + preview server**。

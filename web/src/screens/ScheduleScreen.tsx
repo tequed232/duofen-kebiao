@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SectionHeader, TopAppBar, useScrolled } from '../components/layout';
-import { MdIcon, MdIconButton } from '../components/md';
+import { MdDialog, MdIcon, MdIconButton } from '../components/md';
 import { ConfirmDialog } from '../components/overlays';
 import {
   CourseDetailSheet,
@@ -59,6 +59,8 @@ import {
   termMonths,
   weekNumberFor,
   weekdayIndex,
+  nearestCourse,
+  type NearestCourse,
   type ScheduleCourse,
   type ScheduleData,
   type SchedulePeriod,
@@ -122,6 +124,12 @@ export default function ScheduleScreen() {
   const [dateOpen, setDateOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mapChooser, setMapChooser] = useState<{ address: string; course: ScheduleCourse } | null>(null);
+  /**
+   * 「导航课程」弹层。三态：
+   *   undefined = 没打开；null = 打开了但**一周内没有可导航的课**；对象 = 目标那节课。
+   * 之所以把"没找到"也做成被打开的状态：不能点了没反应 —— 得告诉作者为什么没得导航。
+   */
+  const [navTarget, setNavTarget] = useState<NearestCourse | null | undefined>(undefined);
   /* 系统日历：两条按钮（添加到系统日历 / 清除本 App 的日程）各配一个「修改范围」提示框 */
   const [calendarDialog, setCalendarDialog] = useState<'add' | 'remove' | null>(null);
   const [calendarInfo, setCalendarInfo] = useState<NativeCalendarStatus>({ permission: 'unknown', count: 0, calendar: '' });
@@ -174,8 +182,17 @@ export default function ScheduleScreen() {
     setDetailOpen(true);
   };
 
-  const openNavigation = (room: string, course: ScheduleCourse) => {
-    // 校名 + xx栋xx号：导航时给地图更完整的地址
+  /**
+   * 「导航课程」：先算**时间上离现在最近的那节课**，再弹层把"最近"的算法与目的地讲清楚。
+   * 用 `new Date()` 作为参考时刻（不用 selectedDate）：这个按钮的语义是"现在去哪"，
+   * 与当前翻到哪一天无关。
+   */
+  const openNavCourse = () => {
+    haptic('select');
+    setNavTarget(nearestCourse(schedule, new Date(), termStart) ?? null);
+  };
+
+  const openNavigation = (room: string, course: ScheduleCourse) => {    // 校名 + xx栋xx号：导航时给地图更完整的地址
     const address = formatAddress(room, settings.schoolName);
     const provider = mapProviderById(settings.mapProvider);
     if (provider) {
@@ -407,10 +424,63 @@ export default function ScheduleScreen() {
         </div>
       </div>
 
-      {/* 回到今天：右下角常驻，单手拇指够得到（原来在顶栏最右边，够不着） */}
-      <md-fab className="schedule-today-fab" variant="primary" label="回到今天" onClick={goToday}>
-        <MdIcon slot="icon" name="today" />
-      </md-fab>
+      {/* 右下角两个常驻按钮（对称并排）：左边「导航课程」= 去时间上离现在最近的那节课，
+          右边「回到今天」= 回到今天。单手拇指都够得到。 */}
+      <div className="schedule-fab-row">
+        <md-fab className="schedule-nav-fab" variant="tonal" label="导航课程" onClick={openNavCourse}>
+          <MdIcon slot="icon" name="near_me" />
+        </md-fab>
+        <md-fab className="schedule-today-fab" variant="primary" label="回到今天" onClick={goToday}>
+          <MdIcon slot="icon" name="today" />
+        </md-fab>
+      </div>
+
+      {/* 导航课程说明 + 确认：先把「最近」是怎么算的说清楚，再给出这一节的具体信息 */}
+      <MdDialog
+        open={navTarget !== undefined}
+        headline="导航课程"
+        onClosed={() => setNavTarget(undefined)}
+        actions={
+          <>
+            <md-text-button onClick={() => setNavTarget(undefined)}>取消</md-text-button>
+            <md-filled-button
+              onClick={() => {
+                const target = navTarget;
+                setNavTarget(undefined);
+                if (target) openNavigation(target.course.room, target.course);
+              }}
+            >
+              导航至 {navTarget?.course.room || '上课地点'}
+            </md-filled-button>
+          </>
+        }
+      >
+        {navTarget === null ? (
+          <>
+            依据当前课表，<strong>接下来一周都没有可导航的课</strong>了。
+            先把课表导入或翻到有课的那一周，再来点这里。
+          </>
+        ) : navTarget ? (
+          <>
+            带你去<strong>时间上离现在最近的那节课</strong>：正在上的那一节优先，否则是今天最早还没开始的一节；
+            今天没有了就顺延到接下来一周里的第一节。
+            <div className="col gap-4 mt-12">
+              <span className="md-title-small-emphasized">{navTarget.course.name}</span>
+              <span className="md-body-medium">
+                {navTarget.dayOffset === 0 ? '今天' : `${WEEKDAY_SHORT[weekdayIndex(navTarget.date)]}`} · {navTarget.period} · {navTarget.time}
+                {navTarget.inSession ? ' · 正在进行' : navTarget.minutesUntil > 0 && navTarget.dayOffset === 0 ? ` · ${navTarget.minutesUntil} 分钟后开始` : ''}
+              </span>
+              <span className="md-body-medium">
+                地点：{navTarget.course.room || '课表里没写教室'}
+                {settings.schoolName ? `（${settings.schoolName}）` : ''}
+              </span>
+              <span className="md-body-small muted">
+                导航时会用「教室 + 学校名称」拼成完整地址；学校名称与默认地图都在 设置 → 导航与学校 里改。
+              </span>
+            </div>
+          </>
+        ) : null}
+      </MdDialog>
 
       <CourseDetailSheet
         open={detailOpen}
