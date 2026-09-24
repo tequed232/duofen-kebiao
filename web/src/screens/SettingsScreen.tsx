@@ -158,7 +158,7 @@ export default function SettingsScreen() {
             {/* -------------------------------- 台词管理（通知栏桌宠的语料与播放设置） */}
             <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('phraseManager', {}, 'slide')}>
               <div slot="start" className="list-icon-badge">
-                <MdIcon name="chat_bubble" />
+                <MdIcon name="forum" />
               </div>
               <div slot="headline">台词管理</div>
               <div className="md-body-small muted" slot="supporting-text">

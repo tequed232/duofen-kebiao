@@ -14,7 +14,6 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "bolt": 0xea0b,
   "calendar_month": 0xebcc,
   "category": 0xe574,
-  "chat_bubble": 0xe0ca,
   "check": 0xe5ca,
   "check_circle": 0xe86c,
   "checklist": 0xe6b1,
