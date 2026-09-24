@@ -71,6 +71,21 @@ class MainActivity : ComponentActivity() {
         fileChooserCallback = null
     }
 
+    /**
+     * 日历权限（读 + 写）单独一个 launcher：与麦克风/通知那条分开，
+     * 这样"用户拒绝了日历权限"不会影响别的功能，回给网页的结果也更明确。
+     */
+    private val calendarPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { granted ->
+        val ok = granted.values.all { it }
+        webView.evaluateJavascript(
+            "window.__duofenCalendarPermission__ && window.__duofenCalendarPermission__('${if (ok) "granted" else "denied"}')",
+            null,
+        )
+        android.util.Log.d("DuofenCalendar", "permission result=$ok detail=$granted")
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -444,6 +459,37 @@ class MainActivity : ComponentActivity() {
         fun stopClassReminder() {
             LiveUpdates.clear(this@MainActivity)
         }
+
+        /* ---------------------------------------------------------- 系统日历 -- */
+        /* 课表 → 系统日历：状态 / 权限 / 写入 / 一键清除（见 CalendarExport.kt）。
+           这几个方法会读写 ContentProvider，**故意不在 UI 线程**跑 ——
+           @JavascriptInterface 的回调本来就在 JavaBridge 线程上，正好合适。 */
+
+        @JavascriptInterface
+        fun calendarStatus(): String = CalendarExport.status(this@MainActivity)
+
+        @JavascriptInterface
+        fun requestCalendarPermission() {
+            runOnUiThread {
+                val wanted = CalendarExport.PERMISSIONS.filter {
+                    ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                }
+                if (wanted.isEmpty()) {
+                    webView.evaluateJavascript(
+                        "window.__duofenCalendarPermission__ && window.__duofenCalendarPermission__('granted')",
+                        null,
+                    )
+                } else {
+                    calendarPermissionLauncher.launch(wanted.toTypedArray())
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun calendarImport(eventsJson: String): String = CalendarExport.import(this@MainActivity, eventsJson)
+
+        @JavascriptInterface
+        fun calendarRemoveAll(): String = CalendarExport.removeAll(this@MainActivity)
     }
 
     /** 应用已在前台时点通知里的动作：走同一套逻辑 */
