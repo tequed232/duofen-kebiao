@@ -47,7 +47,7 @@
 | # | 问题 | 处理 |
 | --- | --- | --- |
 | 9 | **素材授权待作者回复** | `docs/asset-permissions.md` 台账 + 每周提醒 workflow 已就绪；未获批前不引入任何第三方素材 |
-| 10 | 图标资产口径未定 | 已改纯矢量（零 PNG）；若提供自己的图标，`artwork/app-icon.png` 一键生成全密度 |
+| 10 | 图标资产口径未定 | **已定**（v2 期间一度改成纯矢量零 PNG，后来作者提供了自己的插画，又改回位图）：当前全套图标由 `docs/icon-source.jpg` 生成，口径单点在 `scripts/icon-targets.mjs`，`npm run icons:app` 重生成、`npm run check:app-icons` 守卫。`artwork/app-icon.png` 是**早期矢量方案的渲染稿**，与当前图标无关（README 里曾把它写成"图标原图"，已更正） |
 | 11 | 3 处遗留待确认 | ①「Gemini 第一章」具体指哪一项 ② MAA-Meow 的具体 UI 参考点 ③ 25 张图片上限是否需要可调 |
 
 ## 新版设计框架（自 `m3e-canvas.json` 提取）
