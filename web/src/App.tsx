@@ -12,6 +12,7 @@ import AboutScreen from './screens/AboutScreen';
 import TextbooksScreen from './screens/TextbooksScreen';
 import LicensesScreen from './screens/LicensesScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import PhraseManagerScreen from './screens/PhraseManagerScreen';
 import ApiEditScreen from './screens/ApiEditScreen';
 import BlankScreen from './screens/BlankScreen';
 
@@ -23,6 +24,7 @@ const SCREENS = {
   apiEdit: ApiEditScreen,
   textbookList: TextbooksScreen,
   licenses: LicensesScreen,
+  phraseManager: PhraseManagerScreen,
   settings: SettingsScreen,
 };
 
@@ -31,7 +33,9 @@ const SNACKBAR_BOTTOM = 96;
 
 /** 路由 → 标签：底栏的选中项由当前路由推导（唯一事实来源） */
 function tabForRoute(route: RouteName): 'schedule' | 'search' | 'settings' {
-  if (route === 'settings' || route === 'about' || route === 'licenses' || route === 'apiEdit') return 'settings';
+  if (route === 'settings' || route === 'about' || route === 'licenses' || route === 'apiEdit' || route === 'phraseManager') {
+    return 'settings';
+  }
   if (route === 'scheduleFilter') return 'search';
   return 'schedule';
 }
@@ -99,6 +103,11 @@ export default function App() {
       textbooks: () => {
         selectTab('schedule');
         push('textbookList', {}, 'slide');
+      },
+      /** 常驻通知里的「管理」按钮：跳到台词管理页（唯一允许跳进应用的入口） */
+      phrases: () => {
+        selectTab('settings');
+        push('phraseManager', {}, 'slide');
       },
     };
   }, [selectTab, push]);

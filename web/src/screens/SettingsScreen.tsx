@@ -140,6 +140,18 @@ export default function SettingsScreen() {
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
 
+            {/* -------------------------------- 台词管理（通知栏桌宠的语料与播放设置） */}
+            <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('phraseManager', {}, 'slide')}>
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="chat_bubble" />
+              </div>
+              <div slot="headline">台词管理</div>
+              <div className="md-body-small muted" slot="supporting-text">
+                通知栏桌宠：常驻状态条 + 预制语料（浏览、点选、收起都在通知栏里完成）
+              </div>
+              <MdIcon slot="end" name="chevron_right" />
+            </md-list-item>
+
             {/* ------------------------------- 性能模式：高性能 / 自动 / 低性能 */}
             <md-list-item type="button" className="rounded-middle" onClick={() => setPerfDialogOpen(true)}>
               <div slot="start" className="list-icon-badge">

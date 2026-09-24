@@ -49,6 +49,8 @@ class MainActivity : ComponentActivity() {
     private var confirmReceiver: android.content.BroadcastReceiver? = null
     /** 通知里的「课本」动作被点击：下次页面加载完成后跳到教材窗口 */
     private var pendingTextbooks = false
+    /** 常驻通知里的「管理」动作被点击：下次页面加载完成后跳到台词管理页 */
+    private var pendingPhrases = false
     private var pendingCourse: String? = null
     private var insetTopPx = 0
     private var insetBottomPx = 0
@@ -69,6 +71,21 @@ class MainActivity : ComponentActivity() {
         val data = result.data?.data
         fileChooserCallback?.onReceiveValue(if (data != null) arrayOf(data) else null)
         fileChooserCallback = null
+    }
+
+    /**
+     * 日历权限（读 + 写）单独一个 launcher：与麦克风/通知那条分开，
+     * 这样"用户拒绝了日历权限"不会影响别的功能，回给网页的结果也更明确。
+     */
+    private val calendarPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { granted ->
+        val ok = granted.values.all { it }
+        webView.evaluateJavascript(
+            "window.__duofenCalendarPermission__ && window.__duofenCalendarPermission__('${if (ok) "granted" else "denied"}')",
+            null,
+        )
+        android.util.Log.d("DuofenCalendar", "permission result=$ok detail=$granted")
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -106,6 +123,12 @@ class MainActivity : ComponentActivity() {
                             view.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.textbooks()", null)
                         }, 900)
                     }
+                    if (pendingPhrases) {
+                        pendingPhrases = false
+                        view.postDelayed({
+                            view.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.phrases()", null)
+                        }, 900)
+                    }
                 }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                     assetLoader.shouldInterceptRequest(request.url)
@@ -132,6 +155,10 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == LiveUpdates.ACTION_SHOW_TEXTBOOKS) {
             pendingTextbooks = true
             pendingCourse = intent.getStringExtra("course")
+        }
+        // 常驻通知里的「管理」动作：页面就绪后跳到台词管理页（唯一允许跳 Activity 的入口）
+        if (intent?.action == PhraseService.ACTION_MANAGE_PHRASES) {
+            pendingPhrases = true
         }
 
         // 【回滚】原生 Dock 在作者真机上不可用（可见但点击无反应），已停用：
@@ -444,6 +471,61 @@ class MainActivity : ComponentActivity() {
         fun stopClassReminder() {
             LiveUpdates.clear(this@MainActivity)
         }
+
+        /* ---------------------------------------------------------- 系统日历 -- */
+        /* 课表 → 系统日历：状态 / 权限 / 写入 / 一键清除（见 CalendarExport.kt）。
+           这几个方法会读写 ContentProvider，**故意不在 UI 线程**跑 ——
+           @JavascriptInterface 的回调本来就在 JavaBridge 线程上，正好合适。 */
+
+        @JavascriptInterface
+        fun calendarStatus(): String = CalendarExport.status(this@MainActivity)
+
+        @JavascriptInterface
+        fun requestCalendarPermission() {
+            runOnUiThread {
+                val wanted = CalendarExport.PERMISSIONS.filter {
+                    ContextCompat.checkSelfPermission(this@MainActivity, it) != PackageManager.PERMISSION_GRANTED
+                }
+                if (wanted.isEmpty()) {
+                    webView.evaluateJavascript(
+                        "window.__duofenCalendarPermission__ && window.__duofenCalendarPermission__('granted')",
+                        null,
+                    )
+                } else {
+                    calendarPermissionLauncher.launch(wanted.toTypedArray())
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun calendarImport(eventsJson: String): String = CalendarExport.import(this@MainActivity, eventsJson)
+
+        @JavascriptInterface
+        fun calendarRemoveAll(): String = CalendarExport.removeAll(this@MainActivity)
+
+        /* -------------------------------------------------------- 预制语料通知 -- */
+        /* 通知栏「桌宠」：常驻前台服务 + 语料浏览/点选/还原（见 PhraseService.kt）。
+           网页只管两件事：下发配置、告诉服务当前基础状态（空闲 / 导航中）。 */
+
+        @JavascriptInterface
+        fun startPhraseService() = PhraseService.start(this@MainActivity)
+
+        @JavascriptInterface
+        fun stopPhraseService() = PhraseService.stop(this@MainActivity)
+
+        @JavascriptInterface
+        fun phrasesConfig(json: String) = PhraseService.updateConfig(this@MainActivity, json)
+
+        @JavascriptInterface
+        fun phrasesStatus(): String = PhraseService.statusJson(this@MainActivity)
+
+        /** 「戳一下」也可以从网页触发（与通知栏那颗按钮走同一条路径） */
+        @JavascriptInterface
+        fun phrasePoke() = PhraseService.poke(this@MainActivity)
+
+        @JavascriptInterface
+        fun setPhraseBaseState(kind: String, destination: String) =
+            PhraseService.setBaseState(this@MainActivity, kind, destination)
     }
 
     /** 应用已在前台时点通知里的动作：走同一套逻辑 */
@@ -453,6 +535,11 @@ class MainActivity : ComponentActivity() {
         if (intent.action == LiveUpdates.ACTION_SHOW_TEXTBOOKS) {
             webView.postDelayed({
                 webView.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.textbooks()", null)
+            }, 600)
+        }
+        if (intent.action == PhraseService.ACTION_MANAGE_PHRASES) {
+            webView.postDelayed({
+                webView.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.phrases()", null)
             }, 600)
         }
     }

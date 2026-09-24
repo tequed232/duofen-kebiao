@@ -1,3 +1,4 @@
+import type { PhraseBaseState, PhraseConfig } from './phrases';
 /**
  * Android 原生桥（可选增强，不影响网页行为）。
  *
@@ -207,5 +208,184 @@ export function nativeStopClassReminder(): void {
     api?.stopClassReminder?.();
   } catch {
     /* 忽略 */
+  }
+}
+
+/* ---------------------------------------------------------------- 系统日历 -- */
+/* 课表 → 系统日历（仅 APK）。原生侧写 CalendarContract，网页版走下载 .ics。
+   原生方法的返回值都是 **JSON 字符串**：桥只能传基本类型，传对象会变成 "[object Object]"。 */
+
+interface DuofenCalendarBridge {
+  calendarStatus?: () => string;
+  requestCalendarPermission?: () => void;
+  calendarImport?: (eventsJson: string) => string;
+  calendarRemoveAll?: () => string;
+}
+
+function calendarBridge(): DuofenCalendarBridge | undefined {
+  return (window as unknown as { DuofenNative?: DuofenCalendarBridge }).DuofenNative;
+}
+
+/** 是否具备原生日历能力（网页版没有这套桥，按钮会退化成下载 .ics） */
+export function hasNativeCalendar(): boolean {
+  return typeof calendarBridge()?.calendarImport === 'function';
+}
+
+export interface NativeCalendarStatus {
+  permission: 'granted' | 'denied' | 'missing' | 'unknown';
+  /** 当前系统日历里由本 App 写入的日程条数 */
+  count: number;
+  /** 将要写入的日历名（用于「修改范围」提示框） */
+  calendar: string;
+}
+
+export interface NativeCalendarResult {
+  ok: boolean;
+  /** 成功写入 / 删除的条数 */
+  count: number;
+  error?: string;
+}
+
+function parseJson<T>(raw: string | undefined, fallback: T): T {
+  if (typeof raw !== 'string' || !raw) return fallback;
+  try {
+    return { ...fallback, ...(JSON.parse(raw) as object) } as T;
+  } catch {
+    return fallback;
+  }
+}
+
+export function nativeCalendarStatus(): NativeCalendarStatus {
+  const api = calendarBridge();
+  if (typeof api?.calendarStatus !== 'function') return { permission: 'unknown', count: 0, calendar: '' };
+  try {
+    return parseJson<NativeCalendarStatus>(api.calendarStatus(), { permission: 'unknown', count: 0, calendar: '' });
+  } catch {
+    return { permission: 'unknown', count: 0, calendar: '' };
+  }
+}
+
+/** 申请日历权限；结果由原生层回调到 window.__duofenCalendarPermission__ */
+export function nativeRequestCalendarPermission(handler: (granted: boolean) => void): boolean {
+  const api = calendarBridge();
+  if (typeof api?.requestCalendarPermission !== 'function') return false;
+  (window as unknown as { __duofenCalendarPermission__?: (result: string) => void }).__duofenCalendarPermission__ = (
+    result: string,
+  ) => handler(result === 'granted');
+  try {
+    api.requestCalendarPermission();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativeCalendarImport(eventsJson: string): NativeCalendarResult {
+  const api = calendarBridge();
+  if (typeof api?.calendarImport !== 'function') return { ok: false, count: 0, error: 'no-bridge' };
+  try {
+    return parseJson<NativeCalendarResult>(api.calendarImport(eventsJson), { ok: false, count: 0, error: 'empty' });
+  } catch (error) {
+    return { ok: false, count: 0, error: String(error) };
+  }
+}
+
+export function nativeCalendarRemoveAll(): NativeCalendarResult {
+  const api = calendarBridge();
+  if (typeof api?.calendarRemoveAll !== 'function') return { ok: false, count: 0, error: 'no-bridge' };
+  try {
+    return parseJson<NativeCalendarResult>(api.calendarRemoveAll(), { ok: false, count: 0, error: 'empty' });
+  } catch (error) {
+    return { ok: false, count: 0, error: String(error) };
+  }
+}
+
+/* ------------------------------------------------------ 预制语料常驻通知 -- */
+/* 通知栏「桌宠」：前台服务 + 常驻通知（渠道 m3expressive_phrase / id 1002）。
+   浏览、点选、翻页、收起全在通知栏完成；网页这边只管下发配置与基础状态。
+   浏览器（无桥）一律安全返回 false / null，与上面几节风格一致。 */
+
+interface DuofenPhraseBridge {
+  startPhraseService?: () => void;
+  stopPhraseService?: () => void;
+  phrasesConfig?: (json: string) => void;
+  phrasesStatus?: () => string;
+  phrasePoke?: () => void;
+  setPhraseBaseState?: (kind: string, destination: string) => void;
+}
+
+function phraseBridge(): DuofenPhraseBridge | undefined {
+  return (window as unknown as { DuofenNative?: DuofenPhraseBridge }).DuofenNative;
+}
+
+/** 是否具备原生常驻通知能力（浏览器里没有，设置页据此显示"仅安卓版"） */
+export function hasNativePhrases(): boolean {
+  return typeof phraseBridge()?.phrasesConfig === 'function';
+}
+
+export function nativeStartPhraseService(): boolean {
+  const api = phraseBridge();
+  if (typeof api?.startPhraseService !== 'function') return false;
+  try {
+    api.startPhraseService();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativeStopPhraseService(): boolean {
+  const api = phraseBridge();
+  if (typeof api?.stopPhraseService !== 'function') return false;
+  try {
+    api.stopPhraseService();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativePhrasesConfig(config: PhraseConfig): boolean {
+  const api = phraseBridge();
+  if (typeof api?.phrasesConfig !== 'function') return false;
+  try {
+    api.phrasesConfig(JSON.stringify(config));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function nativePhrasesStatus(): Record<string, unknown> | null {
+  const api = phraseBridge();
+  if (typeof api?.phrasesStatus !== 'function') return null;
+  try {
+    return JSON.parse(api.phrasesStatus()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** 从网页触发一次「戳一下」（与通知栏那颗按钮同一条路径） */
+export function nativePhrasePoke(): boolean {
+  const api = phraseBridge();
+  if (typeof api?.phrasePoke !== 'function') return false;
+  try {
+    api.phrasePoke();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 告诉原生服务当前基础状态：空闲 / 导航中（语料展示完要还原回它） */
+export function nativeSetPhraseBaseState(state: PhraseBaseState): boolean {
+  const api = phraseBridge();
+  if (typeof api?.setPhraseBaseState !== 'function') return false;
+  try {
+    api.setPhraseBaseState(state.kind, state.kind === 'navigating' ? state.destination : '');
+    return true;
+  } catch {
+    return false;
   }
 }

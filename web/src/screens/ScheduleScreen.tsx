@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { SectionHeader, TopAppBar, useScrolled } from '../components/layout';
 import { MdIcon, MdIconButton } from '../components/md';
+import { ConfirmDialog } from '../components/overlays';
 import {
   CourseDetailSheet,
   DayTimeline,
@@ -22,9 +23,25 @@ import {
 } from '../components/schedule';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
-import { haptic } from '../lib/native';
+import {
+  haptic,
+  hasNativeCalendar,
+  nativeCalendarImport,
+  nativeCalendarRemoveAll,
+  nativeCalendarStatus,
+  nativeRequestCalendarPermission,
+  type NativeCalendarStatus,
+} from '../lib/native';
 import { LENS_PLAYER } from '../lib/lens';
 import { useLens } from '../lib/useLens';
+import {
+  CALENDAR_MARKER,
+  buildCalendarEvents,
+  calendarScope,
+  eventsToIcs,
+  icsFileName,
+  type CalendarEventDraft,
+} from '../lib/calendarExport';
 import {
   WEEKDAY_LONG,
   WEEKDAY_SHORT,
@@ -66,6 +83,22 @@ function initialSelection(schedule: ScheduleData, week: number, today: Date): Da
   return today;
 }
 
+/** 网页版（没有原生桥）的等价实现：下载 .ics，用户双击即可导入系统日历 */
+function downloadIcs(name: string, text: string): void {
+  const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/** 「修改范围」提示框里的日期：2026年1月5日 */
+const formatDay = (date: Date) => `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+
 export default function ScheduleScreen() {
   const nav = useNav();
   const {
@@ -89,6 +122,10 @@ export default function ScheduleScreen() {
   const [dateOpen, setDateOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mapChooser, setMapChooser] = useState<{ address: string; course: ScheduleCourse } | null>(null);
+  /* 系统日历：两条按钮（添加到系统日历 / 清除本 App 的日程）各配一个「修改范围」提示框 */
+  const [calendarDialog, setCalendarDialog] = useState<'add' | 'remove' | null>(null);
+  const [calendarInfo, setCalendarInfo] = useState<NativeCalendarStatus>({ permission: 'unknown', count: 0, calendar: '' });
+  const [calendarBusy, setCalendarBusy] = useState(false);
   const { ref: scrollRef, scrolled } = useScrolled<HTMLDivElement>();
   /* 顶部两个小组件也用液态玻璃透镜（参数与底栏同一套） */
   const dateLensRef = useRef<HTMLButtonElement>(null);
@@ -170,6 +207,94 @@ export default function ScheduleScreen() {
   const todayCount = coursesOfDay(schedule, weekdayIndex(today), weekNumberFor(today, termStart)).length;
   const monthLabel = `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月`;
 
+  /* -------------------------------------- 课表 → 系统日历（两个按钮 + 范围提示） -- */
+  const calendarEvents = useMemo(() => buildCalendarEvents(schedule, { termStart }), [schedule, termStart]);
+  const calendarRange = useMemo(() => calendarScope(calendarEvents), [calendarEvents]);
+  /** APK 里才有原生日历桥；网页版退化成下载 .ics */
+  const nativeCalendar = hasNativeCalendar();
+
+  const openCalendarDialog = (mode: 'add' | 'remove') => {
+    haptic('select');
+    setCalendarInfo(nativeCalendar ? nativeCalendarStatus() : { permission: 'unknown', count: 0, calendar: '' });
+    setCalendarDialog(mode);
+  };
+
+  const runCalendarImport = () => {
+    setCalendarBusy(true);
+    const payload = calendarEvents.map(({ title, location, description, start, end, repeat }) => ({
+      title,
+      location,
+      description,
+      start,
+      end,
+      repeat,
+    }));
+    const result = nativeCalendarImport(JSON.stringify(payload));
+    setCalendarBusy(false);
+    setCalendarDialog(null);
+    setCalendarInfo(nativeCalendarStatus());
+    showSnackbar({
+      message: result.ok
+        ? `已向系统日历写入 ${result.count} 条日程（每条都带「${CALENDAR_MARKER}」标记）`
+        : `写入失败：${result.error ?? '未知原因'}`,
+      duration: 5000,
+    });
+  };
+
+  const confirmCalendarAdd = () => {
+    if (!nativeCalendar) {
+      const name = icsFileName(schedule);
+      downloadIcs(name, eventsToIcs(calendarEvents, { calendarName: `${schedule.term} 课表` }));
+      setCalendarDialog(null);
+      showSnackbar({ message: `已下载 ${name}：双击它即可导入系统日历`, duration: 5000 });
+      return;
+    }
+    if (calendarInfo.permission === 'granted') {
+      runCalendarImport();
+      return;
+    }
+    /* 作者要求：先申请「日程项修改」权限，拿到之后再写日历 */
+    setCalendarBusy(true);
+    const started = nativeRequestCalendarPermission((granted) => {
+      setCalendarBusy(false);
+      if (granted) {
+        setCalendarInfo(nativeCalendarStatus());
+        runCalendarImport();
+        return;
+      }
+      setCalendarDialog(null);
+      showSnackbar({
+        message: '没有日历权限，写不进去。可在系统设置 → 应用 → 多分课表 → 权限里打开「日历」后重试',
+        duration: 6000,
+      });
+    });
+    if (!started) {
+      setCalendarBusy(false);
+      setCalendarDialog(null);
+      showSnackbar({ message: '当前环境不支持写入系统日历' });
+    }
+  };
+
+  const confirmCalendarRemove = () => {
+    if (!nativeCalendar) {
+      setCalendarDialog(null);
+      showSnackbar({
+        message: `网页版没有系统日历接口：请到手机日历里搜索「${CALENDAR_MARKER}」手动删除`,
+        duration: 6000,
+      });
+      return;
+    }
+    setCalendarBusy(true);
+    const result = nativeCalendarRemoveAll();
+    setCalendarBusy(false);
+    setCalendarDialog(null);
+    setCalendarInfo(nativeCalendarStatus());
+    showSnackbar({
+      message: result.ok ? `已清除 ${result.count} 条由本 App 写入的日程` : `清除失败：${result.error ?? '未知原因'}`,
+      duration: 5000,
+    });
+  };
+
   return (
     <>
       <div className="screen-inner">
@@ -194,7 +319,22 @@ export default function ScheduleScreen() {
               </span>
               <span className="flex-1" />
               <span>{scheduleImported ? '已导入课表' : '内置课表'}</span>
-              <span>{schedule.owner}</span>
+            </div>
+
+            {/* 系统日历：大按钮 = 一键写入日程，小按钮 = 一键清除本 App 写的日程 */}
+            <div className="schedule-calendar-row">
+              <md-filled-button className="btn-s" onClick={() => openCalendarDialog('add')}>
+                <MdIcon slot="icon" name="event_available" />
+                添加到系统日程
+              </md-filled-button>
+              <MdIconButton
+                className="schedule-calendar-clear"
+                icon="event_busy"
+                label="清除本 App 写入的日程"
+                onClick={() => openCalendarDialog('remove')}
+              />
+              <span className="flex-1" />
+              <span className="md-label-small muted schedule-owner">{schedule.owner}</span>
             </div>
 
             <div className="row gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
@@ -323,6 +463,68 @@ export default function ScheduleScreen() {
             });
           }
         }}
+      />
+
+      {/* 「修改范围」提示框：动手之前先把会发生什么写清楚（作者要求） */}
+      <ConfirmDialog
+        open={calendarDialog === 'add'}
+        destructive={false}
+        headline="添加到系统日历"
+        confirmLabel={calendarBusy ? '处理中…' : nativeCalendar ? '确认添加' : '下载 .ics'}
+        onCancel={() => setCalendarDialog(null)}
+        onConfirm={confirmCalendarAdd}
+        body={
+          <div className="calendar-scope">
+            <p className="calendar-scope-lead">
+              将向系统日历写入 <b>{calendarRange.count}</b> 条日程（{calendarRange.courses} 门课）
+            </p>
+            <ul className="calendar-scope-list">
+              <li>
+                覆盖日期：
+                {calendarRange.first ? formatDay(calendarRange.first) : '—'} –{' '}
+                {calendarRange.last ? formatDay(calendarRange.last) : '—'}
+              </li>
+              <li>标题为课程名、地点写教室，正文含节次 / 时间 / 老师 / 班级</li>
+              <li>
+                每条都带「{CALENDAR_MARKER}」标记 —— 以后可用旁边的按钮一键清除
+              </li>
+              {nativeCalendar ? (
+                <li>
+                  写入目标：{calendarInfo.calendar || '系统默认日历'}
+                  {calendarInfo.permission === 'granted' ? '（已授权）' : '（首次会先申请日历权限）'}
+                </li>
+              ) : (
+                <li>网页版没有原生日历接口，将改为下载 .ics 文件，双击它即可导入</li>
+              )}
+            </ul>
+            <p className="calendar-scope-note">只往系统日历里加日程：不改课表本身，也不动你已有的其它日程。</p>
+          </div>
+        }
+      />
+
+      <ConfirmDialog
+        open={calendarDialog === 'remove'}
+        headline="清除本 App 的日程"
+        confirmLabel={calendarBusy ? '处理中…' : nativeCalendar ? '确认清除' : '知道了'}
+        onCancel={() => setCalendarDialog(null)}
+        onConfirm={confirmCalendarRemove}
+        body={
+          <div className="calendar-scope">
+            {nativeCalendar ? (
+              <p className="calendar-scope-lead">
+                将从系统日历删除 <b>{calendarInfo.count}</b> 条由「多分课表」写入的日程
+              </p>
+            ) : (
+              <p className="calendar-scope-lead">网页版无法直接操作系统日历</p>
+            )}
+            <ul className="calendar-scope-list">
+              <li>
+                只删带「{CALENDAR_MARKER}」标记的那些，你手动添加的日程不受影响
+              </li>
+              <li>删除不可撤销；需要的话可以再点一次「添加到系统日程」重新写入</li>
+            </ul>
+          </div>
+        }
       />
     </>
   );

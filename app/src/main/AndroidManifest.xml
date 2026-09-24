@@ -1,10 +1,18 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+ 通知权限：Android 16 Live Updates / ColorOS 流体云 状态卡片需要 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Google 官方的硬性要求：成为实况通知（Live Update）必须声明这个非运行时权限 -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- 课表 → 系统日历：主页「添加到系统日程」要写日程，「清除本 App 的日程」要读回来删掉。
+         两个都是运行时权限，由 CalendarExport.PERMISSIONS 在用到时申请（作者要求先申请再写）。 -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- 预制语料常驻通知（通知栏桌宠）：只有前台服务的通知才常驻、不可滑动清除。
+         Android 14+ 还要求声明具体类型，通用「常驻状态条」用 specialUse。 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
 
     <application
@@ -25,5 +33,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- 预制语料常驻通知的前台服务（渠道 m3expressive_phrase / 通知 id 1002，
+             与实况通知的 m3expressive_live_updates / 1001 严格分开） -->
+        <service
+            android:name=".PhraseService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="常驻状态通知：在通知栏里翻看/点选用户自己的学习提醒语料" />
+        </service>
     </application>
 </manifest>
