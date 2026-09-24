@@ -7,8 +7,9 @@
  */
 import { createHash } from 'node:crypto';
 import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { inflateRawSync } from 'node:zlib';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 
 const apk = process.argv[2] ?? 'app/build/outputs/apk/release/app-release.apk';
 const distDir = 'dist';
@@ -29,36 +30,56 @@ async function walk(dir, base = '') {
   return out;
 }
 
-/** 用 .NET 直接读 APK 里 assets/www 的文件（不解压到磁盘） */
-const ps = `
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [System.IO.Compression.ZipFile]::OpenRead('${path.resolve(apk)}')
-$sha = [System.Security.Cryptography.SHA256]::Create()
-foreach ($entry in $zip.Entries) {
-  if ($entry.FullName -like 'assets/www/*' -and $entry.Length -gt 0) {
-    $stream = $entry.Open()
-    $memory = New-Object System.IO.MemoryStream
-    $stream.CopyTo($memory)
-    $stream.Close()
-    $hash = [System.BitConverter]::ToString($sha.ComputeHash($memory.ToArray())).Replace('-', '').ToLower().Substring(0, 16)
-    $rel = $entry.FullName.Substring('assets/www/'.Length)
-    Write-Output "$rel $hash"
+/** 直接读 APK（zip）里 `assets/www/` 下的文件哈希 —— **纯 Node，不依赖 PowerShell**。
+ *
+ * 为什么不能用 PowerShell：这条守卫现在跑在 CI 的 **ubuntu** runner 上，
+ * 而它原先 `execFileSync('powershell', …)` —— 那里根本没有 `powershell`，
+ * 于是接进 CI 的第一次运行就 ENOENT 失败（Android build #200 的第 10 步）。
+ * 自己解析 zip 的中央目录即可跨平台，也不需要把 58 MB 的 ocr 解压到磁盘。
+ *
+ * 只支持 ZIP64 以外的常规条目 —— 本仓库的 APK 约 25 MB / 180 余条目，远在限制之内；
+ * 真遇到 ZIP64 会明确报出来而不是给出错误结论。
+ */
+function readApkHashes(apkPath) {
+  const buf = readFileSync(apkPath);
+  const EOCD = 0x06054b50;
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= 0 && i > buf.length - 22 - 0xffff; i -= 1) {
+    if (buf.readUInt32LE(i) === EOCD) {
+      eocd = i;
+      break;
+    }
   }
-}
-$zip.Dispose()
-`;
+  if (eocd < 0) throw new Error('不是有效的 zip：找不到 EOCD');
+  const count = buf.readUInt16LE(eocd + 10);
+  const cdOffset = buf.readUInt32LE(eocd + 16);
+  if (count === 0xffff || cdOffset === 0xffffffff) throw new Error('该 zip 使用了 ZIP64，本脚本未支持');
 
-const raw = execFileSync('powershell', ['-NoProfile', '-Command', ps], { encoding: 'utf8' });
-const apkFiles = new Map(
-  raw
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const index = line.lastIndexOf(' ');
-      return [line.slice(0, index), line.slice(index + 1)];
-    }),
-);
+  const out = new Map();
+  let p = cdOffset;
+  for (let i = 0; i < count; i += 1) {
+    if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error(`中央目录第 ${i} 项签名不对`);
+    const method = buf.readUInt16LE(p + 10);
+    const compSize = buf.readUInt32LE(p + 20);
+    const nameLen = buf.readUInt16LE(p + 28);
+    const extraLen = buf.readUInt16LE(p + 30);
+    const commentLen = buf.readUInt16LE(p + 32);
+    const localOffset = buf.readUInt32LE(p + 42);
+    const name = buf.toString('utf8', p + 46, p + 46 + nameLen);
+    p += 46 + nameLen + extraLen + commentLen;
+
+    if (!name.startsWith('assets/www/')) continue;
+    if (buf.readUInt32LE(localOffset) !== 0x04034b50) throw new Error(`${name}: 本地头签名不对`);
+    const lNameLen = buf.readUInt16LE(localOffset + 26);
+    const lExtraLen = buf.readUInt16LE(localOffset + 28);
+    const start = localOffset + 30 + lNameLen + lExtraLen;
+    const data = buf.subarray(start, start + compSize);
+    // 0 = stored，8 = deflate；安卓打包用 deflate
+    const content = method === 0 ? data : inflateRawSync(data);
+    out.set(name.slice('assets/www/'.length), short(content));
+  }
+  return out;
+}
 
 /**
  * APK 里**有意**比网页产物多出来的那部分：打进安装包的本地识别资源。
@@ -74,6 +95,7 @@ const apkFiles = new Map(
  */
 const APK_ONLY_PREFIX = 'ocr/';
 
+const apkFiles = readApkHashes(apk);
 const distFiles = await walk(distDir);
 const missing = [...distFiles.keys()].filter((key) => !apkFiles.has(key));
 const extrasRaw = [...apkFiles.keys()].filter((key) => !distFiles.has(key));
