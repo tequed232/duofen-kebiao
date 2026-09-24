@@ -166,8 +166,8 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | `check-about-credits.mjs` | 关于页名片墙版式（每行一张、头像在左、按钮齐全、无溢出） |
 | `github-release.mjs` | 发布：规范命名上传、归档到私有仓库、只保留最近 5 条 |
 | `collect-licenses.mjs` | 汇总依赖许可 → 设置页「开源相关」与 README 清单 |
-| `import-textbooks.mjs` `rtf-dump.mjs` | 教材数据导入、RTF 解析 |
-| `serve-dist.mjs` | 本地起静态服务器预览 `dist/` |
+| `rtf-dump.mjs` | 把教务导出的 RTF 课表转成纯文本，便于检查表格结构 |
+| `serve-dist.mjs` | 本地起静态服务器预览 `dist/`（默认 4174，`check-about-credits.mjs` 也对着它跑） |
 
 ### `docs/` —— 文档与凭据
 
