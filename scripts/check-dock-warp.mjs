@@ -57,7 +57,11 @@ check('设置页有「底栏扭曲」条目', /底栏扭曲/.test(screen), '设�
 for (const value of ['thick', 'concise', 'off']) {
   check(`设置页弹层里有 ${value} 选项`, new RegExp(`\\['${value}'`).test(screen), '弹层缺这一档');
 }
-check('设置页弹层的选项与 setting 联动', /settings\.dockWarp === value/.test(screen), '选项没有回显当前档位');
+check(
+  '设置页弹层的选项与 setting 联动',
+  /settings\[activeOption\.field\] === value/.test(screen) || /settings\.dockWarp === value/.test(screen),
+  '选项没有回显当前档位',
+);
 
 console.log('\n=== 二、厚透镜那组数值真的"更厚更狠"（对齐 6aeae6d）===');
 const thick = blockOf('DOCK_WARP_THICK');
