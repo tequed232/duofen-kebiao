@@ -27,6 +27,7 @@ export type RouteName =
   | 'apiEdit'
   | 'textbookList'
   | 'licenses'
+  | 'phraseManager'
   | 'blank';
 
 export interface RouteEntry {
