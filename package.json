@@ -1,11 +1,12 @@
 {
   "name": "duofen-kebiao",
   "private": true,
-  "version": "3.5.3",
+  "version": "3.5.4",
   "type": "module",
   "description": "多分课表：Material 3 Expressive 风格的课表应用（四日课表 / 教材识别 / 上课提醒）",
   "scripts": {
     "icons": "node scripts/subset-icons.mjs",
+    "icons:app": "node scripts/make-icons.mjs",
     "setup:ocr": "node scripts/setup-ocr.mjs",
     "dev": "vite",
     "build": "node scripts/subset-icons.mjs && node scripts/check-icons.mjs && vite build",
@@ -17,6 +18,7 @@
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",
+    "check:app-icons": "node scripts/check-app-icons.mjs",
     "apk:parity": "node scripts/check-apk-parity.mjs",
     "preview": "vite preview --port 4173",
     "verify": "node scripts/verify.mjs"

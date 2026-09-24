@@ -1,14 +1,14 @@
 # 项目当前状态
 
 > 这份文件的目的：把会话里的关键状态**固化到仓库**，这样即使清空对话上下文、或换人接手，也不会丢信息。
-> 最后更新：v3.5.3（开源署名补齐）。同批还修好了三条长期假装有覆盖的坏守卫
-> （`apk:parity` / `check-import-e2e` / `verify.mjs`），并把 `verify` 与 `licenses` 也接进了 CI。
+> 最后更新：v3.5.4（新图标 + 底栏色散）。同批把最后一处"没有 CI 覆盖"的守卫补齐了
+> （`apk:parity` 现在随 Android 构建跑，且不再依赖 PowerShell），并新增了应用图标守卫。
 
 ## 当前版本与入口
 
 | 项 | 值 |
 | --- | --- |
-| 版本 | `APP_VERSION = 'v3.5.3'`（`versionCode 30503` / `versionName 3.5.3`） |
+| 版本 | `APP_VERSION = 'v3.5.4'`（`versionCode 30504` / `versionName 3.5.4`） |
 | 发布页 | https://github.com/tequed232/duofen-kebiao/releases/latest （**只展示最近 5 条**；安装包只作为 Release 附件，已从仓库与 Pages 剔除） |
 | 历史版本 | https://github.com/tequed232/duofen-kebiao-releases （**private** 归档仓库，保存所有历史成品） |
 | 网页版 | https://tequed232.github.io/duofen-kebiao/ |
@@ -32,6 +32,7 @@
 | 本地缓存课表 | 已完成 | `web/src/lib/scheduleCache.ts`：导入自动留快照（≤3 份），可一键恢复 |
 | 教材窗口 | 已完成 | 多选删除（可回档）+ 快捷添加 FAB |
 | 开源清单 | 已完成 | `scripts/collect-licenses.mjs` → 设置页「开源相关」+ README 分类表 |
+| 应用图标 | 已完成（v3.5.4 换新） | 作者 2026-09-24 提供的 **DLSS 超分 2048×2048** 原图（`docs/icon-source.jpg`）→ 19 张（安卓 5 档密度 × 方形/圆形/前景 2/3 安全区 + 网页 4 张）。口径单点在 `scripts/icon-targets.mjs`，生成 `npm run icons:app`，守卫 `npm run check:app-icons`（已进 CI，逐像素核对） |
 | 贡献者名片墙 | 已接入应用 | 「关于 → 致谢 · 名片墙」：作者 1×3（跨三列）+ 其余按三列排（最后一行不满时最后一张跨列补满）；真头像（GitHub / B 站公开头像，已登记 `docs/asset-permissions.md`）+ 姓名首字兜底；平台剪影（Remix Icon）+ CC 许可标记；数据源 `web/src/lib/meta.ts` 的 `CREDITS`；宽屏设计稿 `preview/credits.html` |
 | 致谢 / 致歉声明 | 已更新 | 删除 README 与关于页的「致歉声明」；名单同步到 README、`CONTRIBUTORS.md`、应用名片墙三处 |
 | 仓库卫生 | 已加固 | 历史提交过的 8 个 `*.apk` 已全部 `git rm --cached` 剔除（现在 `git ls-files` 里没有任何 `.apk`）；`.gitignore` 忽略 `*.apk/*.aab/*.zip`；`scripts/check-repo-hygiene.mjs` + `.github/workflows/repo-hygiene.yml` 在推送/PR 上拦截（已做反向验证：塞进 APK 即 CI 红）；APK 只作为 Release 附件，命名统一为 `duofen-kebiao-<版本>.apk` —— **`enhance.apk` 这类「始终最新」的别名已废弃**（见 `scripts/github-release.mjs` 头部注释，短链改用 release 直链） |
@@ -68,11 +69,16 @@
 
 ```bash
 npm run build                 # 网页构建（输出 dist/）
+npm run icons:app             # 换了 docs/icon-source.jpg 之后：重生成全套应用图标（19 张）
+npm run check:app-icons       # 图标守卫：与「按原图现算一遍」逐像素比对（已进 CI）
 npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈希比对；ocr/ 按设计只进 APK，不算不一致
 npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）
 node scripts/check-imports.mjs     # 导入自检（防「用了没导入」导致白屏）
 node scripts/check-secrets.mjs     # 密钥扫描
 node scripts/verify.mjs            # 逐屏验收（19 步）；需先 npm run build && npm run preview
+node build/check-dock-dispersion.cjs   # 底栏色散：灰阶棋盘量「边缘有没有色散、中间有没有」
+node build/check-dock.cjs              # 底栏跟手与配色（6 项）
+node build/check-dock-tap.cjs          # 点按是不是「移过去」而不是闪现（4 项）
 ./gradlew assembleRelease          # 打 APK（产物在 app/build/，不进仓库）
 ```
 
@@ -99,3 +105,17 @@ pwsh -File scripts/verify-device.ps1   # 一键：安装 + 截图 + 点底栏三
     - Android 的原生 Dock 在真机上「可见但点击无反应」被停用，但 `injectInsets()` 仍在给网页写 `--native-dock = 74px`。网页会为一个**并不存在**的底栏让位，于是「回到今天」等悬浮按钮在安卓上凭空抬高 74px（与底栏的缝从 14px 变 88px）—— **网页版正常、只有安卓版错位**，最容易在浏览器里验证时漏掉。量化脚本：`build/check-native-dock-offset.cjs`。
     - 教材数据的 Kotlin 拷贝在「Web 是唯一基线」时被删掉，但生成它的脚本 `import-textbooks.mjs` 留了下来，只产出一个没人编译、也没被 gitignore 的文件。
     停用一个子系统时，请连着清掉**它的宿主注入、它的数据产物、生成它的脚本、以及文档里"我们决定用它"的记载**；否则留下一堆"看起来还在工作"的管道。
+11. **同一个选择器在文件后面再写一遍，前面的规则会整条失效 —— 而编辑器不会告诉你**。
+    `schedule.css` 里 `.m3e-dock-slider` 出现了 6 次，其中第 1021 行那条写的
+    `background` 与 `box-shadow`（「选中胶囊上缘偏冷、下缘偏暖」那圈色散描边）
+    被第 1186 行那条同选择器**整条覆盖**，从来没渲染过 —— 作者看到的现象就是
+    「液态玻璃的色散被删没了」，而代码里明明写着。改这类文件前先
+    `grep -n '<选择器>'` 数一遍出现次数；能合并的就合并（这次是把色散描边并入最后那条）。
+    同一处还叠了第二个更小的坑：`box-shadow` 三条里前两条几何完全重合（`inset 0 1px 0` ×2），
+    白色那条把 22% 的冷色压在同一像素上冲淡掉了 —— **同几何的多层阴影等于只画了最上面那条**。
+12. **"生成物"要有一个单点口径**。图标这类一次性生成、之后没人再看的资产，
+    最怕"生成的"和"校验的"各写一套参数：换原图之后两边一起错、谁都不报红。
+    这次把口径抽到 `scripts/icon-targets.mjs`，`make-icons.mjs` 与 `check-app-icons.mjs`
+    共用同一份渲染配方，守卫再去比对"仓库里躺着的 == 现按原图生成的"。
+    阈值也是量出来的：旧图标与现算结果**均值只差 5.75/255**（大片平坦深色底把均值摊薄了），
+    单看均值会漏；主判据改成"相差超过 8 的像素占比"（旧 15.9%~47.9% vs 新 0%）才抓得住。

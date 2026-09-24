@@ -879,7 +879,7 @@ html[data-perf='low'] .screen {
   pointer-events: none;
   z-index: 0;
   opacity: calc(0.35 + var(--dock-scroll, 0) * 0.35);
-  filter: var(--lg-map-url, url(#m3e-dock-refraction));
+  filter: var(--lg-map-url, url(#liquid-glass-refraction));
   /* 散射字体的特性：底栏边缘那一圈做**更重的背景模糊**（本体只 12px），
      于是穿过底栏的列表文字在边上被"散开"、中间仍读得清 —— 真实玻璃的散射就是这样分布。
      遮罩是透镜生成的 rim 图（窄窄一圈弧面），所以重模糊不会铺满整块。
@@ -1021,16 +1021,11 @@ html[data-perf='low'] .m3e-dock-slider {
 .m3e-dock-slider {
   /* 同心圆角：外层 34px − 内边距 6px */
   border-radius: 28px;
-  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 94%, transparent);
-  /* 色散：只留**选中胶囊边缘 1px 内的一丝**（作者要求：苹果的页签栏几乎不做 RGB 分离，
-     色散极克制；要么只留选中框边缘那一丝，要么换成轻微折射/高光）。
-     这里不做三通道位移 —— 那既是不自然彩边的来源，也是逐帧重采样→闪烁的来源，
-     改成胶囊上缘偏冷、下缘偏暖各 1px 的极窄描边：模拟真实玻璃把光掰开的那点分离，
-     纯合成层，零采样成本，也不会抖。 */
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #ffffff 30%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #8ec8ff 22%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, #ffb98a 18%, transparent);
+  /* 注意：这个块**晚于**它被更下面的同名规则整条覆盖 —— background 与 box-shadow
+     都被 1186 行那条 `.m3e-dock-slider` 覆掉（同优先级、源码更靠后）。
+     「选中胶囊上缘偏冷、下缘偏暖」那圈色散原来就写在这里，于是**从来没渲染过** ——
+     这就是作者看到「色散被删没了」的直接原因（真正的原因见 1186 行的注释）。
+     色散描边现在挪到 1186 那条里；这里只留真正生效的同心圆角。 */
 }
 
 .m3e-dock-tab {
@@ -1191,7 +1186,15 @@ html[data-perf='low'] .m3e-dock {
     );
   /* 散射：色块外圈靠阴影柔光表达（原来这里挂 filter: url(#m3e-dock-scatter)，
      但那个滤镜在页面里根本不存在 —— 引用不存在的滤镜会让元素整个不渲染，已删除） */
+  /* 色散描边必须写在**这一条**（同一选择器的最后一条规则）里：
+     上面 1021 行那条也写了 box-shadow，但会被这里整条覆盖 ——
+     作者那句「液态玻璃的色散怎么被删没了」，一半原因就是那圈冷暖描边写在了被覆盖的地方，
+     从来没渲染过。另一半是三条阴影里前两条几何完全重合（`inset 0 1px 0` ×2），
+     白色那条把 22% 的冷色压在同一像素上冲淡掉了。
+     现在：上缘偏冷、下缘偏暖各 1.5px 叠在最上层，原来那条白色高光原样保留在下面。 */
   box-shadow:
+    inset 0 1.5px 0 color-mix(in srgb, #8ec8ff 46%, transparent),
+    inset 0 -1.5px 0 color-mix(in srgb, #ffb98a 40%, transparent),
     inset 0 1px 0 color-mix(in srgb, #ffffff 42%, transparent),
     0 2px 10px color-mix(in srgb, var(--md-sys-color-secondary) 26%, transparent);
 }
