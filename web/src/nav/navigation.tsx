@@ -23,6 +23,7 @@ export type RouteName =
   | 'schedule'
   | 'scheduleFilter'
   | 'settings'
+  | 'settingsSection'
   | 'about'
   | 'apiEdit'
   | 'textbookList'

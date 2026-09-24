@@ -11,13 +11,31 @@ import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdDialog, MdIcon, MdIconButton, MdSlider, MdSwitch, MdTextField } from '../components/md';
 import { MapChooserDialog } from '../components/schedule';
 import { useAppState } from '../state/AppState';
-import { useNav } from '../nav/navigation';
+import { useNav, useRouteParams } from '../nav/navigation';
 import { mapProviderById } from '../lib/schedule';
 import { isNativeShell, haptic, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib/native';
 import { probeOcrAssets, type OcrAssetStatus } from '../lib/ocrStatus';
 
 export default function SettingsScreen() {
   const nav = useNav();
+  /**
+   * Clash Verge 式结构：设置首页只放**分类入口**，点进去是独立屏。
+   * 两类屏复用同一个组件，靠路由参数 `section` 区分 —— 好处是所有弹层状态、OCR 探测、
+   * 写入逻辑都只有一份，不会出现"首页改了、子屏忘了改"的漂移。
+   *   section === ''            → 入口列表（首页）
+   *   section === 'appearance'  → 外观子屏（只显示外观那一段，其余用 display:none 收起）
+   */
+  const section = useRouteParams().section ?? '';
+  const atHub = section === '';
+  const show = (id: string) => section === id;
+  const SECTION_TITLES: Record<string, string> = {
+    appearance: '外观',
+    notify: '实时通知',
+    safearea: '屏幕安全区',
+    nav: '导航与学校',
+    ocr: '图像识别与资源',
+    about: '关于',
+  };
   const { settings, updateSettings, seed, dynamicColor, schedule, showSnackbar } = useAppState();
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
@@ -89,13 +107,48 @@ export default function SettingsScreen() {
   return (
     <>
       <div className="screen-inner">
-        <TopAppBar title="设置" />
+        <TopAppBar title={atHub ? '设置' : SECTION_TITLES[section] ?? '设置'} onBack={atHub ? undefined : () => nav.pop()} />
 
         <div className="screen-content">
           <div ref={listRef}>
 
-            <SectionHeader icon="palette" title="外观" />
-            <div className="list-group">
+            {/* ------------------------------ 设置首页：只有分类入口，点进去才是选项 ------ */}
+            {atHub ? (
+              <div className="list-group">
+                {(
+                  [
+                    ['appearance', 'palette', '外观', `${settings.darkMode ? '深色' : '浅色'} · 缩放 ${settings.uiScale === 'small' ? '小' : settings.uiScale === 'large' ? '大' : '标准'} · 色散 ${settings.dispersion} · 扭曲 ${settings.dockWarp}`],
+                    ['notify', 'notifications_active', '实时通知', settings.classReminder ? `上课提醒已开（提前 ${settings.classReminderLead} 分钟）· 台词管理` : '上课提醒已关 · 台词管理'],
+                    ['safearea', 'aspect_ratio', '屏幕安全区', `上端 ${settings.insetTop < 0 ? '自动' : `${settings.insetTop}dp`} · 下端 ${settings.insetBottom < 0 ? '自动' : `${settings.insetBottom}dp`}`],
+                    ['nav', 'map', '导航与学校', `${mapProvider ? mapProvider.label : '未设置地图'} · ${settings.schoolName || '未填学校名称'}`],
+                    ['ocr', 'image_search', '图像识别与资源', `本地识别${ocrStatus?.ready ? '就绪' : ocrStatus ? '缺资源' : '检查中'} · 联网取资源${settings.localOcrCdn ? '允许' : '禁止'}`],
+                    ['about', 'info', '关于', '应用信息 · 开源相关 · 动态取色'],
+                  ] as const
+                ).map(([id, icon, title, summary], index, all) => (
+                  <md-list-item
+                    key={id}
+                    type="button"
+                    className={index === 0 ? 'rounded-outer-top' : index === all.length - 1 ? 'rounded-outer-bottom' : 'rounded-middle'}
+                    onClick={() => {
+                      haptic('tick');
+                      nav.push('settingsSection', { section: id }, 'slide');
+                    }}
+                  >
+                    <div slot="start" className="list-icon-badge">
+                      <MdIcon name={icon} />
+                    </div>
+                    <div slot="headline">{title}</div>
+                    <div className="md-body-small muted" slot="supporting-text">
+                      {summary}
+                    </div>
+                    <MdIcon slot="end" name="chevron_right" />
+                  </md-list-item>
+                ))}
+              </div>
+            ) : null}
+
+            {show('appearance') ? <SectionHeader icon="palette" title="外观" /> : null}
+            <div className="list-group" style={show('appearance') ? undefined : { display: 'none' }}>
               {/* ------------------------------------------------ 1 深色模式 */}
               <md-list-item type="text" className="rounded-outer-top">
                 <div slot="start" className="list-icon-badge">
@@ -199,8 +252,8 @@ export default function SettingsScreen() {
               </md-list-item>
             </div>
 
-            <SectionHeader icon="notifications_active" title="实时通知" />
-            <div className="list-group">
+            {show('notify') ? <SectionHeader icon="notifications_active" title="实时通知" /> : null}
+            <div className="list-group" style={show('notify') ? undefined : { display: 'none' }}>
               {/* -------------------------------------- 上课提醒（灵动岛 / 流体云） */}
               <md-list-item type="text" className="rounded-outer-top">
                 <div slot="start" className="list-icon-badge">
@@ -261,8 +314,8 @@ export default function SettingsScreen() {
               </div>
             </div>
 
-            <SectionHeader icon="aspect_ratio" title="屏幕安全区" />
-            <div className="list-group">
+            {show('safearea') ? <SectionHeader icon="aspect_ratio" title="屏幕安全区" /> : null}
+            <div className="list-group" style={show('safearea') ? undefined : { display: 'none' }}>
               {/* ------------------------- 安全区：上下端各一个滑块，自由调节 */}
               <md-list-item type="text" className="rounded-outer-top">
                 <div slot="start" className="list-icon-badge">
@@ -343,8 +396,8 @@ export default function SettingsScreen() {
               </div>
             </div>
 
-            <SectionHeader icon="map" title="导航与学校" />
-            <div className="list-group">
+            {show('nav') ? <SectionHeader icon="map" title="导航与学校" /> : null}
+            <div className="list-group" style={show('nav') ? undefined : { display: 'none' }}>
               {/* -------------------------------------- 2 默认跳转地图 */}
               <md-list-item type="button" className="rounded-outer-top" onClick={() => setMapDialogOpen(true)}>
                 <div slot="start" className="list-icon-badge">
@@ -376,8 +429,8 @@ export default function SettingsScreen() {
               </md-list-item>
             </div>
 
-            <SectionHeader icon="image_search" title="图像识别与资源" />
-            <div className="list-group">
+            {show('ocr') ? <SectionHeader icon="image_search" title="图像识别与资源" /> : null}
+            <div className="list-group" style={show('ocr') ? undefined : { display: 'none' }}>
               {/* -------------------------------------- 本地识别资源状态 + CDN 开关 */}
               <md-list-item type="text" className="rounded-outer-top">
                 <div slot="start" className="list-icon-badge">
@@ -457,8 +510,8 @@ export default function SettingsScreen() {
               </md-list-item>
             </div>
 
-            <SectionHeader icon="info" title="关于" />
-            <div className="list-group">
+            {show('about') ? <SectionHeader icon="info" title="关于" /> : null}
+            <div className="list-group" style={show('about') ? undefined : { display: 'none' }}>
               {/* ------------------------------------------------ 8 关于本软件 */}
               <md-list-item
                 type="button"
@@ -484,8 +537,8 @@ export default function SettingsScreen() {
             </div>
           </div>
 
-          <div className="mt-16">
-            <SectionHeader icon="palette" title="动态取色" />
+          <div className="mt-16" style={show('about') ? undefined : { display: 'none' }}>
+            {show('about') ? <SectionHeader icon="palette" title="动态取色" /> : null}
             <div className="col gap-8">
               <div className="row gap-8">
                 <MdIcon name="colorize" size={18} />

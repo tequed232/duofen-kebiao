@@ -27,6 +27,10 @@ const SCREENS = {
   licenses: LicensesScreen,
   phraseManager: PhraseManagerScreen,
   settings: SettingsScreen,
+  /* 设置页的**分类子屏**（Clash Verge 式：首页只放入口，点进去是独立屏）。
+     与首页复用同一个组件，靠路由参数 `section` 决定渲染哪一类 —— 这样所有弹层状态、
+     OCR 探测、更新逻辑都只有一份，不会出现"两套设置页各改一半"的漂移。 */
+  settingsSection: SettingsScreen,
 };
 
 /** 底边栏是常驻单例（见 PersistentDock），所以屏幕内容统一给它留出高度 */
@@ -34,7 +38,7 @@ const SNACKBAR_BOTTOM = 96;
 
 /** 路由 → 标签：底栏的选中项由当前路由推导（唯一事实来源） */
 function tabForRoute(route: RouteName): 'schedule' | 'search' | 'settings' {
-  if (route === 'settings' || route === 'about' || route === 'licenses' || route === 'apiEdit' || route === 'phraseManager') {
+  if (route === 'settings' || route === 'settingsSection' || route === 'about' || route === 'licenses' || route === 'apiEdit' || route === 'phraseManager') {
     return 'settings';
   }
   if (route === 'scheduleFilter') return 'search';

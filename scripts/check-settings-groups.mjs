@@ -218,5 +218,25 @@ check(
   '缺少 `.list-control-row > .md-body-small { min-width: 0 }`，文字不会换行',
 );
 
+console.log('\n=== 设置首页只放「分类入口」（Clash Verge 式）===');
+/**
+ * 作者 2026-09-25 的要求：照着 Clash Verge 的设置界面改 —— 首页只放**入口**，
+ * 点进去才是那一类的设置屏；滑块这类控件只许存在于它自己的屏里。
+ * 静态部分钉两件事：① 六个入口与 `show('<id>')` 的门是一一对应的（漏一个就是"点进去空白"）；
+ * ② 入口必须通过路由推 `settingsSection` 子屏，而不是在原地展开。
+ */
+const HUB_IDS = ['appearance', 'notify', 'safearea', 'nav', 'ocr', 'about'];
+const missingGate = HUB_IDS.filter((id) => !new RegExp(`show\\('${id}'\\)`).test(source));
+check(`六个分类都有对应的子屏门（show('id')）`, missingGate.length === 0, `缺少：${missingGate.join('、')}`);
+check('入口通过 settingsSection 路由跳子屏', /nav\.push\('settingsSection',\s*\{\s*section:\s*id\s*\}/.test(source), '没有推子屏路由');
+const hubIds = [...source.matchAll(/\['(appearance|notify|safearea|nav|ocr|about)',\s*'([a-z_]+)',\s*'([^']+)'/g)].map((m) => m[1]);
+check(
+  `入口表就是那六类（实际 ${hubIds.join('、') || '(空)'}）`,
+  HUB_IDS.every((id) => hubIds.includes(id)) && hubIds.length === HUB_IDS.length,
+  '入口与分类对不上',
+);
+check('子屏标题表覆盖六个分类', HUB_IDS.every((id) => new RegExp(`${id}:\\s*'`).test(source)), 'SECTION_TITLES 缺项');
+check('子屏顶栏有返回（点了能回去）', /onBack=\{atHub \? undefined : \(\) => nav\.pop\(\)\}/.test(source), '子屏没有返回按钮');
+
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);
