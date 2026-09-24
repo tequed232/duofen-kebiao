@@ -150,8 +150,10 @@ export default function App() {
   return (
     <div className="stage">
       <div className={['phone', entering ? 'entering' : ''].join(' ').trim()}>
-        {(settings.contour ?? 'subtle') !== 'off' ? <ContourBackground intensity={settings.contour ?? 'subtle'} /> : null}
-        <NavHost screens={SCREENS} />
+        <NavHost
+          screens={SCREENS}
+          background={(settings.contour ?? 'subtle') !== 'off' ? <ContourBackground intensity={settings.contour ?? 'subtle'} /> : null}
+        />
       {/* 常驻底栏：整个应用只渲染一份，位于屏幕栈之外 ——
           从根本上避免"切页导致底栏卸载/捕获残留/动画位移"造成的点击失效与重复跳转 */}
       <PersistentDock />

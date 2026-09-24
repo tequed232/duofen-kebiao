@@ -531,9 +531,11 @@ html[data-perf='low'] .glass-nav-slider {
 }
 
 /* ==================== 单色等高线背景（作者要求：模仿《终末地》） ====================
-   层级：`.contour-layer` 是 `.phone` 的第一个孩子，绝对定位铺满、位于屏幕（`.screen`）之下；
-   开启时把 `.screen` 自己的底色让出来（否则它是不透明的 surface，等高线根本看不见）。
-   卡片、对话框、底栏仍是各自的不透明表面 —— 只有"页面底"变透明。 */
+   层级：`.contour-layer` 是**每一屏（`.screen`）的第一个孩子** —— 在本屏底色之上、内容之下。
+   为什么不做成 `.phone` 里的全局层：那样就得把 `.screen` 的底色设成透明，
+   而导航栈会把上一屏**留在 DOM 里**（保状态），一透明就会残留上一屏的内容
+   （实测「从主页切到搜索/设置会看到主页内容」就是这个原因）。
+   屏幕保持不透明，装饰只在本屏内部铺 —— 卡片、对话框、底栏照旧是各自的不透明表面。 */
 .contour-layer {
   position: absolute;
   inset: 0;
@@ -545,13 +547,9 @@ html[data-perf='low'] .glass-nav-slider {
   color: var(--md-sys-color-on-surface);
 }
 
-html[data-contour='subtle'] .screen,
-html[data-contour='bold'] .screen {
-  background: transparent;
-}
-
-/* 屏幕上仍是"不透明表面"的那些容器保持不动：内容卡片照旧 */
-html[data-contour='subtle'] .phone,
-html[data-contour='bold'] .phone {
-  background: var(--md-sys-color-surface);
+/* 内容层压到底纹之上（`.screen-content` 本来就是 relative，这里把整块内容提上来，稳妥） */
+html[data-contour='subtle'] .screen > .screen-inner,
+html[data-contour='bold'] .screen > .screen-inner {
+  position: relative;
+  z-index: 1;
 }

@@ -30,14 +30,25 @@ const css = await readFile('web/src/theme/base.css', 'utf8');
 const screen = await readFile('web/src/screens/SettingsScreen.tsx', 'utf8');
 const contourSrc = await readFile('web/src/lib/contour.ts', 'utf8');
 
+const navSrc = await readFile('web/src/nav/navigation.tsx', 'utf8');
+
 check("设置项存在（contour: 'off' | 'subtle' | 'bold'）", /contour:\s*'off'\s*\|\s*'subtle'\s*\|\s*'bold'/.test(types));
 check("默认值是 subtle", /contour:\s*'subtle'/.test(types));
 check('写到 <html data-contour>', app.includes('dataset.contour'));
-check('App 里真的渲染了等高线层', app.includes('<ContourBackground'));
+check('App 把底纹交给 NavHost（`background=`）', app.includes('background={'));
+check('NavHost 把底纹渲染在**每一屏内部**', navSrc.includes('{background}'));
 check('CSS 有 .contour-layer 图层', css.includes('.contour-layer'));
+/* 回归断言：屏幕**必须**不透明。曾经的实现是"全局层 + 把 .screen 背景设成透明"，
+   而导航栈会把上一屏留在 DOM 里（保状态）→ 一透明就残留上一屏内容
+   （作者实测：从主页切到搜索/设置能看到主页内容）。这条就是那个 bug 的看门狗。 */
 check(
-  '开启时让出 .screen 底色（否则被不透明 surface 挡住）',
-  /html\[data-contour='subtle'\]\s*\.screen[\s\S]{0,120}background:\s*transparent/.test(css),
+  '屏幕保持不透明（透明会残留上一屏内容 —— 实测过的回归）',
+  !/html\[data-contour[\s\S]{0,200}?\.screen\s*\{[^}]*background:\s*transparent/.test(css),
+  '又把 .screen 设成透明了：导航栈里上一屏会透出来',
+);
+check(
+  '内容层压在底纹之上（screen-inner 提到 z-index 1）',
+  /html\[data-contour[\s\S]{0,240}?screen-inner[\s\S]{0,160}?z-index:\s*1/.test(css),
 );
 check('设置页有入口', screen.includes('等高线背景'));
 check('生成器**零依赖**（不 import 任何东西）', !/^\s*import\s/m.test(contourSrc), 'contour.ts 出现了 import —— 引库要同步许可台账');

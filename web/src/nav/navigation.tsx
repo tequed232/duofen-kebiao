@@ -310,8 +310,22 @@ const NavRenderContext = createContext<{
   peeking: null,
 });
 
-/** Renders every screen of the stack as a layer inside the phone frame. */
-export function NavHost({ screens }: { screens: Record<RouteName, ComponentType> }) {
+/**
+ * Renders every screen of the stack as a layer inside the phone frame.
+ *
+ * `background` 是可选的**每屏底纹**（等高线那类装饰）：作为每一屏的第一个孩子渲染，
+ * 于是它在本屏自己的底色之上、内容之下。
+ * 为什么不放在 `.phone` 里当全局层：那样必须把 `.screen` 的底色设成透明，
+ * 而导航栈会把上一屏**留在 DOM 里**（保状态），透明之后上一屏的内容就透出来了 ——
+ * 实测「从主页切到搜索/设置会残留主页内容」就是这个原因。
+ */
+export function NavHost({
+  screens,
+  background,
+}: {
+  screens: Record<RouteName, ComponentType>;
+  background?: ReactNode;
+}) {
   const { stack } = useNav();
   const { enteringKey, exiting, peeking } = useContext(NavRenderContext);
   // The exiting entry keeps its React key so the component instance (scroll
@@ -323,6 +337,7 @@ export function NavHost({ screens }: { screens: Record<RouteName, ComponentType>
       {/* 可预测式返回的预览层：上一屏垫在当前屏下面，按手势进度从中间放大 */}
       {peeking ? (
         <div key={`peek-${peeking.key}`} className="screen peek" aria-hidden="true" style={{ pointerEvents: 'none' }}>
+          {background}
           {(() => {
             const Peek = screens[peeking.route];
             return <Peek />;
@@ -343,6 +358,7 @@ export function NavHost({ screens }: { screens: Record<RouteName, ComponentType>
             aria-hidden={!isTop}
             style={{ pointerEvents: isTop && !isExiting ? 'auto' : 'none' }}
           >
+            {background}
             <Screen />
           </div>
         );
