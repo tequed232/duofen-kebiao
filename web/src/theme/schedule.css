@@ -42,6 +42,61 @@
   color: var(--md-sys-color-on-surface-variant);
 }
 
+/* 系统日历那一行：大按钮 = 添加到系统日程，小按钮 = 清除本 App 写入的日程。
+   署名（schedule.owner）挪到这一行右侧 —— 它在 meta 行会和周次信息抢位置、把行撑成两行。 */
+.schedule-calendar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.schedule-calendar-row .schedule-owner {
+  text-align: right;
+  line-height: 1.3;
+  opacity: 0.85;
+}
+
+/* 小按钮：清除本 App 的日程。用 error 色，让它一眼能看出是"删除" */
+.schedule-calendar-clear {
+  --md-icon-button-icon-color: var(--md-sys-color-error);
+  flex: 0 0 auto;
+}
+
+/* 「修改范围」提示框里的正文：列表 + 结论，宁可写清楚也别让用户点完才知道改了什么 */
+.calendar-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calendar-scope-lead {
+  margin: 0;
+  font: var(--md-sys-typescale-body-medium);
+  color: var(--md-sys-color-on-surface);
+}
+
+.calendar-scope-lead b {
+  font-size: 1.15em;
+  color: var(--md-sys-color-primary);
+}
+
+.calendar-scope-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: var(--md-sys-typescale-body-small);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.calendar-scope-note {
+  margin: 0;
+  font: var(--md-sys-typescale-body-small);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
 .week-stepper {
   display: flex;
   align-items: center;
