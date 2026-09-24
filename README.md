@@ -78,7 +78,7 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | `.github/` | CI 与仓库自动化 | 工作流按用途一个文件一件事 |
 | `legacy/` | 上一版单文件页面，仅供备查 | 不再改动 |
 | `preview/` | 宽屏设计稿（非应用运行时资源） | 只放设计稿，不参与构建 |
-| `artwork/` | 图标原图（1024×1024） | 重新生成全密度图标用，不参与运行时 |
+| `artwork/` | 早期矢量图标的渲染稿（`app-icon.png`，1024×1024，**不是**当前图标原图） | 设计留档，不参与运行时；当前图标原图见 `docs/icon-source.jpg` |
 | `gradle/` | Gradle Wrapper | 仅 Wrapper，勿手工改 |
 
 ### 根目录文件
@@ -157,6 +157,7 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | 文件 | 功能 |
 | --- | --- |
 | `subset-icons.mjs` `check-icons.mjs` | 按需裁剪 Material Symbols 子集；构建时校验无图标漏出 |
+| `make-icons.mjs` `icon-targets.mjs` `check-app-icons.mjs` | **应用图标**：从 `docs/icon-source.jpg` 生成全套（安卓 5 档密度 × 3 种 + 网页 4 张，口径在 `icon-targets.mjs`）；守卫逐像素核对"仓库里的图标 == 现按原图生成的"，`npm run icons:app` / `npm run check:app-icons` |
 | `verify.mjs` `verify-device.ps1` `visual-parity.mjs` | Playwright 真机视口全流程验收与截图、真机核对、视觉比对 |
 | `check-imports.mjs` | 防「用了没导入」导致白屏 |
 | `check-secrets.mjs` `check-web-security.mjs` | 密钥 / 凭据扫描；注入面、密钥进 URL、明文端点守卫 |
@@ -178,7 +179,7 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | `writing-style.md` | 协作与表达约定 |
 | `asset-permissions.md` | **素材授权台账**：任何第三方素材进仓库前必须在此留记录 |
 | `permissions/` | 授权凭据（聊天原文截图） |
-| `icon-source.jpg` | 图标原图（896×896，留档） |
+| `icon-source.jpg` | 图标原图（2048×2048，留档）。当前全套图标的唯一来源，改它之后要跑 `npm run icons:app` 重新生成 |
 | `security-review.md` | 本地安全审查报告与整改 |
 | `v2-refactor.md` | v2 重构记录 |
 | `coolapk-glass.md` | 酷安液态玻璃实现分析（自研参考） |
@@ -209,18 +210,20 @@ npm run dev        # 开发模式 (http://127.0.0.1:5173)
 npm run build      # 生成 Material Symbols 子集 -> 校验图标 -> vite build
 npm run preview    # 预览 production build (http://127.0.0.1:4173)
 npm run verify     # 用 Chromium 真机视口跑一遍全流程并截图（screenshots/）
+npm run icons:app  # 换了 docs/icon-source.jpg 之后：重生成全套应用图标（19 张）
 ```
 
-**交付物：`dist/`**（62 个文件、约 1.76 MB）—— 纯静态站点，任意静态服务器直接托管即可。
+**交付物：`dist/`**（67 个文件、约 2.15 MB）—— 纯静态站点，任意静态服务器直接托管即可。
 
 ```
 dist/
   index.html                       入口（相对路径引用，可放在任意子目录）
-  assets/index-*.js  425 KB        React + Material Web + 业务代码
-  assets/bootstrap-*.js 292 KB     Material Web 组件
-  assets/index-*.css  75 KB        设计令牌 + 组件样式
-  assets/material-symbols-rounded-subset-*.woff2  77 KB   Material Symbols Rounded（71 个图标子集）
+  assets/index-*.js  426 KB        React + Material Web + 业务代码
+  assets/bootstrap-*.js 391 KB     Material Web 组件
+  assets/index-*.css  111 KB       设计令牌 + 组件样式
+  assets/material-symbols-rounded-subset-*.woff2  122 KB  Material Symbols Rounded（子集）
   assets/roboto-*-normal-*.woff2                  Roboto 400/500/700（本地字体，离线可用）
+  icon-192.png / icon-512.png / apple-touch-icon.png      应用图标（与 APK 同一张原图生成）
 ```
 
 ## 构建与发布

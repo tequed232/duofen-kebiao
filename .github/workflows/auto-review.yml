@@ -98,6 +98,9 @@ jobs:
           # ③ 需要 Playwright 的 chromium（上一节已装）：量引擎对 backdrop-filter 的真实行为，
           #    不依赖任何服务，跑在 dev server 之前
           run_guard backdrop-refraction node scripts/check-backdrop-refraction.mjs
+          # 应用图标是否还与 docs/icon-source.jpg 同步（换原图后漏跑生成就会红 ——
+          # 这是"桌面上图标还是旧的、却没有任何东西报错"的唯一防线）
+          run_guard app-icons     node scripts/check-app-icons.mjs
           # ④ 需要 dev server（它从源码 import TS，解析依赖 DOMParser）
           npm run dev -- --port 5173 --strictPort > /tmp/guard-report/dev.log 2>&1 &
           dev_pid=$!

@@ -86,11 +86,13 @@ APK 直链（按版本）：
 | `scripts/check-imports.mjs` | 导入自检（防「用了没导入」导致白屏） |
 | `scripts/check-import-e2e.mjs` | **真实导入界面**端到端：把「模型回复」整段粘进去，验课表是否真进来、坏输入是否被拒（需 dev server，已进 auto-review 守卫清单） |
 | `scripts/check-backdrop-refraction.mjs` | 实测引擎是否认 `backdrop-filter: url(#svg)` 与 `feImage` 位移图（带 `blur` 对照，防假阴性；已进 CI） |
+| `scripts/check-apk-parity.mjs` | APK 内嵌资源与 `dist/` 逐文件哈希比对（纯 Node 自己解 zip，**不依赖 PowerShell**，2026-09-24 起在 Android 构建里跑） |
+| `scripts/make-icons.mjs` `scripts/icon-targets.mjs` `scripts/check-app-icons.mjs` | 从 `docs/icon-source.jpg` 生成全套应用图标；守卫逐像素核对"仓库里的图标 == 现按原图生成的"（已进 CI） |
 | `scripts/collect-licenses.mjs` | 生成分类开源清单（README + 设置页数据） |
 
 ## 当前状态与已知问题（给审阅者的上下文）
 
-- **版本**：v3.5.3（`versionCode 30503` / `versionName 3.5.3`），Release + Pages + APK 均已更新
+- **版本**：v3.5.4（`versionCode 30504` / `versionName 3.5.4`）
 - **APK 与网页同源**：APK 内嵌的 Web 构建与网页版共用同一份 `dist/`（bundle 哈希一致，`npm run apk:parity` 逐文件核对）
 - **已实现**：自绘 M3E 底栏（位置即结果 + 拖拽跟手 + 液态玻璃折射）、纯左右平移过渡、`resetTo` 无竞态标签切换、HTML 课表导入算法、本地缓存课表、教材多选删除、班级隐私清理、关于页致谢、**本地封面识别**（OpenCV 预处理 → Tesseract 中文 OCR → ISBN 校验 → 内置库匹配，识别资源打进 APK）
 - **真机复验（已完成）**：realme GT7 / Android 16 / arm64-v8a 上覆盖安装 v3.0.2 → v3.5.2 数据保留；设置页「本地识别」报告 `资源就绪：图像处理库 / 识别引擎 / 中文模型`；合成封面走完「选图识别封面」链路，识别出 `ISBN 9787040396638`
@@ -109,10 +111,11 @@ APK 直链（按版本）：
 | `PROJECT-STATE.md` | **已更正**：版本、待办按可自主完成/需真机/需作者决策三类重排、「易踩的坑」补 9-10 条 |
 | `context-links.md`（本文） | **已更正**：版本、`backdrop-filter: url()` 那条错误记录、脚本表补 3 条守卫 |
 | `v2-refactor.md` | **已更正**：`backdrop-filter` 前提被实测推翻；原生 Dock 一节补「**已回滚**」横幅（原写成已实施，会误导） |
-| `liquidglass-ultimate.md` | 已更新：补浏览器侧实测结果表与产物路径；真机项显式标为未验证 |
+| `liquidglass-ultimate.md` | **已更正**：色散一节重写 —— 记下「删了又加回来」这次判断失手（错的是分布不是色散），并补 `check-dock-dispersion.cjs` 的实测数与调参表 |
+| `asset-permissions.md` | **已更正**：图标那条改成 2026-09-24 作者提供的 **DLSS 超分 2048×2048** 原图，并写明生成口径与守卫；`schedule-hero.jpg` 那条记录的正是「作者要求下架」，不是失效路径 |
 | `live-activity-plan.md` | 无需改：「通知能发、缺的是到点叫醒」与真机现象一致 |
 | `dynamic-island.md` | 无需改：`LiveUpdates.kt` 确实实现了 `ProgressStyle` / `setRequestPromotedOngoing` / `setShortCriticalText`（后者因 compileSdk 35 走反射），清单亦已声明 `POST_PROMOTED_NOTIFICATIONS` |
-| `asset-permissions.md` | 无需改：`schedule-hero.jpg` 那条记录的正是「作者要求下架」，不是失效路径；正文 `<在这里贴台账链接>` 位于代码块内，是给作者复制使用的私信模板 |
+| `asset-permissions.md` | 见上（图标来源一栏已随 2026-09-24 的新原图更正） |
 | `security-review.md` | 无需改：有明确审查日期与基准版本（2026-09-23 / v3.0.2），属历史件 |
 | `promo-brief.md` | 无需改：开头即写明「版本基准 v3.0.2（2026-09-23）」 |
 | `coolapk-glass.md` | 无需改：素材参考（酷安 APK 拆解），不含当前状态断言 |

@@ -33,6 +33,18 @@ export interface LensParams {
   backdropMax?: number;
   /** backdrop 位移相对贴图 scale 的系数。默认 0.22；底栏更小 */
   backdropFactor?: number;
+  /**
+   * **色散（chromatic dispersion）**：R / B 两个通道的位移量与 G 相差多少 px
+   * （量在位移最大的边缘处，即 R 比 G 多走 fringe/2、B 比 G 少走 fringe/2）。
+   *
+   * 为什么用「位移量之差」而不是固定偏移：色差与位移成正比，位移为 0 的中心区
+   * 自动没有色差 —— 于是色散**天然只出现在被掰弯的那圈边缘带**上，
+   * 而不是整块玻璃糊一层彩边。这正是真玻璃（以及苹果那套）的样子，
+   * 也是作者最早那条反馈「上下色散太多太突兀」的根治办法。
+   *
+   * 省略 / 0 = 不做色散。
+   */
+  fringe?: number;
 }
 
 export const LENS_PLAYER: LensParams = { bezel: 0.58, strength: 1.2, zoom: 0.02, edge: 0.2 };
@@ -48,17 +60,34 @@ export const LENS_PANEL: LensParams = { bezel: 0.72, strength: 2.0, zoom: 0.02, 
  *   · falloff **3**（三次方，原来是平方）：位移集中到边缘一条窄带，往中心掉得更快
  *   · bezel 0.85 → **0.30**：透镜带厚度只剩原来的三分之一强
  *   · strength **0.9**：幅度收一档，避免「果冻糊掉」
- *   · zoom **0.012**：背景放大感再减（放大过头会像鱼眼）
+ *   · zoom **0.004**（原 0.012）：背景放大感再减，也让色散不至于顺着整面铺开
  *   · backdropMax 10 → **7px**、backdropFactor 0.22 → **0.16**：真实背景只被掰弯一点点
+ *
+ * 色散（后来又加回来一次，见 docs/liquidglass-ultimate.md）：当初为了消掉
+ * 「上下色散太多太突兀」把三通道位移整条删了，结果作者反过来问「色散怎么没了」。
+ * 删错的不是色散本身，是**它的分布**：原实现是给整个贴图配三个固定的位移量，
+ * 于是整块玻璃都在分离色彩。现在改成 fringe（位移量之差，px）——
+ * 色差与位移成正比，中间自动为零，只在边缘那条被掰弯的窄带上出现。
  */
 export const LENS_DOCK: LensParams = {
   bezel: 0.3,
   strength: 0.9,
-  zoom: 0.012,
+  /* zoom 从 0.012 降到 0.004：这一项是**整块线性放大**，它带来的位移在左右两端最大，
+     于是色散会顺着整个面铺开 —— 正好是作者最初嫌的那种「色散太多」的分布。
+     折射的「掰弯」观感来自 bezel 那一项（边缘法线方向），zoom 只是附带的放大感，
+     1.2% → 0.4% 肉眼几乎无差别，但中间那片的彩边掉了三倍。 */
+  zoom: 0.004,
   edge: 0.2,
   falloff: 3,
   backdropMax: 7,
   backdropFactor: 0.16,
+  /* 边缘处 R/B 通道的位移量与 G 相差 3.2px（换算成实际的横向彩色分离约 1.6px）。
+     调参台 build/tune-dock-dispersion.cjs 扫过 0/2.4/3.2：
+     上边缘带的 |R−B| 依次 0.98 → 4.07 → 5.37（无色的噪声底 0.98），
+     下边缘带 1.00 → 5.04 → 6.85，而中间带在三个取值下都停在 0.42（= 噪声底）——
+     也就是说彩边只出现在边缘那圈弧面上，玻璃中间是干净的。
+     想更明显就调大，想彻底关掉写 0。 */
+  fringe: 3.2,
 };
 
 export interface LensMap {

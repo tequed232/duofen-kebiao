@@ -22,11 +22,21 @@ interface LensHost {
   disp: SVGFEDisplacementMapElement;
   /** 同一张贴图、更小的位移量：给 backdrop-filter 用（对真实内容做透镜） */
   backdropFilter: SVGFilterElement;
-  /** backdrop 那份的模糊与位移节点（不再有色散通道） */
+  /** backdrop 那份的模糊与位移节点（G 通道；不做色散时它是唯一的位移） */
   backdropBlur: SVGFEGaussianBlurElement;
   backdropDisp: SVGFEDisplacementMapElement;
+  /** 色散的两个额外通道：R 位移比 G 大一点、B 小一点。不做色散时为 null */
+  backdropDispR: SVGFEDisplacementMapElement | null;
+  backdropDispB: SVGFEDisplacementMapElement | null;
   key: string;
 }
+
+/** 只留一个通道的矩阵（R / G / B），alpha 原样透传 —— 色散就是把三份单通道合回去 */
+const CHANNEL_MATRIX = [
+  '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',
+  '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0',
+  '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0',
+];
 
 export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams): void {
   const hostRef = useRef<LensHost | null>(null);
@@ -70,11 +80,14 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
        （内容在玻璃边缘被掰弯，也就是 Apple 那套透镜）。位移量必须比浮层那份小：
        浮层是自己的渐变，弯一点无妨；真实内容弯过头会撕裂。
 
-       这里**故意不做 RGB 色散**（作者反馈：上下色散太多太突兀，苹果的液态玻璃几乎不靠
-       RGB 分离）。原实现让 R/G/B 三通道用不同位移量采样同一张贴图来产生色边 ——
-       那既是不自然彩边的来源，也是「滚动时闪烁」的来源之一：每帧要跑三条
-       feDisplacementMap + 两次 feBlend，采样不足就会抖。
-       现在只留一条位移链：干净、更快、也更接近真玻璃。 */
+       色散在这里、也只在这里做（fringe > 0 时）：把同一张位移图用三个略有差异的
+       位移量采样三次，每次只留一个通道（feColorMatrix），再用 screen 叠回去 ——
+       screen 对互不相交的通道就是相加，于是 R/G/B 各自被掰了不同的角度，
+       边缘就出现真实玻璃那种彩边。**色差正比于位移量**，所以中心区自动没有色散，
+       彩色只出现在被掰弯的那圈窄带上（作者最初反馈的「上下色散太多太突兀」
+       是给整张贴图配固定偏移造成的，不是色散本身的错）。
+       浮层那条链**不做色散**：它是半透明渐变（alpha < 1），三份相加会把 alpha
+       也叠成三倍、整条光带变实；backdrop 采到的真实背景是不透明的，没有这个问题。 */
     const backdropFilter = document.createElementNS(SVG_NS, 'filter');
     backdropFilter.setAttribute('filterUnits', 'userSpaceOnUse');
     backdropFilter.setAttribute('color-interpolation-filters', 'sRGB');
@@ -89,22 +102,75 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
     backdropBlur.setAttribute('in', 'SourceGraphic');
     backdropBlur.setAttribute('result', 'softened');
     backdropBlur.setAttribute('edgeMode', 'duplicate');
-    const backdropDisp = document.createElementNS(SVG_NS, 'feDisplacementMap');
-    backdropDisp.setAttribute('in', 'softened');
-    backdropDisp.setAttribute('in2', 'map');
-    backdropDisp.setAttribute('xChannelSelector', 'R');
-    backdropDisp.setAttribute('yChannelSelector', 'G');
-    backdropFilter.append(backdropBlur, backdropImage, backdropDisp);
+    const displace = (source: string, result: string) => {
+      const node = document.createElementNS(SVG_NS, 'feDisplacementMap');
+      node.setAttribute('in', source);
+      node.setAttribute('in2', 'map');
+      node.setAttribute('xChannelSelector', 'R');
+      node.setAttribute('yChannelSelector', 'G');
+      node.setAttribute('result', result);
+      return node;
+    };
+    const fringe = params.fringe ?? 0;
+    let backdropDisp = displace('softened', 'refracted');
+    let backdropDispR: SVGFEDisplacementMapElement | null = null;
+    let backdropDispB: SVGFEDisplacementMapElement | null = null;
+    backdropFilter.append(backdropBlur, backdropImage);
+    if (fringe > 0) {
+      const channels: string[] = [];
+      [0, 1, 2].forEach((index) => {
+        const disp = displace('softened', `split-d${index}`);
+        const keep = document.createElementNS(SVG_NS, 'feColorMatrix');
+        keep.setAttribute('in', `split-d${index}`);
+        keep.setAttribute('type', 'matrix');
+        keep.setAttribute('values', CHANNEL_MATRIX[index]);
+        keep.setAttribute('result', `split-c${index}`);
+        backdropFilter.append(disp, keep);
+        channels.push(`split-c${index}`);
+        if (index === 0) backdropDispR = disp;
+        else if (index === 1) backdropDisp = disp;
+        else backdropDispB = disp;
+      });
+      /* screen：通道互不相交，等价于相加；再叠一次就凑回完整的 RGB */
+      const mixRG = document.createElementNS(SVG_NS, 'feBlend');
+      mixRG.setAttribute('in', channels[0]);
+      mixRG.setAttribute('in2', channels[1]);
+      mixRG.setAttribute('mode', 'screen');
+      mixRG.setAttribute('result', 'split-rg');
+      const mixRGB = document.createElementNS(SVG_NS, 'feBlend');
+      mixRGB.setAttribute('in', 'split-rg');
+      mixRGB.setAttribute('in2', channels[2]);
+      mixRGB.setAttribute('mode', 'screen');
+      backdropFilter.append(mixRG, mixRGB);
+    } else {
+      backdropFilter.append(backdropDisp);
+    }
     svg.appendChild(backdropFilter);
     document.body.appendChild(svg);
 
-    const host: LensHost = { filter, blur, image, disp, backdropFilter, backdropBlur, backdropDisp, key: '' };
+    const host: LensHost = {
+      filter,
+      blur,
+      image,
+      disp,
+      backdropFilter,
+      backdropBlur,
+      backdropDisp,
+      backdropDispR,
+      backdropDispB,
+      key: '',
+    };
     hostRef.current = host;
     element.style.setProperty('--lg-map-url', `url(#${id})`);
     /* --lg-backdrop 是给 CSS 的「玻璃链」：透镜 + 轻磨砂，直接贴到 backdrop-filter 上。
        磨砂要**轻**（2px）：折射只在边缘发生，模糊一大就把掰弯的观感抹平了。
-       色散已移除（作者反馈过重），现在只有一条位移链。 */
-    element.style.setProperty('--lg-backdrop', `url(#${backdropId}) blur(2px) saturate(1.6)`);
+       注意 blur 在函数链里排在 url() 之后 —— 色散发生在滤镜图内部，
+       后面再叠一层 2px 模糊会把刚分开的 R/B 又糊回去，所以做色散时把模糊
+       **挪进滤镜图**（在位移之前，见 update()），CSS 这边就不再叠 blur。 */
+    element.style.setProperty(
+      '--lg-backdrop',
+      fringe > 0 ? `url(#${backdropId}) saturate(1.6)` : `url(#${backdropId}) blur(2px) saturate(1.6)`,
+    );
 
     const update = () => {
       if (lowPerf() || !element.isConnected) return;
@@ -134,10 +200,17 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       backdropImage.setAttribute('width', String(width));
       backdropImage.setAttribute('height', String(height));
       backdropImage.setAttribute('href', map.mapUrl);
-      backdropBlur.setAttribute('stdDeviation', String(Math.max(0.4, params.edge * 2)));
-      backdropDisp.setAttribute('scale', backdropScale.toFixed(2));
+      /* 做色散时，那 2px 磨砂挪到滤镜图内部（位移**之前**）：模糊是卷积，
+         放在位移前还是后视觉上几乎没差，但放在后面会把刚分开的 R/B 糊回去。 */
+      backdropBlur.setAttribute('stdDeviation', String(Math.max(0.4, params.edge * 2) + (fringe > 0 ? 2 : 0)));
+      host.backdropDisp.setAttribute('scale', backdropScale.toFixed(2));
+      if (host.backdropDispR && host.backdropDispB) {
+        host.backdropDispR.setAttribute('scale', (backdropScale + fringe / 2).toFixed(2));
+        host.backdropDispB.setAttribute('scale', Math.max(0, backdropScale - fringe / 2).toFixed(2));
+      }
       element.style.setProperty('--lg-edge-url', `url("${map.edgeUrl}")`);
       element.dataset.lens = 'ready';
+      element.dataset.lensDispersion = fringe > 0 ? 'rgb' : 'none';
     };
 
     update();
@@ -164,6 +237,7 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       element.style.removeProperty('--lg-map-url');
       element.style.removeProperty('--lg-edge-url');
       delete element.dataset.lens;
+      delete element.dataset.lensDispersion;
     };
   }, [ref, params]);
 }
