@@ -43,10 +43,87 @@ export default function SettingsScreen() {
     ocr: '图像识别与资源',
     about: '关于',
   };
-  /** 选项屏的标题（与分类屏共用顶栏） */
-  const OPTION_TITLES: Record<string, string> = {
-    dispersion: '底栏色散',
-  };
+  /**
+   * **选项屏**的清单：Clash Verge 里"语言 / 主题"那种 —— 点一个选项，进它自己一屏。
+   * 六项共用一份表 + 一个渲染块，避免六段几乎一样的 JSX（改一处漏五处的老毛病）。
+   */
+  const OPTION_CHOICES: {
+    id: string;
+    title: string;
+    note: string;
+    field: 'dispersion' | 'dockScatter' | 'dockWarp' | 'uiScale' | 'perfMode' | 'contour';
+    choices: [string, string][];
+  }[] = [
+    {
+      id: 'dispersion',
+      title: '底栏色散',
+      note: '液态玻璃边缘的颜色分离（真玻璃把不同波长的光掰开的角度不一样）。只作用于底边栏这一处。',
+      field: 'dispersion',
+      choices: [
+        ['off', '关：只留折射与高光'],
+        ['concise', '简洁（默认）：边缘一丝冷暖彩边，克制'],
+        ['ultimate', '极致：六段光谱（紫蓝青绿黄红），边缘虹带拉到最宽'],
+      ],
+    },
+    {
+      id: 'scatter',
+      title: '底栏散射',
+      note: '内容穿过底栏边界时被「散开」的程度。只作用于底边栏这一处。',
+      field: 'dockScatter',
+      choices: [
+        ['concise', '轻（默认）：折射看得最清楚'],
+        ['strong', '强：底色 30% 磨砂更实，色散仍然看得见'],
+      ],
+    },
+    {
+      id: 'warp',
+      title: '底栏扭曲',
+      note: '液态玻璃把背后的画面「掰弯」的幅度与范围。只作用于底边栏这一处。',
+      field: 'dockWarp',
+      choices: [
+        ['thick', '厚透镜（默认）：能明显看到背景被掰弯、文字被横向拉开'],
+        ['concise', '收窄：只留在边缘一线'],
+        ['off', '关：不做折射位移，只留边缘高光'],
+      ],
+    },
+    {
+      id: 'scale',
+      title: '界面缩放',
+      note: '整页缩放，窄屏嫌挤就调小一档。状态栏与底栏留白会跟着一起缩。',
+      field: 'uiScale',
+      choices: [
+        ['small', '小：整页 92%'],
+        ['normal', '标准：100%（默认）'],
+        ['large', '大：整页 108%'],
+      ],
+    },
+    {
+      id: 'perf',
+      title: '性能模式',
+      note: '决定挂不挂玻璃滤镜与流体动画。低性能档最省电，观感最素。',
+      field: 'perfMode',
+      choices: [
+        ['high', '高性能：模糊 + 折射 + 散射 + 流体拉伸 + 弹性过渡（观感最佳）'],
+        ['auto', '自动（默认）：出现掉帧时自动降级'],
+        ['low', '低性能：无滤镜、无流体拉伸、瞬时切换（最省电、最稳）'],
+      ],
+    },
+    {
+      id: 'contour',
+      title: '等高线背景',
+      note: '整页单色底上叠一层地形等高线（工业风）。只画一条颜色（跟随主题），卡片与弹层仍是各自的不透明表面。',
+      field: 'contour',
+      choices: [
+        ['off', '关：纯色底'],
+        ['subtle', '细（默认）：线条克制，不抢内容'],
+        ['bold', '密：线条更多、更明显'],
+      ],
+    },
+  ];
+  const activeOption = OPTION_CHOICES.find((entry) => entry.id === option);
+  const OPTION_TITLES: Record<string, string> = Object.fromEntries(
+    OPTION_CHOICES.map((entry) => [entry.id, entry.title]),
+  );
   const { settings, updateSettings, seed, dynamicColor, schedule, showSnackbar } = useAppState();
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
@@ -161,31 +238,23 @@ export default function SettingsScreen() {
             ) : null}
 
             {/* --------------- 选项屏：Clash Verge 里"语言/主题"那种，点一个选项进它自己一屏 ------ */}
-            {atOption('dispersion') ? (
+            {activeOption ? (
               <div className="list-group">
-                <div className="settings-note md-body-small muted">
-                  液态玻璃边缘的<strong>颜色分离</strong>（真玻璃把不同波长的光掰开的角度不一样）。只作用于底边栏这一处。
-                </div>
-                {(
-                  [
-                    ['off', '关：只留折射与高光'],
-                    ['concise', '简洁（默认）：边缘一丝冷暖彩边，克制'],
-                    ['ultimate', '极致：六段光谱（紫蓝青绿黄红），边缘虹带拉到最宽'],
-                  ] as const
-                ).map(([value, label], index, all) => (
+                <div className="settings-note md-body-small muted">{activeOption.note}</div>
+                {activeOption.choices.map(([value, label], index, all) => (
                   <md-list-item
                     key={value}
                     type="button"
                     className={index === 0 ? 'rounded-outer-top' : index === all.length - 1 ? 'rounded-outer-bottom' : 'rounded-middle'}
                     onClick={() =>
                       updateSettings(
-                        { dispersion: value },
-                        { message: `底栏色散：${value === 'off' ? '关' : value === 'ultimate' ? '极致' : '简洁'}` },
+                        { [activeOption.field]: value } as Partial<typeof settings>,
+                        { message: `${activeOption.title}：${label.split('：')[0]}` },
                       )
                     }
                   >
                     <div slot="start" className="list-icon-badge">
-                      <MdIcon name={settings.dispersion === value ? 'radio_button_checked' : 'radio_button_unchecked'} />
+                      <MdIcon name={settings[activeOption.field] === value ? 'radio_button_checked' : 'radio_button_unchecked'} />
                     </div>
                     <div slot="headline">{label}</div>
                   </md-list-item>
@@ -213,7 +282,7 @@ export default function SettingsScreen() {
                 </div>
               </md-list-item>
               {/* -------------------------------------- 界面缩放（窄屏适配） */}
-              <md-list-item type="button" className="rounded-middle" onClick={() => setScaleDialogOpen(true)}>
+              <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('settingsSection', { option: 'scale' }, 'slide')}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="aspect_ratio" />
                 </div>
@@ -247,7 +316,7 @@ export default function SettingsScreen() {
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
               {/* ------------- 底栏散射：轻磨砂（现在）/ 重磨砂（v3.0.1 那版投射） ------------- */}
-              <md-list-item type="button" className="rounded-middle" onClick={() => setScatterDialogOpen(true)}>
+              <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('settingsSection', { option: 'scatter' }, 'slide')}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="blur_circular" />
                 </div>
@@ -260,7 +329,7 @@ export default function SettingsScreen() {
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
               {/* ------------------------------- 底栏扭曲：厚透镜（默认）/ 收窄 / 关 */}
-              <md-list-item type="button" className="rounded-middle" onClick={() => setWarpDialogOpen(true)}>
+              <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('settingsSection', { option: 'warp' }, 'slide')}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="waves" />
                 </div>
@@ -275,7 +344,7 @@ export default function SettingsScreen() {
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
               {/* ------------------------------- 性能模式：高性能 / 自动 / 低性能 */}
-              <md-list-item type="button" className="rounded-middle" onClick={() => setPerfDialogOpen(true)}>
+              <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('settingsSection', { option: 'perf' }, 'slide')}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="speed" />
                 </div>
@@ -290,7 +359,7 @@ export default function SettingsScreen() {
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
               {/* ----------------------------------------- 等高线背景（单色 · 终末地风） */}
-              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => setContourDialogOpen(true)}>
+              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => nav.push('settingsSection', { option: 'contour' }, 'slide')}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="graphic_eq" />
                 </div>

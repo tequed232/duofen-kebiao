@@ -379,8 +379,34 @@ if (process.env.APP_URL) {
 
 console.log('\n=== 选项屏：点一个选项进它自己一屏（Clash Verge 的"语言/主题"那种）===');
 check('底栏色散那一行改成推「选项屏」而不是开弹层', /nav\.push\('settingsSection',\s*\{\s*option:\s*'dispersion'\s*\}/.test(source), '还是走弹层');
-check('选项屏标题表里有它', /OPTION_TITLES[\s\S]{0,120}dispersion:\s*'底栏色散'/.test(source), 'OPTION_TITLES 缺底栏色散');
-check('选项屏里有三档选择', /atOption\('dispersion'\)[\s\S]{0,900}\['off'[\s\S]{0,400}\['concise'[\s\S]{0,400}\['ultimate'/.test(source), '三档没渲染出来');
+/* 外观里那六项都应该各自一屏（作者那句「每个选项点进去是独立屏幕」的严格口径） */
+const OPTION_IDS = ['dispersion', 'scatter', 'warp', 'scale', 'perf', 'contour'];
+const missingOption = OPTION_IDS.filter((id) => !new RegExp(`option:\\s*'${id}'`).test(source));
+check(
+  `六个外观选项都推各自的屏（缺：${missingOption.join('、') || '无'}）`,
+  missingOption.length === 0,
+  '还有选项留在弹层里',
+);
+check(
+  `选项表覆盖六项（${(source.match(/id: '(dispersion|scatter|warp|scale|perf|contour)'/g) ?? []).length}/6）`,
+  OPTION_IDS.every((id) => new RegExp(`id: '${id}'`).test(source)),
+  'OPTION_CHOICES 缺项',
+);
+check(
+  '外观里不再有"开弹层"的选项行（全迁到选项屏）',
+  !/set(Dispersion|Scatter|Warp|Scale|Perf|Contour)DialogOpen\(true\)/.test(source),
+  '还有行在开弹层',
+);
+check(
+  '选项屏标题表由选项表派生（不另写一份）',
+  /const OPTION_TITLES: Record<string, string> = Object\.fromEntries\(/.test(source) && /OPTION_CHOICES\.map/.test(source),
+  'OPTION_TITLES 不是从 OPTION_CHOICES 派生的',
+);
+check(
+  '底栏色散那屏有三档（关/简洁/极致）',
+  /id: 'dispersion'[\s\S]{0,700}\['off'[\s\S]{0,300}\['concise'[\s\S]{0,300}\['ultimate'/.test(source),
+  '三档没在选项表里',
+);
 check('底栏色散的旧弹层已删除（不留死代码）', !/dispersionDialogOpen/.test(source), '旧的 dispersionDialogOpen 还在');
 check(
   '同路由不同参数要能入栈（push 的去重键含参数）',
