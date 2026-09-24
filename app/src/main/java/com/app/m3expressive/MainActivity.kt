@@ -49,8 +49,6 @@ class MainActivity : ComponentActivity() {
     private var confirmReceiver: android.content.BroadcastReceiver? = null
     /** 通知里的「课本」动作被点击：下次页面加载完成后跳到教材窗口 */
     private var pendingTextbooks = false
-    /** 常驻通知里的「管理」动作被点击：下次页面加载完成后跳到台词管理页 */
-    private var pendingPhrases = false
     private var pendingCourse: String? = null
     private var insetTopPx = 0
     private var insetBottomPx = 0
@@ -123,12 +121,6 @@ class MainActivity : ComponentActivity() {
                             view.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.textbooks()", null)
                         }, 900)
                     }
-                    if (pendingPhrases) {
-                        pendingPhrases = false
-                        view.postDelayed({
-                            view.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.phrases()", null)
-                        }, 900)
-                    }
                 }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                     assetLoader.shouldInterceptRequest(request.url)
@@ -155,10 +147,6 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == LiveUpdates.ACTION_SHOW_TEXTBOOKS) {
             pendingTextbooks = true
             pendingCourse = intent.getStringExtra("course")
-        }
-        // 常驻通知里的「管理」动作：页面就绪后跳到台词管理页（唯一允许跳 Activity 的入口）
-        if (intent?.action == PhraseService.ACTION_MANAGE_PHRASES) {
-            pendingPhrases = true
         }
 
         // 【回滚】原生 Dock 在作者真机上不可用（可见但点击无反应），已停用：
@@ -535,11 +523,6 @@ class MainActivity : ComponentActivity() {
         if (intent.action == LiveUpdates.ACTION_SHOW_TEXTBOOKS) {
             webView.postDelayed({
                 webView.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.textbooks()", null)
-            }, 600)
-        }
-        if (intent.action == PhraseService.ACTION_MANAGE_PHRASES) {
-            webView.postDelayed({
-                webView.evaluateJavascript("window.DuofenOpen && window.DuofenOpen.phrases()", null)
             }, 600)
         }
     }

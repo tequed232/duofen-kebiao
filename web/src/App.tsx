@@ -104,11 +104,6 @@ export default function App() {
         selectTab('schedule');
         push('textbookList', {}, 'slide');
       },
-      /** 常驻通知里的「管理」按钮：跳到台词管理页（唯一允许跳进应用的入口） */
-      phrases: () => {
-        selectTab('settings');
-        push('phraseManager', {}, 'slide');
-      },
     };
   }, [selectTab, push]);
 

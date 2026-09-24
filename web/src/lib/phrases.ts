@@ -15,7 +15,11 @@
 export interface PhraseConfig {
   /** 用户语料（含默认集） */
   phrases: string[];
-  /** 自动轮播总开关（默认关：作者要求"显式开启"） */
+  /**
+   * 自动轮播总开关。**默认开** —— 任务书原本定的是默认关（要用户显式开启），
+   * 但作者看到真机后反馈「通知不是实时显示，只有后台运行」：
+   * 桌宠的预期就是它会自己说话，所以默认开着；关掉仍然只是设置页一个开关。
+   */
   autoPlay: boolean;
   /** 随机 / 顺序 */
   mode: 'random' | 'sequential';
@@ -66,7 +70,7 @@ export const PHRASE_LIMITS = {
 
 export const DEFAULT_PHRASE_CONFIG: PhraseConfig = {
   phrases: [...PHRASE_DEFAULTS],
-  autoPlay: false,
+  autoPlay: true,
   mode: 'random',
   intervalMin: 5,
   fluctuationPct: 0,

@@ -147,7 +147,7 @@ export default function SettingsScreen() {
               </div>
               <div slot="headline">台词管理</div>
               <div className="md-body-small muted" slot="supporting-text">
-                通知栏桌宠：常驻状态条 + 预制语料（浏览、点选、收起都在通知栏里完成）
+                通知栏桌宠：常驻状态条，戳一下说一句；到点自动轮播
               </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>

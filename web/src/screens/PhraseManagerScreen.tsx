@@ -71,7 +71,11 @@ export default function PhraseManagerScreen() {
       setEnabled(Boolean(rawEnabled));
       if (hasNativePhrases()) {
         nativePhrasesConfig(loaded);
-        if (rawEnabled) nativeStartPhraseService();
+        if (rawEnabled) {
+          nativeStartPhraseService();
+          // 服务起来后立刻说一句：作者真机反馈「只看到后台运行」，等自动播放要 5 分钟太静了
+          window.setTimeout(() => nativePhrasePoke(), 1200);
+        }
         const status = nativePhrasesStatus() as { keepAlive?: KeepAliveStatus } | null;
         if (status && status.keepAlive) setKeepAlive(status.keepAlive);
       }
@@ -104,6 +108,8 @@ export default function PhraseManagerScreen() {
     // 常驻通知开机即是「空闲」基础状态：语料展示完要还原回来的就是它
     nativeSetPhraseBaseState({ kind: 'idle' });
     const started = nativeStartPhraseService();
+    /* 立刻说一句：否则用户开了开关只看到「正在后台运行」，会以为没生效（作者真机反馈） */
+    if (started) window.setTimeout(() => nativePhrasePoke(), 600);
     showSnackbar({
       message: started ? `已开启常驻通知（${config.phrases.length} 条台词）` : '当前环境不支持常驻通知（仅安卓版）',
       duration: 3200,

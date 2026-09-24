@@ -54,20 +54,22 @@ const liveId = Number(/const val NOTIFICATION_ID = (\d+)/.exec(liveKt)?.[1] ?? 0
 check(`通知 id 不同（${phraseId} ≠ ${liveId}）`, phraseId > 0 && phraseId !== liveId);
 check('常驻通知 setOngoing(true)', serviceKt.includes('setOngoing(true)'));
 check('常驻通知 setOnlyAlertOnce(true)', serviceKt.includes('setOnlyAlertOnce(true)'));
-/* 通知栏里的动作：除「管理」外都必须是不跳 Activity 的 service PendingIntent
-   （任务书硬边界：浏览/点选/翻页/收起全在通知栏完成）。
-   注意 contentIntent（点通知主体打开应用）不算动作，它是允许的。 */
+/* 通知栏里的动作：**作者在真机上删繁就简**，最终只留一颗「戳一下」——
+   不要「语料」列表、也不要「管理」入口（点通知主体打开应用即可）。
+   这里同时断言"必须有"和"必须没有"，缺一半都挡不住回归。 */
 const actionLines = serviceKt
   .split('\n')
   .map((line) => line.trim())
   .filter((line) => line.includes('addAction('));
-const nonServiceActions = actionLines.filter((line) => !line.includes('serviceIntent('));
+check('通知栏只有一颗动作按钮', actionLines.length === 1, `实际 ${actionLines.length} 颗：${actionLines.join(' | ')}`);
 check(
-  '通知栏动作里只有「管理」跳 Activity',
-  nonServiceActions.length === 1 && nonServiceActions[0].includes('manageIntent'),
-  nonServiceActions.join(' | ') || '（没找到 addAction）',
+  '那颗按钮是「戳一下」且不跳 Activity',
+  Boolean(actionLines[0]?.includes('"戳一下"')) && Boolean(actionLines[0]?.includes('pokeIntent(')),
+  actionLines[0] ?? '（没找到 addAction）',
 );
-check('行点选写剪贴板', serviceKt.includes('setPrimaryClip'));
+check('不再有「语料」列表动作（作者要求）', !serviceKt.includes('"语料"'));
+check('不再有「管理」入口动作（作者要求）', !serviceKt.includes('"管理"') && !serviceKt.includes('manageIntent'));
+check('给 BigTextStyle → 通知默认展开显示（作者要求）', serviceKt.includes('BigTextStyle'));
 check('前台服务启动用 startForeground', serviceKt.includes('ServiceCompat.startForeground'));
 check('自动播放用 setAndAllowWhileIdle（Doze 下也能醒）', serviceKt.includes('setAndAllowWhileIdle'));
 
@@ -99,7 +101,6 @@ check('navigation.tsx 有 phraseManager 路由', navTs.includes("'phraseManager'
 check('App.tsx 的 SCREENS 映射有 phraseManager', /phraseManager:\s*PhraseManagerScreen/.test(appTs));
 check('App.tsx 的 tabForRoute 把 phraseManager 归到 settings', /phraseManager'\s*\)\s*\{?[\s\S]{0,120}return 'settings'/.test(appTs));
 check('SettingsScreen 有入口', settingsTs.includes("push('phraseManager'"));
-check('常驻通知「管理」能深链到该页', appTs.includes('phrases: () =>'));
 
 /* ------------------------------------------------------------- ② 纯逻辑 -- */
 
