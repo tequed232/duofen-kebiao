@@ -561,7 +561,28 @@ export function CourseDetailSheet({
   const upcoming = dates.filter((date) => date >= new Date());
   const shown = (upcoming.length ? upcoming : dates).slice(0, 5);
   return (
-    <ExpandableSheet open={open} onClose={onClose} sourceRef={sourceRef} icon="event" title={course?.name ?? '课程'}>
+    <ExpandableSheet
+      open={open}
+      onClose={onClose}
+      sourceRef={sourceRef}
+      icon="event"
+      title={course?.name ?? '课程'}
+      /* 抖音评论区那种半遮蔽弹层：顶部课程/时间等信息照旧，**只把下方主操作**
+         换成「导航至 <地点>」并贴在弹层底部。 */
+      variant="half"
+      actions={
+        course ? (
+          course.room ? (
+            <md-filled-button onClick={() => onNavigate(course.room, course)}>
+              <MdIcon slot="icon" name="navigation" />
+              导航至 {course.room}
+            </md-filled-button>
+          ) : (
+            <span className="md-body-small muted">课表里没写教室，先在「设置 → 导航与学校」里补上，或手动复制地址</span>
+          )
+        ) : null
+      }
+    >
       <div ref={sourceRef} />
       {course ? (
         <div className="col gap-12">
@@ -608,12 +629,6 @@ export function CourseDetailSheet({
           <div className="row gap-8" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
             <MdIcon name="place" size={18} />
             <span className="md-body-medium flex-1">{course.room || '未填写地点'}</span>
-            {course.room ? (
-              <md-filled-tonal-button onClick={() => onNavigate(course.room, course)}>
-                <MdIcon slot="icon" name="navigation" />
-                导航
-              </md-filled-tonal-button>
-            ) : null}
           </div>
 
           {/* 教材：内置教材库 + 封面识别结果 */}

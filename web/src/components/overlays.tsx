@@ -93,6 +93,8 @@ export function ExpandableSheet({
   children,
   headerActions,
   scrollable = true,
+  variant = 'full',
+  actions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -102,6 +104,13 @@ export function ExpandableSheet({
   children: ReactNode;
   headerActions?: ReactNode;
   scrollable?: boolean;
+  /**
+   * `half` = 抖音评论区那种**半遮蔽**底部弹层：贴底、只占屏幕下半部分，上方留半屏可见。
+   * 课程详情与"导航到某地"用这一档；导入课表那种长表单仍走默认的 `full`（整屏）。
+   */
+  variant?: 'full' | 'half';
+  /** 贴底主操作条（半屏弹层常用：课程详情那里放「导航至 <地点>」） */
+  actions?: ReactNode;
 }) {
   const [rendered, setRendered] = useState(open);
   const [phase, setPhase] = useState<'closed' | 'opening' | 'open' | 'closing'>(open ? 'open' : 'closed');
@@ -173,7 +182,7 @@ export function ExpandableSheet({
   return (
     <div className={['sheet-layer', open ? 'open' : ''].join(' ').trim()}>
       <div className="sheet-scrim" onClick={onClose} aria-hidden="true" />
-      <section className="sheet-panel" ref={panelRef} role="dialog" aria-modal="true">
+      <section className={variant === 'half' ? 'sheet-panel half' : 'sheet-panel'} ref={panelRef} role="dialog" aria-modal="true">
         <div className="sheet-header">
           {icon ? <MdIcon name={icon} size={24} /> : null}
           <div className="sheet-title md-title-large-emphasized">{title}</div>
@@ -181,6 +190,7 @@ export function ExpandableSheet({
           <MdIconButton icon="close" label="收起面板" onClick={onClose} />
         </div>
         <div className={['sheet-body', scrollable ? 'scroll-y' : ''].join(' ').trim()}>{children}</div>
+        {actions ? <div className="sheet-action">{actions}</div> : null}
       </section>
     </div>
   );

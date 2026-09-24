@@ -582,6 +582,33 @@ md-switch {
   padding: 8px 8px 8px 20px;
 }
 
+/* ---------------------------------------------------------- half sheet -- */
+/* 抖音评论区那种**半遮蔽**底部弹层：贴底、只占屏幕下半部分，上半屏还能看见（并压着 scrim）。
+   与整屏的 .sheet-panel 区别只有三行：改成 bottom 定位、限高、顶角圆角。
+   底部再让开设备安全区（--inset-bottom 由「屏幕安全区」设置写入）。 */
+.sheet-panel.half {
+  inset: auto 0 0 0;
+  max-height: 62%;
+  height: auto;
+  border-radius: 28px 28px 0 0;
+  padding-bottom: var(--inset-bottom, 0px);
+}
+
+/* 半屏弹层的主操作（例如「导航至 16-203」）：贴底一条，跟着弹层走 */
+.sheet-action {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px calc(12px + var(--inset-bottom, 0px));
+  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 45%, transparent);
+}
+
+.sheet-action .md-body-small {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .sheet-header .sheet-title {
   flex: 1 1 auto;
   min-width: 0;

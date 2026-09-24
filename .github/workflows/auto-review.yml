@@ -143,6 +143,9 @@ jobs:
           #   同一条守卫在静态阶段已经跑过一次；这里补渲染层断言（首页可见滑块必须为 0、
           #   安全区屏恰好 2 个、拖动真的写进 --inset-top）。
           APP_URL=http://127.0.0.1:5173/ run_guard settings-hub node scripts/check-settings-groups.mjs
+          # 课程详情弹层 = 抖音评论区式半遮蔽：贴底、高 ≤66%、顶边在下半屏、顶部信息不变、
+          #   主操作「导航至 <地点>」。静默坏法（又变回整屏 / 按钮改回两个字）就靠这条兜住。
+          APP_URL=http://127.0.0.1:5173/ run_guard course-sheet node scripts/check-course-sheet.mjs
           kill "$dev_pid" 2>/dev/null || true
 
           # ⑤ 逐屏验收（19 步）：需要**生产构建 + preview server**。
