@@ -145,7 +145,16 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     }
   };
 
-  /** 让跟手弹簧逐帧逼近 pendingX，直到足够接近（或不再拖动）就收工 */
+  /**
+   * 让跟手弹簧逐帧逼近 pendingX，直到足够接近（或不再拖动）就收工。
+   *
+   * **坐标系必须是「页面坐标」**（和 `pendingXRef`、`applyFrame(jx)` 一致）。
+   * 这里踩过一次：弹簧算的是**底栏内坐标**（`pendingXRef - geo.left`），
+   * 而 `applyFrame(jx)` 内部又减了一次 `geo.left` —— 于是拖动时色块被整体左移了一个
+   * 左边距的量（实测 460px 视口下 `geo.left=36`：手指在 dock 内 180px 处，`--pill-x`
+   * 应是 115 却只有 79，差值正好 36）。真机左边距约 12dp（≈42 设备像素），
+   * 表现就是"拖动时色块一直吊在手指左边、松手才弹回正确位置"。
+   */
   const runSpring = () => {
     if (springRafRef.current !== undefined) return;
     const step = () => {
@@ -154,7 +163,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         springRafRef.current = undefined;
         return;
       }
-      const target = clamp(pendingXRef.current - geo.left, 0, geo.width);
+      const target = clamp(pendingXRef.current, geo.left + 18, geo.left + geo.width - 18);
       const dtClamp = 1;
       const dx = target - springXRef.current;
       springVelRef.current += (SPRING_K * dx - SPRING_C * springVelRef.current) * dtClamp;
@@ -295,7 +304,11 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
        才有一点点滞后与回弹 —— 作者要的「液态跟手」正是这一段。 */
     {
       const geo0 = geoRef.current;
-      springXRef.current = geo0 ? geo0.centers[activeIndex] ?? geo0.width / 2 : 0;
+      /* 种子 = 色块**当前所在格的中心**（页面坐标，与 pendingXRef / applyFrame 同一套），
+         不是手指位置：取手指位置的话，按下那一帧色块就被拽到指尖了（瞬移）。 */
+      springXRef.current = geo0
+        ? (geo0.centers[activeIndex] ?? geo0.width / 2) + geo0.left
+        : 0;
       springVelRef.current = 0;
     }
     /* 先不进拖动态：位移超过 DRAG_SLOP 才进。轻点若在这里就进，色块会因
