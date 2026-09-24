@@ -14,15 +14,45 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      # 必须先有网页产物与识别资源，否则 gradle 的 checkWebSources 会直接拦下 ——
+      # 这正是我们要的行为：以前这里只跑 `gradlew assembleRelease`，
+      # 两个 sync 任务因源缺失被判成 NO-SOURCE 整体跳过（写在 doFirst 里的 require 也就永不执行），
+      # 于是**一路绿灯地打出 assets/www 为空的空壳 APK**，还当成品上传。
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build web (→ dist/)
+        run: npm run build
+
+      # opencv.js 与 Tesseract 引擎从 node_modules 复制（离线可用），
+      # 只有中文语言包走一次官方 jsDelivr 镜像（约 21 MB）
+      - name: Fetch local-OCR assets (→ web/public/ocr/)
+        run: npm run setup:ocr
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
       - name: Build release APK
         run: ./gradlew assembleRelease --build-cache
+
+      # 证明这份 APK 里的网页资源与 dist/ **逐文件哈希一致**。
+      # 它需要已构建的 APK，所以只在这里跑得了（auto-review 那个 job 只做 dev server 与浏览器检查）。
+      - name: Verify APK matches the web build
+        run: npm run apk:parity
+
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:

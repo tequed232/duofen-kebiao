@@ -48,9 +48,6 @@ val syncWebAssets by tasks.registering(Copy::class) {
     from(webDistDir)
     into(webAssetsDir)
     doFirst {
-        require(webDistDir.resolve("index.html").exists()) {
-            "dist/index.html 不存在：请先在仓库根目录执行 npm run build 再编译 APK"
-        }
         logger.lifecycle("syncWebAssets: ${webDistDir} -> ${webAssetsDir}")
     }
 }
@@ -74,11 +71,41 @@ val syncOcrAssets by tasks.registering(Copy::class) {
     into(webAssetsDir.resolve("ocr"))
     doFirst {
         val source = rootProject.file("web/public/ocr")
-        require(source.resolve("opencv/opencv.js").exists() && source.resolve("tesseract/lang/chi_sim.traineddata").exists()) {
-            "本地识别资源缺失：请先在仓库根目录执行 npm run setup:ocr（会下载约 40 MB 模型）"
-        }
         val size = source.walkTopDown().filter { it.isFile }.sumOf { it.length() }
         logger.lifecycle("syncOcrAssets: ${source} -> ${webAssetsDir.resolve("ocr")}（${"%.1f".format(size / 1024.0 / 1024.0)} MB）")
+    }
+}
+
+/**
+ * 构建前必须已有网页产物与识别资源 —— **这个任务才是真正的守卫**。
+ *
+ * 为什么不能写在上面两个 Copy 任务的 `doFirst` 里（原来就是这么写的，**根本没生效**）：
+ * Gradle 在源目录不存在时会把 Copy 任务判成 **NO-SOURCE 并跳过它的全部 action**，
+ * `doFirst` 里的 `require` 于是永远不会执行。2026-09 实测：
+ *
+ *     移走 dist/ 后 ./gradlew assembleRelease → BUILD SUCCESSFUL
+ *     而 app/src/main/assets/www/ 下没有 index.html —— 这个 APK 装上去是白屏
+ *
+ * CI（.github/workflows/android.yml）此前正好是这个状态：既不 `npm run build` 也不
+ * `npm run setup:ocr`，于是 `syncWebAssets` / `syncOcrAssets` 双双 NO-SOURCE，
+ * **一路绿灯地打出空壳 APK 还当成品上传**。
+ *
+ * 本任务不声明 inputs/outputs，因此不参与 up-to-date 判定、**永远会执行**，能真正拦住。
+ */
+val checkWebSources by tasks.registering {
+    group = "verification"
+    description = "Fail fast when dist/ or the local OCR assets are missing"
+    doLast {
+        require(webDistDir.resolve("index.html").exists()) {
+            "dist/index.html 不存在：请先在仓库根目录执行 npm run build 再编译 APK"
+        }
+        val ocr = rootProject.file("web/public/ocr")
+        require(
+            ocr.resolve("opencv/opencv.js").exists() &&
+                ocr.resolve("tesseract/lang/chi_sim.traineddata").exists(),
+        ) {
+            "本地识别资源缺失：请先在仓库根目录执行 npm run setup:ocr（会下载约 40 MB 模型）"
+        }
     }
 }
 
@@ -91,7 +118,7 @@ val cleanWebAssets by tasks.registering(Delete::class) {
 syncWebAssets { mustRunAfter(cleanWebAssets) }
 syncOcrAssets { mustRunAfter(cleanWebAssets) }
 
-tasks.named("preBuild") { dependsOn(cleanWebAssets, syncWebAssets, syncOcrAssets) }
+tasks.named("preBuild") { dependsOn(cleanWebAssets, checkWebSources, syncWebAssets, syncOcrAssets) }
 
 android {
     namespace = "com.app.m3expressive"
