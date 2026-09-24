@@ -28,6 +28,7 @@ export default function SettingsScreen() {
   const [scaleDialogOpen, setScaleDialogOpen] = useState(false);
   const [perfDialogOpen, setPerfDialogOpen] = useState(false);
   const [dispersionDialogOpen, setDispersionDialogOpen] = useState(false);
+  const [scatterDialogOpen, setScatterDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 本地识别资源状态：null = 正在探测 */
   const [ocrStatus, setOcrStatus] = useState<OcrAssetStatus | null>(null);
@@ -136,6 +137,20 @@ export default function SettingsScreen() {
                   : settings.dispersion === 'off'
                     ? '关：只留折射与高光，不做颜色分离'
                     : '简洁（默认）：边缘一丝冷暖彩边'}
+              </div>
+              <MdIcon slot="end" name="chevron_right" />
+            </md-list-item>
+
+            {/* ------------- 底栏散射：轻磨砂（现在）/ 重磨砂（v3.0.1 那版投射） ------------- */}
+            <md-list-item type="button" className="rounded-middle" onClick={() => setScatterDialogOpen(true)}>
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name="blur_circular" />
+              </div>
+              <div slot="headline">底栏散射</div>
+              <div className="md-body-small muted" slot="supporting-text">
+                {settings.dockScatter === 'strong'
+                  ? '强：投射 v3.0.1 那版口径（本体 18px 重磨砂 + 底色 58%）'
+                  : '轻（默认）：图内约 2.4px 磨砂，折射看得最清楚'}
               </div>
               <MdIcon slot="end" name="chevron_right" />
             </md-list-item>
@@ -495,6 +510,35 @@ export default function SettingsScreen() {
               }}
             >
               {settings.dispersion === value ? '✓ ' : ''}
+              {label}
+            </md-outlined-button>
+          ))}
+        </div>
+      </MdDialog>
+
+      <MdDialog
+        open={scatterDialogOpen}
+        headline="底栏散射"
+        onClosed={() => setScatterDialogOpen(false)}
+        actions={<md-text-button onClick={() => setScatterDialogOpen(false)}>取消</md-text-button>}
+      >
+        内容穿过底栏边界时被「散开」的程度。只作用于底边栏这一处：
+        <div className="col gap-8 mt-12">
+          {([
+            ['concise', '轻（默认）：图内约 2.4px 磨砂 + 底色全透明，折射看得最清楚'],
+            ['strong', '强：投射 v3.0.1（09-23 04:11）那版 —— 本体 18px 磨砂 + 底色 58%，更毛更实'],
+          ] as const).map(([value, label]) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setScatterDialogOpen(false);
+                updateSettings(
+                  { dockScatter: value },
+                  { message: value === 'strong' ? '底栏散射：强（v3.0.1 口径）' : '底栏散射：轻' },
+                );
+              }}
+            >
+              {settings.dockScatter === value ? '✓ ' : ''}
               {label}
             </md-outlined-button>
           ))}
