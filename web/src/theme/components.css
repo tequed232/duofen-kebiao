@@ -900,6 +900,20 @@ md-dialog {
 
 md-dialog::part(container) {
   border-radius: 28px;
+  /* 弹层必须落在**设备预留的安全区**内（设置 → 屏幕安全区 的上下端，写进 --inset-top/--inset-bottom）。
+     作者要求：「弹出来的导航课程必须符合设备预留的安全区的大小，哪怕上下扩展都没事」——
+     所以这里不裁内容，而是把可用高度按安全区收缩、内容多了自己滚：
+     顶到状态栏/刘海或压住手势条，比"弹层变高"糟得多。
+     `md-dialog` 自身是 position:fixed 的整屏容器，用 padding 把它的居中区压进安全区。 */
+  max-height: calc(100dvh - var(--inset-top, 0px) - var(--inset-bottom, 0px) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+md-dialog {
+  padding-top: var(--inset-top, 0px);
+  padding-bottom: var(--inset-bottom, 0px);
+  box-sizing: border-box;
 }
 
 /* --------------------------------------------------------------- misc ---- */

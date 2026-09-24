@@ -196,6 +196,78 @@ if (process.env.APP_URL) {
   const rawMarkdown = await p2.evaluate(() => (document.body.innerText.match(/\*\*|^#{1,3}\s/m) ?? []).length);
   check('弹层文案里没有露出 Markdown 记号', rawMarkdown === 0, `发现 ${rawMarkdown} 处 ** 或 # 标题`);
   await p2.screenshot({ path: 'build/nav-course-target.png' });
+
+  /* 安全区：把「屏幕安全区」的两端设成真机口径（上 40dp / 下 16dp），并把视口压矮，
+     断言弹层容器完全落在 [inset-top, vh - inset-bottom] 之内 —— 作者的要求是
+     「弹出来的导航课程必须符合设备预留的安全区的大小，哪怕上下扩展都没事」。 */
+  const p3 = await browser.newPage({ viewport: { width: 366, height: 560 }, deviceScaleFactor: 2 });
+  await p3.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.documentElement.style.setProperty('--inset-top', '40px');
+      document.documentElement.style.setProperty('--inset-bottom', '16px');
+    });
+  });
+  await p3.goto(process.env.APP_URL, { waitUntil: 'load' });
+  await p3.waitForTimeout(2600);
+  await p3.evaluate(() => {
+    document.documentElement.style.setProperty('--inset-top', '40px');
+    document.documentElement.style.setProperty('--inset-bottom', '16px');
+  });
+  await p3.locator('.schedule-nav-fab').click();
+  await p3.waitForTimeout(700);
+  /* 弹层是自定义元素（shadow 里只有 .scrim，面板由元素自身的样式画出来），
+     按 DOM 量不到"可见的那块矩形" —— 所以直接按**像素**找：截整屏，
+     取中间 60% 的列算每行平均亮度，弹层面板是最亮的那一大段连续行。 */
+  const shot = await p3.screenshot();
+  const panel = await p3.evaluate(async (b64) => {
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + b64;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const { data } = ctx.getImageData(0, 0, img.width, img.height);
+    const x0 = Math.round(img.width * 0.2);
+    const x1 = Math.round(img.width * 0.8);
+    const rows = [];
+    for (let y = 0; y < img.height; y += 1) {
+      let sum = 0;
+      for (let x = x0; x < x1; x += 1) {
+        const i = (y * img.width + x) * 4;
+        sum += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      }
+      rows.push(sum / (x1 - x0));
+    }
+    const peak = Math.max(...rows);
+    const isPanel = rows.map((v) => v > peak - 22);
+    let best = { start: 0, len: 0 };
+    let run = 0;
+    let start = 0;
+    for (let y = 0; y < isPanel.length; y += 1) {
+      if (isPanel[y]) {
+        if (run === 0) start = y;
+        run += 1;
+        if (run > best.len) best = { start, len: run };
+      } else run = 0;
+    }
+    const dpr = img.height / window.innerHeight;
+    return { top: best.start / dpr, bottom: (best.start + best.len) / dpr, vh: window.innerHeight };
+  }, shot.toString('base64'));
+  const insetTop = 40;
+  const insetBottom = 16;
+  check(
+    `弹层顶边在安全区之内（像素量得 top ${panel.top.toFixed(0)} ≥ ${insetTop}）`,
+    panel.top >= insetTop - 3,
+    '弹层顶到状态栏/刘海了',
+  );
+  check(
+    `弹层底边在安全区之内（bottom ${panel.bottom.toFixed(0)} ≤ ${(panel.vh - insetBottom).toFixed(0)}）`,
+    panel.bottom <= panel.vh - insetBottom + 3,
+    '弹层压住手势条了',
+  );
+  await p3.screenshot({ path: 'build/nav-course-safearea.png' });
   await browser.close();
 }
 

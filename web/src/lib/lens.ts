@@ -151,7 +151,13 @@ export function effectiveWarp(setting: DockWarp | undefined): DockWarp {
 export function dockLensParams(mode: DockDispersion = 'concise', warp: DockWarp = 'thick'): LensParams {
   const geometry = warp === 'thick' ? DOCK_WARP_THICK : DOCK_WARP_CONCISE;
   const color: Pick<LensParams, 'fringe' | 'bands'> =
-    mode === 'ultimate' ? { fringe: 6, bands: 6 } : mode === 'off' ? { fringe: 0 } : { fringe: 3.2 };
+    /* 「极致」档的分离量：作者 2026-09-25 的要求是「要极限就要用最极限的」——
+       从 6px 提到 **20px**（简洁档 3.2px 的 6.25 倍）。滤镜链节点数一个没变
+       （仍是 6 位移 + 6 矩阵 + 5 叠加），只是每段的位移量拉大，虹带明显更宽更艳。
+       实测（灰阶棋盘，底栏上边缘带 |R−B|，中间带 = 噪声底）：
+         fringe 6  → 轻档 23.06 / 强档 13.47
+         fringe 20 → 轻档 **65.57** / 强档 **37.64**（中间带 3.42 / 2.92，仍是 19× / 13× 的落差） */
+    mode === 'ultimate' ? { fringe: 20, bands: 6 } : mode === 'off' ? { fringe: 0 } : { fringe: 3.2 };
   if (warp === 'off') {
     /* 「关」= 不做折射位移：强度与 zoom 归零，只留 edge rim（CSS 拿它画高光）。
        注意色散仍然需要位移才有意义 —— 位移为 0 时色差自动为 0，所以这里直接把 fringe 也归零。 */
