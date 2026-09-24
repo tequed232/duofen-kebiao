@@ -5,7 +5,6 @@ import { SnackbarLayer } from './components/overlays';
 import { AppNavBar } from './components/layout';
 import { SplashScreen } from './components/splash';
 import { useAppState } from './state/AppState';
-import { nativeDockActive } from './lib/native';
 import { startClassReminderLoop } from './lib/classReminder';
 import ScheduleScreen from './screens/ScheduleScreen';
 import ScheduleFilterScreen from './screens/ScheduleFilterScreen';
@@ -103,18 +102,6 @@ export default function App() {
       },
     };
   }, [selectTab, push]);
-
-  // 原生 Dock（APK）：把标签切换能力暴露给宿主，并同步选中项
-  useEffect(() => {
-    (window as unknown as { DuofenDock?: unknown }).DuofenDock = {
-      select: (id: string) => selectTab(id as 'schedule' | 'search' | 'settings'),
-    };
-  }, [selectTab]);
-
-  useEffect(() => {
-    const index = current.route === 'settings' ? 2 : current.route === 'scheduleFilter' ? 1 : 0;
-    nativeDockActive(index);
-  }, [current.route]);
 
   // 底边栏材质：写到 <html data-glass-material>，由 CSS 决定用玻璃 / 实心 / 半透明
   useEffect(() => {
