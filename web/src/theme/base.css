@@ -529,3 +529,29 @@ html[data-perf='low'] .glass-nav-slider {
 .screen[aria-hidden='true'] {
   pointer-events: none !important;
 }
+
+/* ==================== 单色等高线背景（作者要求：模仿《终末地》） ====================
+   层级：`.contour-layer` 是 `.phone` 的第一个孩子，绝对定位铺满、位于屏幕（`.screen`）之下；
+   开启时把 `.screen` 自己的底色让出来（否则它是不透明的 surface，等高线根本看不见）。
+   卡片、对话框、底栏仍是各自的不透明表面 —— 只有"页面底"变透明。 */
+.contour-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  /* 单色：跟随主题的 on-surface；不引入第二个色相 */
+  color: var(--md-sys-color-on-surface);
+}
+
+html[data-contour='subtle'] .screen,
+html[data-contour='bold'] .screen {
+  background: transparent;
+}
+
+/* 屏幕上仍是"不透明表面"的那些容器保持不动：内容卡片照旧 */
+html[data-contour='subtle'] .phone,
+html[data-contour='bold'] .phone {
+  background: var(--md-sys-color-surface);
+}

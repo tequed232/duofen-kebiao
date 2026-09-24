@@ -4,6 +4,7 @@ import { NavHost, useNav, type RouteName } from './nav/navigation';
 import { SnackbarLayer } from './components/overlays';
 import { AppNavBar } from './components/layout';
 import { SplashScreen } from './components/splash';
+import { ContourBackground } from './components/contour';
 import { useAppState } from './state/AppState';
 import { startClassReminderLoop } from './lib/classReminder';
 import ScheduleScreen from './screens/ScheduleScreen';
@@ -128,6 +129,12 @@ export default function App() {
     document.documentElement.dataset.dockScatter = strong ?? 'concise';
   }, [settings.dockScatter]);
 
+  /* 单色等高线背景：写到 <html data-contour>（CSS 据此让出 .screen 底色），
+     并把等高线层画在 .phone 里、屏幕之下（作者要求「单色背景模仿终末地的等高线」）。 */
+  useEffect(() => {
+    document.documentElement.dataset.contour = settings.contour ?? 'subtle';
+  }, [settings.contour]);
+
   // 过渡模式：写到 <html data-transition> 上，由 CSS 决定动画（none = 瞬时切换）
   useEffect(() => {
     document.documentElement.dataset.transition = settings.transition;
@@ -143,6 +150,7 @@ export default function App() {
   return (
     <div className="stage">
       <div className={['phone', entering ? 'entering' : ''].join(' ').trim()}>
+        {(settings.contour ?? 'subtle') !== 'off' ? <ContourBackground intensity={settings.contour ?? 'subtle'} /> : null}
         <NavHost screens={SCREENS} />
       {/* 常驻底栏：整个应用只渲染一份，位于屏幕栈之外 ——
           从根本上避免"切页导致底栏卸载/捕获残留/动画位移"造成的点击失效与重复跳转 */}

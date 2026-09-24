@@ -29,6 +29,7 @@ export default function SettingsScreen() {
   const [perfDialogOpen, setPerfDialogOpen] = useState(false);
   const [dispersionDialogOpen, setDispersionDialogOpen] = useState(false);
   const [scatterDialogOpen, setScatterDialogOpen] = useState(false);
+  const [contourDialogOpen, setContourDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 本地识别资源状态：null = 正在探测 */
   const [ocrStatus, setOcrStatus] = useState<OcrAssetStatus | null>(null);
@@ -155,9 +156,20 @@ export default function SettingsScreen() {
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>
               {/* ------------------------------- 性能模式：高性能 / 自动 / 低性能 */}
-              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => setPerfDialogOpen(true)}>
+              <md-list-item type="button" className="rounded-middle" onClick={() => setPerfDialogOpen(true)}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="speed" />
+              {/* ----------------------------------------- 等高线背景（单色 · 终末地风） */}
+              <md-list-item type="button" className="rounded-outer-bottom" onClick={() => setContourDialogOpen(true)}>
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="graphic_eq" />
+                </div>
+                <div slot="headline">等高线背景</div>
+                <div className="md-body-small muted" slot="supporting-text">
+                  {settings.contour === 'off' ? '关：纯色底' : settings.contour === 'bold' ? '密：线条更多更明显' : '细（默认）：单色地形线条' }
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
                 </div>
                 <div slot="headline">性能模式</div>
                 <div slot="supporting-text">
@@ -526,6 +538,37 @@ export default function SettingsScreen() {
               }}
             >
               {settings.dispersion === value ? '✓ ' : ''}
+              {label}
+            </md-outlined-button>
+          ))}
+        </div>
+      </MdDialog>
+
+      <MdDialog
+        open={contourDialogOpen}
+        headline="等高线背景"
+        onClosed={() => setContourDialogOpen(false)}
+        actions={<md-text-button onClick={() => setContourDialogOpen(false)}>取消</md-text-button>}
+      >
+        整页单色底上叠一层地形等高线（工业风那套）。只画一条颜色（跟随主题的 on-surface），
+        卡片与对话框仍是各自的不透明表面：
+        <div className="col gap-8 mt-12">
+          {([
+            ['off', '关：纯色底'],
+            ['subtle', '细（默认）：线条克制，不抢内容'],
+            ['bold', '密：线条更多、更明显'],
+          ] as const).map(([value, label]) => (
+            <md-outlined-button
+              key={value}
+              onClick={() => {
+                setContourDialogOpen(false);
+                updateSettings(
+                  { contour: value },
+                  { message: value === 'off' ? '等高线背景：关' : value === 'bold' ? '等高线背景：密' : '等高线背景：细' },
+                );
+              }}
+            >
+              {settings.contour === value ? '✓ ' : ''}
               {label}
             </md-outlined-button>
           ))}

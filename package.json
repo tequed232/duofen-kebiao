@@ -17,6 +17,7 @@
     "check:calendar": "node scripts/check-calendar-export.mjs",
     "check:phrases": "node scripts/check-phrases.mjs",
     "check:settings": "node scripts/check-settings-groups.mjs",
+    "check:contour": "node scripts/check-contour.mjs",
     "check:schedule-html": "node scripts/check-schedule-html.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",

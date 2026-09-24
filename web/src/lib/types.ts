@@ -38,6 +38,8 @@ export interface AppSettings {
    * 参数见 web/src/lib/lens.ts 的 LENS_DOCK / LENS_DOCK_ULTIMATE。
    */
   dispersion: 'off' | 'concise' | 'ultimate';
+  /** 单色等高线背景（模仿《终末地》）：off 不画 / subtle 默认 / bold 更密 */
+  contour: 'off' | 'subtle' | 'bold';
   /**
    * 底栏**散射（磨砂）强度**档位：
    *   · 'concise' —— 默认。本体图内 ~2.4px 轻磨砂 + 底色 alpha 0%，看得见折射、透得出列表；
@@ -75,6 +77,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   liquidGlass: true,
   barMaterial: 'solid',
   dispersion: 'concise',
+  contour: 'subtle',
   dockScatter: 'concise',
   classReminder: true,
   uiScale: 'normal',
