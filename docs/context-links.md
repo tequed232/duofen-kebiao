@@ -100,6 +100,26 @@ APK 直链（按版本）：
   现状：桌面 Chromium 已证伪；**安卓 WebView 侧待真机回归时用同一守卫补测**（测量脚本不依赖项目代码，可直接在设备浏览器打开同一张测试页）。该守卫已进 CI，引擎行为若变化会直接反映在 PR 的 review 里，不再靠假设。
 - **隐私**：内置课表已清空过一次（含教师姓名、教室、班级人数），后按作者要求恢复课程数据但**署名统一为「Tequed232 拥有本项目的最终解释权」**；仓库不收录构建产物与截图；工作区密钥扫描通过
 
+### 文档核对状态（2026-09-24）
+
+`docs/` 下每篇都对着代码/实测核对过一遍，结论如下 —— 这样接手的人知道哪些是「刚核过的」，哪些是「有日期的历史件」：
+
+| 文档 | 结论 |
+| --- | --- |
+| `PROJECT-STATE.md` | **已更正**：版本、待办按可自主完成/需真机/需作者决策三类重排、「易踩的坑」补 9-10 条 |
+| `context-links.md`（本文） | **已更正**：版本、`backdrop-filter: url()` 那条错误记录、脚本表补 3 条守卫 |
+| `v2-refactor.md` | **已更正**：`backdrop-filter` 前提被实测推翻；原生 Dock 一节补「**已回滚**」横幅（原写成已实施，会误导） |
+| `liquidglass-ultimate.md` | 已更新：补浏览器侧实测结果表与产物路径；真机项显式标为未验证 |
+| `live-activity-plan.md` | 无需改：「通知能发、缺的是到点叫醒」与真机现象一致 |
+| `dynamic-island.md` | 无需改：`LiveUpdates.kt` 确实实现了 `ProgressStyle` / `setRequestPromotedOngoing` / `setShortCriticalText`（后者因 compileSdk 35 走反射），清单亦已声明 `POST_PROMOTED_NOTIFICATIONS` |
+| `asset-permissions.md` | 无需改：`schedule-hero.jpg` 那条记录的正是「作者要求下架」，不是失效路径；正文 `<在这里贴台账链接>` 位于代码块内，是给作者复制使用的私信模板 |
+| `security-review.md` | 无需改：有明确审查日期与基准版本（2026-09-23 / v3.0.2），属历史件 |
+| `promo-brief.md` | 无需改：开头即写明「版本基准 v3.0.2（2026-09-23）」 |
+| `coolapk-glass.md` | 无需改：素材参考（酷安 APK 拆解），不含当前状态断言 |
+| `writing-style.md` / `commit-convention.md` | 无需改：约定类文档，无「当前实现」类断言 |
+
+机械核对脚本（本地）：`build/audit-docs.cjs` —— 抽出所有 md 里的仓库路径 / 版本号 / `npm run` 脚本名逐个验证存在性与一致性。
+
 ---
 
 Tequed232 拥有本项目的最终解释权。
