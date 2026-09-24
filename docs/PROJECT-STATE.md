@@ -95,3 +95,7 @@ pwsh -File scripts/verify-device.ps1   # 一键：安装 + 截图 + 点底栏三
 8. **改含中文的脚本不要走 PowerShell 的文本 cmdlet**：`Set-Content` / `[IO.File]::WriteAllText` 会把 UTF-8 写坏（实测：3561 字节的文件涨到 5506 字节、中文全成乱码、node 直接报 ESM 加载失败）。用编辑工具或 Node 的 `fs` 写。
 9. **「不在 CI 里的守卫」等于没有守卫 —— 这个坑在本仓库已复现四次**：`apk:parity`（假失败）、`check-import-e2e`（选择器过期 → 永远报找不到输入框）、`verify.mjs`（19 步挂 11 步）、以及 `check-about-credits` 与 `check-imports`（**零 workflow 引用**，谁都没跑过）。它们共同的特征是**坏得很安静**，而人看到"仓库里有这个脚本"就以为覆盖到了。
    加新守卫时请一并做到两件事：**接进 `.github/workflows/auto-review.yml` 的守卫清单**，并**按「先证明它能红」验一遍**（造一个它该抓的错，看它是否真报红）。只写脚本不接 CI，等于给自己留一个未来的假象。
+10. **「回滚」要回滚干净 —— 半截回滚比不回滚更难发现**。2026-09 一次自查里连着撞见两次：
+    - Android 的原生 Dock 在真机上「可见但点击无反应」被停用，但 `injectInsets()` 仍在给网页写 `--native-dock = 74px`。网页会为一个**并不存在**的底栏让位，于是「回到今天」等悬浮按钮在安卓上凭空抬高 74px（与底栏的缝从 14px 变 88px）—— **网页版正常、只有安卓版错位**，最容易在浏览器里验证时漏掉。量化脚本：`build/check-native-dock-offset.cjs`。
+    - 教材数据的 Kotlin 拷贝在「Web 是唯一基线」时被删掉，但生成它的脚本 `import-textbooks.mjs` 留了下来，只产出一个没人编译、也没被 gitignore 的文件。
+    停用一个子系统时，请连着清掉**它的宿主注入、它的数据产物、生成它的脚本、以及文档里"我们决定用它"的记载**；否则留下一堆"看起来还在工作"的管道。
