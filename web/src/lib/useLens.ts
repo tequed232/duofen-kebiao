@@ -22,21 +22,42 @@ interface LensHost {
   disp: SVGFEDisplacementMapElement;
   /** 同一张贴图、更小的位移量：给 backdrop-filter 用（对真实内容做透镜） */
   backdropFilter: SVGFilterElement;
-  /** backdrop 那份的模糊与位移节点（G 通道；不做色散时它是唯一的位移） */
+  /** backdrop 那份的模糊与位移节点（不做色散时它是唯一的位移） */
   backdropBlur: SVGFEGaussianBlurElement;
   backdropDisp: SVGFEDisplacementMapElement;
-  /** 色散的两个额外通道：R 位移比 G 大一点、B 小一点。不做色散时为 null */
-  backdropDispR: SVGFEDisplacementMapElement | null;
-  backdropDispB: SVGFEDisplacementMapElement | null;
+  /**
+   * 色散的每一段光谱各一个位移节点（简洁档 3 个 = R/G/B，极致档 6 个 = 六段光谱）。
+   * 不做色散时是空数组，走 [backdropDisp] 那条单位移链。
+   */
+  backdropDisps: SVGFEDisplacementMapElement[];
   key: string;
 }
 
-/** 只留一个通道的矩阵（R / G / B），alpha 原样透传 —— 色散就是把三份单通道合回去 */
-const CHANNEL_MATRIX = [
-  '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0',
-  '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0',
-  '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0',
+/**
+ * 色散的分段色向量。每一段 = 一个色权重三元组，用它做 `feColorMatrix` 的对角缩放，
+ * 位移之后再 screen 叠回去。
+ *
+ * 关键性质：**每一组的三元组之和都等于 (1,1,1)**（颜色空间里的分区单位）。
+ * 于是位移为 0 的地方（玻璃中间）六份叠回来 ≈ 原画面，不会整块偏色 ——
+ * 这正是当年 `c201278` 那版"整屏发紫"要修掉的东西。
+ */
+const RGB_BANDS: Array<[number, number, number]> = [
+  [1, 0, 0], // R
+  [0, 1, 0], // G
+  [0, 0, 1], // B
 ];
+const SPECTRUM_BANDS: Array<[number, number, number]> = [
+  [0.25, 0.0, 0.35], // 紫
+  [0.0, 0.05, 0.45], // 蓝
+  [0.0, 0.25, 0.2], // 青
+  [0.05, 0.55, 0.0], // 绿
+  [0.35, 0.15, 0.0], // 黄
+  [0.35, 0.0, 0.0], // 红
+];
+const bandColors = (bands: number) => (bands >= 6 ? SPECTRUM_BANDS : RGB_BANDS);
+/** 对角缩放矩阵：R/G/B 各乘一个系数，alpha 原样透传 */
+const bandMatrix = ([r, g, b]: [number, number, number]) =>
+  `${r} 0 0 0 0  0 ${g} 0 0 0  0 0 ${b} 0 0  0 0 0 1 0`;
 
 export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams): void {
   const hostRef = useRef<LensHost | null>(null);
@@ -112,36 +133,47 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       return node;
     };
     const fringe = params.fringe ?? 0;
+    const bands = Math.max(1, Math.round(params.bands ?? 3));
     let backdropDisp = displace('softened', 'refracted');
-    let backdropDispR: SVGFEDisplacementMapElement | null = null;
-    let backdropDispB: SVGFEDisplacementMapElement | null = null;
+    let backdropDisps: SVGFEDisplacementMapElement[] = [];
     backdropFilter.append(backdropBlur, backdropImage);
     if (fringe > 0) {
-      const channels: string[] = [];
-      [0, 1, 2].forEach((index) => {
-        const disp = displace('softened', `split-d${index}`);
+      const colors = bandColors(bands);
+      const outputs: string[] = [];
+      backdropDisps = colors.map((color, index) => {
+        const node = displace('softened', `band-d${index}`);
         const keep = document.createElementNS(SVG_NS, 'feColorMatrix');
-        keep.setAttribute('in', `split-d${index}`);
+        keep.setAttribute('in', `band-d${index}`);
         keep.setAttribute('type', 'matrix');
-        keep.setAttribute('values', CHANNEL_MATRIX[index]);
-        keep.setAttribute('result', `split-c${index}`);
-        backdropFilter.append(disp, keep);
-        channels.push(`split-c${index}`);
-        if (index === 0) backdropDispR = disp;
-        else if (index === 1) backdropDisp = disp;
-        else backdropDispB = disp;
+        keep.setAttribute('values', bandMatrix(color));
+        keep.setAttribute('result', `band-c${index}`);
+        backdropFilter.append(node, keep);
+        outputs.push(`band-c${index}`);
+        return node;
       });
-      /* screen：通道互不相交，等价于相加；再叠一次就凑回完整的 RGB */
-      const mixRG = document.createElementNS(SVG_NS, 'feBlend');
-      mixRG.setAttribute('in', channels[0]);
-      mixRG.setAttribute('in2', channels[1]);
-      mixRG.setAttribute('mode', 'screen');
-      mixRG.setAttribute('result', 'split-rg');
-      const mixRGB = document.createElementNS(SVG_NS, 'feBlend');
-      mixRGB.setAttribute('in', 'split-rg');
-      mixRGB.setAttribute('in2', channels[2]);
-      mixRGB.setAttribute('mode', 'screen');
-      backdropFilter.append(mixRG, mixRGB);
+      /* 合成：**加法**（feComposite arithmetic k2=k3=1）。
+         为什么不用 screen：screen 是非线性的（1−(1−a)(1−b)），六段部分颜色相加时
+         在亮处会饱和 —— 实测极致档的"中间带"因此从噪声底 0.42 涨到 2.98，
+         看着就是"整面有一层淡淡偏色"（作者当初否掉的正是这个）。
+         六段色向量之和恰好 = (1,1,1)，加法下位移为 0 的地方**精确还原**原画面，
+         中间那层偏色就没了；backdrop 采到的真实背景是不透明的，加法也不会把 alpha 叠歪。 */
+      let previous = outputs[0];
+      for (let index = 1; index < outputs.length; index += 1) {
+        const mix = document.createElementNS(SVG_NS, 'feComposite');
+        mix.setAttribute('in', previous);
+        mix.setAttribute('in2', outputs[index]);
+        mix.setAttribute('operator', 'arithmetic');
+        mix.setAttribute('k1', '0');
+        mix.setAttribute('k2', '1');
+        mix.setAttribute('k3', '1');
+        mix.setAttribute('k4', '0');
+        const result = index === outputs.length - 1 ? 'refracted' : `band-mix${index}`;
+        mix.setAttribute('result', result);
+        backdropFilter.append(mix);
+        previous = result;
+      }
+      /* 只有一段时没有 feBlend，直接给它一个结果名，后面的引用才有效 */
+      if (outputs.length === 1) backdropDisps[0].setAttribute('result', 'refracted');
     } else {
       backdropFilter.append(backdropDisp);
     }
@@ -156,8 +188,7 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
       backdropFilter,
       backdropBlur,
       backdropDisp,
-      backdropDispR,
-      backdropDispB,
+      backdropDisps,
       key: '',
     };
     hostRef.current = host;
@@ -204,13 +235,18 @@ export function useLens(ref: RefObject<HTMLElement | null>, params: LensParams):
          放在位移前还是后视觉上几乎没差，但放在后面会把刚分开的 R/B 糊回去。 */
       backdropBlur.setAttribute('stdDeviation', String(Math.max(0.4, params.edge * 2) + (fringe > 0 ? 2 : 0)));
       host.backdropDisp.setAttribute('scale', backdropScale.toFixed(2));
-      if (host.backdropDispR && host.backdropDispB) {
-        host.backdropDispR.setAttribute('scale', (backdropScale + fringe / 2).toFixed(2));
-        host.backdropDispB.setAttribute('scale', Math.max(0, backdropScale - fringe / 2).toFixed(2));
-      }
+      /* 每一段光谱一个位移量，沿线均匀铺开：
+         简洁档 3 段 → [+fringe/2, 0, −fringe/2]（与作者此刻看到的完全一致）；
+         极致档 6 段 → 紫 … 红依次铺满 [−fringe/2, +fringe/2]。
+         位移量之差 → 横向彩色分离，而位移为 0 的中间区自动无色差。 */
+      const count = host.backdropDisps.length;
+      host.backdropDisps.forEach((node, index) => {
+        const offset = count > 1 ? fringe * (0.5 - index / (count - 1)) : 0;
+        node.setAttribute('scale', Math.max(0, backdropScale + offset).toFixed(2));
+      });
       element.style.setProperty('--lg-edge-url', `url("${map.edgeUrl}")`);
       element.dataset.lens = 'ready';
-      element.dataset.lensDispersion = fringe > 0 ? 'rgb' : 'none';
+      element.dataset.lensDispersion = fringe > 0 ? `bands-${count}` : 'none';
     };
 
     update();

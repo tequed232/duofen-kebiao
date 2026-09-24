@@ -1,14 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+ 通知权限：Android 16 Live Updates / ColorOS 流体云 状态卡片需要 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Google 官方的硬性要求：成为实况通知（Live Update）必须声明这个非运行时权限 -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
-    <!-- 课表 → 系统日历：主页「添加到系统日程」要写日程，「清除本 App 的日程」要读回来删掉。
-         两个都是运行时权限，由 CalendarExport.PERMISSIONS 在用到时申请（作者要求先申请再写）。 -->
-    <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
 
     <application

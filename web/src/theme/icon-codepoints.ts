@@ -32,7 +32,6 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "error": 0xe000,
   "event": 0xe24f,
   "event_available": 0xe614,
-  "event_busy": 0xe615,
   "event_note": 0xe616,
   "expand_less": 0xe5ce,
   "expand_more": 0xe5cf,
