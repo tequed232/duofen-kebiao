@@ -106,11 +106,17 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     const element = dockRef.current;
     if (!element) return undefined;
     const frame = element.closest('.phone') ?? element.parentElement;
+    let last = '';
     const publish = () => {
       const frameRect = frame?.getBoundingClientRect();
       const dockRect = element.getBoundingClientRect();
       if (!frameRect || dockRect.height === 0) return;
-      document.documentElement.style.setProperty('--dock-band', `${Math.max(0, Math.round(frameRect.bottom - dockRect.top))}px`);
+      const value = `${Math.max(0, Math.round(frameRect.bottom - dockRect.top))}px`;
+      /* **值没变就不写**：切屏/动画期间 RO 会反复触发，每次都 setProperty 会让整棵树重算样式 ——
+         表现就是"切屏抽搐闪烁"（作者 2026-09-25 反馈）。 */
+      if (value === last) return;
+      last = value;
+      document.documentElement.style.setProperty('--dock-band', value);
     };
     publish();
     const observer = new ResizeObserver(publish);

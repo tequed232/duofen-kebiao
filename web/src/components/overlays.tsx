@@ -1,5 +1,6 @@
 /** Overlays: snackbar, confirm dialog, the expandable fullscreen panel and the image viewer. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { MdDialog, MdIcon, MdIconButton } from './md';
 import { useAppState } from '../state/AppState';
 import { MOTION } from '../theme/motion';
@@ -245,7 +246,12 @@ export function ExpandableSheet({
     if (drag.dy > 0 && half - drag.dy > half - 40) onClose();
   };
 
-  return (
+  /* 把弹层 portal 到 `.phone`（与底栏同级）：这样它的 z-index 直接和底栏比，
+     不需要给所在屏加 `:has()` 提权 —— 那条规则每次切屏都要重算，正是切屏闪烁的嫌疑源。 */
+  const host = typeof document === 'undefined' ? null : document.querySelector('.phone') ?? document.body;
+  if (!host) return null;
+
+  return createPortal(
     <div className={['sheet-layer', open ? 'open' : ''].join(' ').trim()}>
       <div className="sheet-scrim" onClick={onClose} aria-hidden="true" />
       <section
@@ -275,7 +281,8 @@ export function ExpandableSheet({
         <div className={['sheet-body', scrollable ? 'scroll-y' : ''].join(' ').trim()}>{children}</div>
         {actions ? <div className="sheet-action">{actions}</div> : null}
       </section>
-    </div>
+    </div>,
+    host,
   );
 }
 

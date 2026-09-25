@@ -111,7 +111,16 @@ check(
   screen.indexOf('schedule-nav-fab') > -1 && screen.indexOf('schedule-nav-fab') < screen.indexOf('schedule-today-fab'),
   '顺序不对 —— 要求是在回到今天的左边',
 );
-check('两个按钮在同一行容器里', /schedule-fab-row[\s\S]{0,400}schedule-nav-fab[\s\S]{0,200}schedule-today-fab/.test(screen), '不在同一个 flex 行里');
+check(
+  '两个按钮都在同一个行容器里（「回到今天」现在是条件渲染）',
+  /className="schedule-fab-row"/.test(screen) && screen.includes('schedule-nav-fab') && screen.includes('schedule-today-fab') && screen.indexOf('schedule-nav-fab') < screen.indexOf('schedule-today-fab'),
+  '容器或顺序不对',
+);
+check(
+  '当天不渲染「回到今天」（isSameDay 条件）',
+  /isSameDay\(selectedDate, today\) \? null :/.test(screen),
+  '没有按"是否本日"条件渲染',
+);
 check('.schedule-fab-row 用 flex + gap 保证对称', /\.schedule-fab-row\s*\{[^}]*display:\s*flex[^}]*gap:\s*\d+px/.test(css), 'CSS 里没有这一行容器');
 check(
   '「一周内没课」也有提示（点了不能没反应）',
@@ -132,22 +141,38 @@ if (process.env.APP_URL) {
   await page.waitForTimeout(2800);
   await page.waitForSelector('.schedule-fab-row', { timeout: 8000 });
 
-  const rects = await page.evaluate(() => {
-    const box = (sel) => {
-      const r = document.querySelector(sel).getBoundingClientRect();
-      return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+  /* 作者 2026-09-25 改版：两个按钮不再挤在右边 —— 导航课程靠左、回到今天靠右，
+     当天（选中日期就是今天）**根本不显示**回到今天，整行离底栏留 --dock-band + 12px。 */
+  const fab = await page.evaluate(() => {
+    const g = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? el.getBoundingClientRect().toJSON() : null;
     };
-    const nav = box('.schedule-nav-fab');
-    const today = box('.schedule-today-fab');
-    return { nav, today, gap: today.x - nav.right };
+    return {
+      frame: g('.phone'),
+      nav: g('.schedule-nav-fab'),
+      today: g('.schedule-today-fab'),
+      dock: g('.m3e-dock'),
+      band: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-band')) || 0,
+    };
   });
-  check(
-    `两个按钮同一底边（差 ${Math.abs(rects.nav.bottom - rects.today.bottom).toFixed(2)}px < 1.5）`,
-    Math.abs(rects.nav.bottom - rects.today.bottom) < 1.5,
-    '没有对齐',
-  );
-  check('「导航课程」确实在「回到今天」左边', rects.nav.x + rects.nav.width <= rects.today.x + 1.5, `nav.right=${rects.nav.right} today.x=${rects.today.x}`);
-  check(`两者间距 ≈ 12px（实测 ${rects.gap.toFixed(1)}px）`, Math.abs(rects.gap - 12) < 4, '间距不是 12px');
+  if (fab.frame && fab.nav) {
+    const navLeftGap = fab.nav.left - fab.frame.left;
+    check(`「导航课程」停靠左侧（距屏左 ${navLeftGap.toFixed(0)}px ≈ 16）`, Math.abs(navLeftGap - 16) < 8, '没靠左');
+    const gapToDock = fab.dock ? fab.dock.top - fab.nav.bottom : -1;
+    check(`整行与底栏留出距离（${gapToDock.toFixed(0)}px ≥ 12px；--dock-band = ${fab.band}px）`, gapToDock >= 11, '离底栏太近');
+    if (fab.today) {
+      const todayRightGap = fab.frame.right - fab.today.right;
+      check(`「回到今天」靠右（距屏右 ${todayRightGap.toFixed(0)}px ≈ 16）`, Math.abs(todayRightGap - 16) < 8, '没靠右');
+      check(
+        `两个按钮同一底边（差 ${Math.abs(fab.nav.bottom - fab.today.bottom).toFixed(2)}px < 1.5）`,
+        Math.abs(fab.nav.bottom - fab.today.bottom) < 1.5,
+        '没有对齐',
+      );
+    } else {
+      check('当天不显示「回到今天」', true, '');
+    }
+  }
 
   await page.locator('.schedule-nav-fab').click();
   await page.waitForTimeout(700);
@@ -156,7 +181,8 @@ if (process.env.APP_URL) {
      和课程详情同一套手感（不能退回居中对话框）。 */
   const sheet = await page.evaluate(() => {
     const phone = document.querySelector('.phone')?.getBoundingClientRect();
-    const panel = document.querySelector('.sheet-panel.half, .sheet-panel, md-dialog');
+    /* 只看**当前打开的那个抽屉**：弹层现在 portal 到 .phone，泛匹配会撞到别处残留的面板 */
+    const panel = document.querySelector('.sheet-layer.open .sheet-panel') ?? document.querySelector('.sheet-panel.half');
     const rect = panel?.getBoundingClientRect();
     return rect && phone
       ? {
@@ -169,7 +195,12 @@ if (process.env.APP_URL) {
   });
   check('导航课程弹层是贴底半屏（抖音式，不是居中对话框）', Boolean(sheet) && sheet.isHalf, sheet ? '不是 half 变体' : '没找到弹层');
   if (sheet) {
-    check(`贴底（距屏底 ${sheet.bottomGap.toFixed(1)}px ≤ 2）`, sheet.bottomGap <= 2, '没贴底');
+    /* 现在抽屉**停在底栏上方**（--dock-band），所以判据是"底边 ≈ 底栏带子"，而不是"贴到屏幕底" */
+    check(
+      `停在底栏上方（距屏底 ${sheet.bottomGap.toFixed(1)}px ≈ --dock-band）`,
+      Math.abs(sheet.bottomGap - (await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-band')) || 0))) <= 2,
+      '没停在底栏上方',
+    );
     check(`半遮蔽（高 ${(sheet.ratio * 100).toFixed(0)}% ≤ 66%）`, sheet.ratio <= 0.66, '占满整屏了');
   }
   /* 真实时钟下可能是"有目标"也可能是"一周内没课"（第 4 周周五之后、第 5 周只有部分课），

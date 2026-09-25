@@ -51,6 +51,7 @@ import {
   formatAddress,
   formatMonthDay,
   formatMonthDayWeekday,
+  isSameDay,
   openMapLink,
   mapProviderById,
   maxWeekOf,
@@ -426,15 +427,19 @@ export default function ScheduleScreen() {
         </div>
       </div>
 
-      {/* 右下角两个常驻按钮（对称并排）：左边「导航课程」= 去时间上离现在最近的那节课，
-          右边「回到今天」= 回到今天。单手拇指都够得到。 */}
+      {/* 右下角常驻按钮：作者 2026-09-25 反馈"两个挤在一起太满"，改成
+          ① 「导航课程」靠左停靠；
+          ② 「回到今天」**只在当前看得不是今天时**才出现；
+          ③ 整行 bottom 取 --dock-band + 12px，与底栏保持距离。 */}
       <div className="schedule-fab-row">
         <md-fab className="schedule-nav-fab" variant="tonal" label="导航课程" onClick={openNavCourse}>
           <MdIcon slot="icon" name="near_me" />
         </md-fab>
-        <md-fab className="schedule-today-fab" variant="primary" label="回到今天" onClick={goToday}>
-          <MdIcon slot="icon" name="today" />
-        </md-fab>
+        {isSameDay(selectedDate, today) ? null : (
+          <md-fab className="schedule-today-fab" variant="primary" label="回到今天" onClick={goToday}>
+            <MdIcon slot="icon" name="today" />
+          </md-fab>
+        )}
       </div>
 
       {/* 导航课程：「导航到 XX 地点」这套也走抖音式半遮蔽弹层（与课程详情同一套手感） */}

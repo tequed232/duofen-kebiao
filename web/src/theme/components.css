@@ -548,16 +548,10 @@ md-switch {
 
 /* ------------------------------------------------------ expandable sheet -- */
 
-/* 真机事故（作者 2026-09-25）：弹层里的按钮点不到 —— 因为**屏幕本身是层叠上下文**
-   （`.screen` z-index 30），底栏是它的兄弟（z-index 40），子元素 z-index 再高也翻不过去。
-   两条一起才成立：
-     ① 打开弹层 / 居中对话框的那一屏自己抬到 50 → 越过底栏的 40；
-     ② 抽屉底部抬起 `--dock-band`（由底栏自己测量并发布，见 layout.tsx 的 publishDockBand），
-        于是"盖住底栏的层"与"不压住底栏按钮"不再矛盾 —— 抽屉正好停在底栏上方。 */
-.screen:has(.sheet-layer.open),
-.screen:has(md-dialog[open]) {
-  z-index: 50;
-}
+/* 弹层与底栏的层叠关系：**靠 portal 解决，不用 :has()**。
+   早先写的 `.screen:has(.sheet-layer.open) { z-index: 50 }` 每次切屏/开关弹层都要重算
+   `:has()`，正是"切屏抽搐闪烁"的嫌疑来源之一 —— 现在 ExpandableSheet 把层直接 portal 到
+   `.phone`（与底栏同级、z-index 60 > 40），一层 `:has()` 都不需要。 */
 
 /* 抽屉抓手：抖音那种一眼认得出的横杠，**可上下拖**（半屏 ↔ 全屏，往下拖够多即关闭）。
    做成真实元素（不是 ::before）才能接指针事件；热区比横杠本身高，手指好抓。 */
@@ -1531,12 +1525,21 @@ button.credit-license:focus-visible {
    所以改成同一行 flex：间距与底对齐都由布局保证。 */
 .schedule-fab-row {
   position: absolute;
+  left: 16px;
   right: 16px;
-  bottom: calc(80px + 12px);
+  /* 与底栏保持距离：底栏自己发布 --dock-band，这里再留 12px（不再写死 80px） */
+  bottom: calc(var(--dock-band, 92px) + 12px);
   z-index: 20;
   display: flex;
   align-items: center;
+  /* 导航课程停靠左侧、回到今天靠右；只剩一个时它自然留在左边 */
+  justify-content: space-between;
   gap: 12px;
+  pointer-events: none;
+}
+
+.schedule-fab-row > * {
+  pointer-events: auto;
 }
 
 .schedule-today-fab,
