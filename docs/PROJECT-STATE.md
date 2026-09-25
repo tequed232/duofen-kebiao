@@ -33,7 +33,8 @@
 | 本地缓存课表 | 已完成 | `web/src/lib/scheduleCache.ts`：导入自动留快照（≤3 份），可一键恢复 |
 | 教材窗口 | 已完成 | 多选删除（可回档）+ 快捷添加 FAB |
 | 开源清单 | 已完成 | `scripts/collect-licenses.mjs` → 设置页「开源相关」+ README 分类表 |
-| 应用图标 | 已完成（v3.5.4 换新） | 作者 2026-09-24 提供的 **DLSS 超分 2048×2048** 原图（`docs/icon-source.jpg`）→ 19 张（安卓 5 档密度 × 方形/圆形/前景 2/3 安全区 + 网页 4 张）。口径单点在 `scripts/icon-targets.mjs`，生成 `npm run icons:app`，守卫 `npm run check:app-icons`（已进 CI，逐像素核对） |
+| 应用插画 | 已完成（2026-09-25） | 作者那张插画在**四个位置共用一份**：启动页大图 / 主页左上角头像 / 关于页 hero / 关于页「视觉与图标」。链路 `docs/icon-source.jpg`（2048×2048 DLSS 超分原图）→ `web/src/assets/illustration.jpg`（逐字节相同）→ `meta.ts` 唯一出口 `APP_ART`。**必须走打包器导入**：写 `/illustration.jpg` 这种站根绝对路径在 APK 里会 404（页面从 `assets/www/` 提供），网页版却看不出来 —— 2026-09-25 真机上因此「美术资源全没了」。守卫 `npm run check:artwork`（已进 CI，11 项：逐字节同源 / 原图 ≥1800 / 唯一出口 / 四处引用 / 禁站根绝对路径 / 四处不变形），两向反证已验证 |
+| 应用图标 | 已完成（v3.5.4 换新） | 作者 2026-09-24 提供的 **DLSS 超分 2048×2048** 原图（`docs/icon-source.jpg`）→ 18 张（安卓 5 档密度 × 方形/圆形/前景 2/3 安全区 + 网页 4 张；`web/src/assets` 里那份 192 已随 `APP_ICON` 下线，网页侧只留 `web/public/icon-192.png` 一份）。口径单点在 `scripts/icon-targets.mjs`，生成 `npm run icons:app`，守卫 `npm run check:app-icons`（已进 CI，逐像素核对） |
 | 贡献者名片墙 | 已接入应用 | 「关于 → 致谢 · 名片墙」：作者 1×3（跨三列）+ 其余按三列排（最后一行不满时最后一张跨列补满）；真头像（GitHub / B 站公开头像，已登记 `docs/asset-permissions.md`）+ 姓名首字兜底；平台剪影（Remix Icon）+ CC 许可标记；数据源 `web/src/lib/meta.ts` 的 `CREDITS`；宽屏设计稿 `preview/credits.html` |
 | 致谢 / 致歉声明 | 已更新 | 删除 README 与关于页的「致歉声明」；名单同步到 README、`CONTRIBUTORS.md`、应用名片墙三处 |
 | 仓库卫生 | 已加固 | 历史提交过的 8 个 `*.apk` 已全部 `git rm --cached` 剔除（现在 `git ls-files` 里没有任何 `.apk`）；`.gitignore` 忽略 `*.apk/*.aab/*.zip`；`scripts/check-repo-hygiene.mjs` + `.github/workflows/repo-hygiene.yml` 在推送/PR 上拦截（已做反向验证：塞进 APK 即 CI 红）；APK 只作为 Release 附件，命名统一为 `duofen-kebiao-<版本>.apk` —— **`enhance.apk` 这类「始终最新」的别名已废弃**（见 `scripts/github-release.mjs` 头部注释，短链改用 release 直链） |
@@ -70,7 +71,7 @@
 
 ```bash
 npm run build                 # 网页构建（输出 dist/）
-npm run icons:app             # 换了 docs/icon-source.jpg 之后：重生成全套应用图标（19 张）
+npm run icons:app             # 换了 docs/icon-source.jpg 之后：重生成全套应用图标（18 张）
 npm run check:app-icons       # 图标守卫：与「按原图现算一遍」逐像素比对（已进 CI）
 npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈希比对；ocr/ 按设计只进 APK，不算不一致
 npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）

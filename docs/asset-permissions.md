@@ -54,7 +54,7 @@ miratsu 老师您好，
 
 | 素材 | 来源 | 授权 | 用途 | 状态 |
 | --- | --- | --- | --- | --- |
-| `app/src/main/res/mipmap-*/ic_launcher*.png`、`web/public/icon-*.png`、`web/public/apple-touch-icon.png`、`web/src/assets/app-icon-192.png` | 项目作者在会话内提供原图（2026-09-23 首次提供；**2026-09-24 提供 DLSS 超分后的 2048×2048 版本**，留档 `docs/icon-source.jpg`，全套图标已按新图重新生成）。超分由**作者本人**完成，仓库侧只做等比降采样 | 权利人（项目作者本人）提供，作应用图标用 | 安卓自适应图标：前景 = 整幅画等比缩到 72/108 安全区、**不裁切**；圆形版只做圆形遮罩（系统圆形图标本就要求圆形）；底色 `#13161F` 取自画面左上角。生成口径在 `scripts/icon-targets.mjs`，命令 `npm run icons:app`，守卫 `npm run check:app-icons` | 已批准（approved） |
+| `app/src/main/res/mipmap-*/ic_launcher*.png`、`web/public/icon-*.png`、`web/public/apple-touch-icon.png` | 项目作者在会话内提供原图（2026-09-23 首次提供；**2026-09-24 提供 DLSS 超分后的 2048×2048 版本**，留档 `docs/icon-source.jpg`，全套图标已按新图重新生成）。超分由**作者本人**完成，仓库侧只做等比降采样 | 权利人（项目作者本人）提供，作应用图标用 | 安卓自适应图标：前景 = 整幅画等比缩到 72/108 安全区、**不裁切**；圆形版只做圆形遮罩（系统圆形图标本就要求圆形）；底色 `#13161F` 取自画面左上角。生成口径在 `scripts/icon-targets.mjs`，命令 `npm run icons:app`，守卫 `npm run check:app-icons` | 已批准（approved） |
 | `web/public/art/schedule-hero.jpg` | 项目作者 2026-09-23 在会话内提供 | 已按作者要求**先行下架**（主美会另出更好的图，尚未提供） | 曾用于课表页头图；文件已从仓库与构建产物移除 | 已撤下（withdrawn） |
 | `web/src/assets/avatars/*.jpg`、`*.webp`（4 张 GitHub + 2 张 B 站 + 2 张备用） | 各贡献者本人的平台公开头像：GitHub `github.com/<user>.png?size=240`；B 站 `api.bilibili.com/x/web-interface/card` 的 `face` + `@240w_240h_1c.webp` | 各人本人的公开头像，非商业致谢用途；项目作者（tequed232）确认可抓取 | 「关于 → 致谢 · 名片墙」的圆形头像（40dp / 52dp），加载失败自动退回姓名首字 | 已批准（approved） |
 | `web/src/assets/avatars/luo-bili.webp`、`binggan-bili.webp` | 同上（B 站头像） | 备用文件：把作者本人 / 饼干的名片头像从 GitHub 换回 B 站时使用 | 同上 | 备用，当前未被引用 |

@@ -155,7 +155,7 @@ no text, no logo, restrained product-launch aesthetic, 60fps, shallow depth of f
 
 - [ ] 逐镜头真机录屏（可指定：课表滚动穿底栏、底栏拖动撞边、进入课程详情、教材识别、状态栏实况、回到今天）
 - [ ] 深浅两套主题各录一遍
-- [ ] 应用图标原图与启动页素材（仓库内已有：`docs/icon-source.jpg`、`web/src/assets/app-icon-192.png`）
+- [ ] 应用图标原图与启动页素材（仓库内已有：`docs/icon-source.jpg`、`web/src/assets/illustration.jpg`）
 - [ ] 品牌文案确认（片名、片尾、字幕措辞）
 
 > 需要录屏素材时找我：可以按上面 6 个动作逐个录制并标注时间点。

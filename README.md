@@ -100,7 +100,7 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | --- | --- |
 | `web/index.html` | Vite 入口 HTML |
 | `web/public/` | 原样拷贝进 `dist/` 的静态文件：`manifest.webmanifest`、`_headers`、PWA 图标、`permissions/` 授权截图（关于页点开可看） |
-| `web/src/assets/` | 参与打包的图片：`avatars/` 各人公开头像、`app-icon-192.png` |
+| `web/src/assets/` | 参与打包的图片：`avatars/` 各人公开头像、`illustration.jpg`（应用插画，唯一出口 `APP_ART`） |
 | `web/src/main.tsx` `bootstrap.tsx` | 入口：Material Web 注册、主题与性能档引导 |
 | `web/src/App.tsx` | 412×892 舞台、屏幕栈、消息条、启动页 |
 | `web/src/components/` | 可复用界面件：`md.tsx`（Material Web 封装）、`layout.tsx`（应用栏 / 分节头 / 空态）、`overlays.tsx`（对话框 / 面板）、`schedule.tsx`（课表格）、`splash.tsx`（启动页）、`m3shape.tsx`（M3 形状）、`brands.tsx`（平台剪影图标） |
@@ -210,7 +210,7 @@ npm run dev        # 开发模式 (http://127.0.0.1:5173)
 npm run build      # 生成 Material Symbols 子集 -> 校验图标 -> vite build
 npm run preview    # 预览 production build (http://127.0.0.1:4173)
 npm run verify     # 用 Chromium 真机视口跑一遍全流程并截图（screenshots/）
-npm run icons:app  # 换了 docs/icon-source.jpg 之后：重生成全套应用图标（19 张）
+npm run icons:app  # 换了 docs/icon-source.jpg 之后：重生成全套应用图标（18 张）
 ```
 
 **交付物：`dist/`**（67 个文件、约 2.15 MB）—— 纯静态站点，任意静态服务器直接托管即可。
