@@ -9,7 +9,7 @@ import { SectionHeader, TopAppBar } from '../components/layout';
 import { MdIcon } from '../components/md';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
-import { CREDITS, GLASS_LIBS, GITHUB_URL, APP_NAME, APP_VERSION, APP_ICON, type CreditLicense, type CreditPerson } from '../lib/meta';
+import { CREDITS, GLASS_LIBS, GITHUB_URL, APP_NAME, APP_VERSION, APP_ART, type CreditLicense, type CreditPerson } from '../lib/meta';
 import { PlatformMark } from '../components/brands';
 
 const DESIGN_NOTES: { icon: string; title: string; body: string }[] = [
@@ -88,8 +88,8 @@ export default function AboutScreen() {
 
       <div className="screen-content">
         <div className="about-hero">
-          {/* 应用图标（作者提供的插画；整幅等比显示，不裁切） */}
-          <img className="about-mark" src={APP_ICON} alt={`${APP_NAME} 图标`} />
+          {/* 作者那张插画（DLSS 超分原图，与启动页 / 主页左上角同一份 APP_ART；整幅等比显示，不裁切） */}
+          <img className="about-mark" src={APP_ART} alt={`${APP_NAME} 图标`} />
           <div className="col" style={{ gap: 2 }}>
             <span className="md-headline-small-emphasized">{APP_NAME}</span>
             <span className="md-body-small muted">
@@ -147,7 +147,7 @@ export default function AboutScreen() {
             <div className="row gap-12 mt-12" style={{ alignItems: 'center', justifyContent: 'center' }}>
               <img
                 className="about-mark-lg"
-                src={APP_ICON}
+                src={APP_ART}
                 alt={`${APP_NAME} 图标`}
               />
             </div>

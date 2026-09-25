@@ -23,6 +23,7 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",
     "check:app-icons": "node scripts/check-app-icons.mjs",
+    "check:artwork": "node scripts/check-artwork-source.mjs",
     "apk:parity": "node scripts/check-apk-parity.mjs",
     "preview": "vite preview --port 4173",
     "verify": "node scripts/verify.mjs"

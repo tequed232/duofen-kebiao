@@ -22,6 +22,7 @@ import {
   highlightKeyFor,
 } from '../components/schedule';
 import { useAppState } from '../state/AppState';
+import { APP_ART } from '../lib/meta';
 import { useNav } from '../nav/navigation';
 import {
   haptic,
@@ -332,7 +333,7 @@ export default function ScheduleScreen() {
                 nav.push('scheduleFilter', {}, 'slide');
               }}
             >
-              <img src="/illustration.jpg" alt="" />
+              <img src={APP_ART} alt="" />
             </button>
           }
           actions={

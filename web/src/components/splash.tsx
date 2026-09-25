@@ -5,7 +5,7 @@
  * 退场时向上淡出，主页组件随后从下向上依次弹出（见 base.css 的 .phone.entering）。
  */
 import { useEffect, useState } from 'react';
-import { APP_NAME, APP_SHORT_NAME } from '../lib/meta';
+import { APP_ART, APP_NAME, APP_SHORT_NAME } from '../lib/meta';
 
 export function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => void }) {
   const [leaving, setLeaving] = useState(false);
@@ -31,7 +31,7 @@ export function SplashScreen({ ready, onDone }: { ready: boolean; onDone: () => 
     >
       {/* 启动页插画（作者 2026-09-25 指定用那张 DLSS 超分原图，不用方形图标裁切）：
           同一份资源也用在主页左上角与关于页，见 web/public/illustration.jpg。 */}
-      <img className="splash-mark" src="/illustration.jpg" alt="" width={112} height={112} />
+      <img className="splash-mark" src={APP_ART} alt="" width={112} height={112} />
       <div className="splash-title md-headline-medium-emphasized">{APP_NAME}</div>
       <div className="splash-sub md-body-medium">
         {APP_SHORT_NAME} · Material 3 Expressive 课表与记录
