@@ -313,8 +313,10 @@ class PhraseService : Service() {
                 .setShowWhen(false)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 /* 作者要求「默认展开显示」：给一个大视图（BigTextStyle），
-                   通知在通知栏里就以展开形态出现，动作按钮不必再点 ▼ 才露出来。 */
-                .setStyle(NotificationCompat.BigTextStyle().bigText(currentText() + "`n" + "戳一下会说一句预制台词"))
+                   通知在通知栏里就以展开形态出现，动作按钮不必再点 ▼ 才露出来。
+                   换行用真正的 `\n`（Kotlin 里的转义），**不能**写成反引号 + n ——
+                   那是两个字面字符，通知栏里会原样显示成 "`n"（作者看到的就是这个）。 */
+                .setStyle(NotificationCompat.BigTextStyle().bigText(currentText() + "\n" + "戳一下会说一句预制台词"))
                 /* 作者要求：只留「戳一下」——不要「语料」列表、也不要「管理」入口 */
                 .addAction(0, "戳一下", pokeIntent(context))
                 .build()
