@@ -1523,6 +1523,28 @@ button.credit-license:focus-visible {
 /* 主课表右下角常驻按钮组：「导航课程」+「回到今天」，并排对称、间距 12px。
    原来只有一个绝对定位的「回到今天」；两个按钮的文字长度不同，硬算 right 偏移迟早错位，
    所以改成同一行 flex：间距与底对齐都由布局保证。 */
+/* 顶栏左上角的插画头像（作者 2026-09-25）：等比裁成圆，别拉伸。
+   与启动页、关于页共用同一份 web/public/illustration.jpg。 */
+.appbar-avatar {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  margin-right: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container-high);
+  cursor: pointer;
+}
+
+.appbar-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .schedule-fab-row {
   position: absolute;
   left: 16px;

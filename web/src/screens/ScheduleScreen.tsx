@@ -321,7 +321,20 @@ export default function ScheduleScreen() {
         <TopAppBar
           title="多分课表"
           scrolled={scrolled}
-          leading={<MdIconButton icon="search_check_2" label="筛选课程" onClick={() => { haptic('select'); nav.push('scheduleFilter', {}, 'slide'); }} />}
+          leading={
+            /* 左上角换成作者那张插画头像（原来这里是搜索图标）；点击行为不变，仍是筛选课程 */
+            <button
+              type="button"
+              className="appbar-avatar"
+              aria-label="筛选课程"
+              onClick={() => {
+                haptic('select');
+                nav.push('scheduleFilter', {}, 'slide');
+              }}
+            >
+              <img src="/illustration.jpg" alt="" />
+            </button>
+          }
           actions={
             <>
               <MdIconButton className="appbar-textbooks" icon="menu_book" label="查看教材" onClick={() => { haptic('select'); nav.push('textbookList', {}, 'slide'); }} />
