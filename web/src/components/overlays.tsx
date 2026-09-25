@@ -115,6 +115,8 @@ export function ExpandableSheet({
   const [rendered, setRendered] = useState(open);
   const [phase, setPhase] = useState<'closed' | 'opening' | 'open' | 'closing'>(open ? 'open' : 'closed');
   const panelRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startH: number; maxH: number; dy: number } | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (open && phase === 'closed') {
@@ -179,10 +181,91 @@ export function ExpandableSheet({
 
   if (!rendered) return null;
 
+  /**
+   * 抓手拖动：把抽屉从**半屏**拖成**全屏**（作者 2026-09-25 的点子），
+   * 往下拖则回到半屏，再往下拖超过一截直接关掉 —— 抖音那套手势。
+   *
+   * 只用 pointer 事件 + 内联 height：拖动期间禁掉过渡（`data-dragging`），
+   * 松手按"离哪边近"吸附。上限始终 = 屏幕高 − `--dock-band`（底栏那条带子），
+   * 所以"全屏"也不会盖住底栏按钮。
+   */
+
+  const availableHeight = () => {
+    const layer = panelRef.current?.parentElement;
+    const band = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-band')) || 0;
+    return Math.max(200, (layer?.clientHeight ?? window.innerHeight) - band - 8);
+  };
+
+  const onGrabberDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const panel = panelRef.current;
+    if (!panel || variant !== 'half') return;
+    dragRef.current = { startY: event.clientY, startH: panel.getBoundingClientRect().height, maxH: availableHeight(), dy: 0 };
+    panel.dataset.dragging = '1';
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const onGrabberMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const panel = panelRef.current;
+    const drag = dragRef.current;
+    if (!panel || !drag) return;
+    drag.dy = event.clientY - drag.startY;
+    const half = Math.min(drag.startH, drag.maxH);
+    const next = Math.min(drag.maxH, Math.max(96, half - drag.dy));
+    /* 必须**同时**放开 max-height：半屏那条 `max-height: min(62%, …)` 会把内联 height 卡住，
+       只写 height 的话往上拖也长不高（实测：拖完仍是 496px = 62%）。 */
+    panel.style.maxHeight = `${Math.round(drag.maxH)}px`;
+    panel.style.height = `${Math.round(next)}px`;
+  };
+
+  const onGrabberUp = () => {
+    const panel = panelRef.current;
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!panel || !drag) return;
+    delete panel.dataset.dragging;
+    const half = Math.min(drag.startH, drag.maxH);
+    if (drag.dy < -60) {
+      /* 往上拖：吸到全屏（height 与 maxHeight 一起放开） */
+      panel.style.maxHeight = `${Math.round(drag.maxH)}px`;
+      panel.style.height = `${Math.round(drag.maxH)}px`;
+      setExpanded(true);
+      return;
+    }
+    if (drag.dy > 140) {
+      /* 往下拖够多：关掉抽屉 */
+      setExpanded(false);
+      panel.style.removeProperty('height');
+      panel.style.removeProperty('max-height');
+      onClose();
+      return;
+    }
+    setExpanded(false);
+    panel.style.removeProperty('height');
+    panel.style.removeProperty('max-height');
+    if (drag.dy > 0 && half - drag.dy > half - 40) onClose();
+  };
+
   return (
     <div className={['sheet-layer', open ? 'open' : ''].join(' ').trim()}>
       <div className="sheet-scrim" onClick={onClose} aria-hidden="true" />
-      <section className={variant === 'half' ? 'sheet-panel half' : 'sheet-panel'} ref={panelRef} role="dialog" aria-modal="true">
+      <section
+        className={variant === 'half' ? 'sheet-panel half' : 'sheet-panel'}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        data-expanded={expanded ? '1' : undefined}
+      >
+        {variant === 'half' ? (
+          <div
+            className="sheet-grabber"
+            role="separator"
+            aria-label="上下拖动：展开到全屏 / 收回半屏"
+            onPointerDown={onGrabberDown}
+            onPointerMove={onGrabberMove}
+            onPointerUp={onGrabberUp}
+            onPointerCancel={onGrabberUp}
+          />
+        ) : null}
         <div className="sheet-header">
           {icon ? <MdIcon name={icon} size={24} /> : null}
           <div className="sheet-title md-title-large-emphasized">{title}</div>

@@ -143,6 +143,11 @@ jobs:
           #   同一条守卫在静态阶段已经跑过一次；这里补渲染层断言（首页可见滑块必须为 0、
           #   安全区屏恰好 2 个、拖动真的写进 --inset-top）。
           APP_URL=http://127.0.0.1:5173/ run_guard settings-hub node scripts/check-settings-groups.mjs
+          # 抽屉抓手手势：往上拖展开到全屏（≥80%）、往下拖够多关闭，且任何时刻不越过底栏带子。
+          #   这个坑真机上暴露过：只写 height 会被半屏那条 max-height 卡住（拖完仍是 62%）。
+          APP_URL=http://127.0.0.1:5173/ run_guard sheet-drag node scripts/check-sheet-drag.mjs
+          # 浮层不许把可点元素放到 dock 下面（作者真机反馈"按钮点不到"的根治）
+          APP_URL=http://127.0.0.1:5173/ run_guard overlay-vs-dock node scripts/check-overlay-vs-dock.mjs
           # 课程详情弹层 = 抖音评论区式半遮蔽：贴底、高 ≤66%、顶边在下半屏、顶部信息不变、
           #   主操作「导航至 <地点>」。静默坏法（又变回整屏 / 按钮改回两个字）就靠这条兜住。
           APP_URL=http://127.0.0.1:5173/ run_guard course-sheet node scripts/check-course-sheet.mjs
