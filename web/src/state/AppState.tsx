@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import * as db from '../lib/db';
+import { nativeStartPhraseService } from '../lib/native';
 import { DEFAULT_SETTINGS, type AppSettings } from '../lib/types';
 import { applyRoles, buildThemes, detectSeed, type SeedSource } from '../theme/palette';
 import { EMBEDDED_SCHEDULE } from '../data/schedule';
@@ -149,6 +150,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     if (!ready) return;
     void db.writeSettings(settings);
   }, [settings, ready]);
+
+  /**
+   * 通知栏桌宠（实时语料）：**启动即按上次的开关恢复常驻通知**。
+   * 原来只在打开「台词管理」那一页时才 `nativeStartPhraseService()`，
+   * 于是"装完没进过那一页 = 通知栏什么都没有"——作者 2026-09-25 反馈
+   * 「实时语料通知怎么没有了」。开关值存在 KV 的 `phrasesEnabled`（与设置页同一个键）。
+   */
+  useEffect(() => {
+    if (!ready) return undefined;
+    let cancelled = false;
+    void db.readKv<boolean>('phrasesEnabled').then((enabled) => {
+      if (!cancelled && enabled) nativeStartPhraseService();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
 
   /* --------------------------------------------------------------- theme */
   useEffect(() => {

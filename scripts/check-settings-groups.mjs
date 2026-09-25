@@ -18,7 +18,7 @@ const FILE = 'web/src/screens/SettingsScreen.tsx';
 /** 分组口径（改这里 = 改产品决定；守卫与实现共用同一份顺序） */
 const GROUPS = [
   { title: '外观', rows: ['深色模式', '界面缩放', '底栏色散', '底栏散射', '底栏扭曲', '性能模式', '等高线背景'] },
-  { title: '实时通知', rows: ['上课提醒（灵动岛）', '台词管理', '实时通知（流体云）自检'] },
+  { title: '实时通知', rows: ['上课提醒（灵动岛）', '通知栏桌宠', '台词管理', '实时通知（流体云）自检'] },
   { title: '屏幕安全区', rows: ['上端安全区', '下端安全区'] },
   { title: '导航与学校', rows: ['默认跳转地图', '学校名称'] },
   { title: '图像识别与资源', rows: ['本地识别', '允许联网取识别资源', '接口配置'] },
@@ -412,6 +412,31 @@ check(
   '同路由不同参数要能入栈（push 的去重键含参数）',
   /JSON\.stringify\(top\.params[\s\S]{0,80}JSON\.stringify\(params/.test(await readFile('web/src/nav/navigation.tsx', 'utf8')),
   'push 只比 route，选项屏推不动',
+);
+
+console.log('\n=== 通知栏桌宠：设置里看得见，且启动即恢复 ===');
+/**
+ * 作者 2026-09-25：「实时语料通知怎么没有了？如果在通知栏显示的话就应该在设置内相应设置显示」。
+ * 两个真实原因一起钉住：
+ *   ① 开关原来只藏在「台词管理」里 —— 现在设置 → 实时通知 必须有这一行；
+ *   ② 服务原来只在打开「台词管理」时才启动 —— 现在 AppState 启动时按同一个 KV 键恢复。
+ */
+const appState = await readFile('web/src/state/AppState.tsx', 'utf8');
+check('设置页有「通知栏桌宠」开关行', /通知栏桌宠<\/div>/.test(source) && /ariaLabel="通知栏桌宠开关"/.test(source), '设置里看不到这个开关');
+check(
+  '开关读写的是同一个 KV 键 phrasesEnabled',
+  /readKv<boolean>\('phrasesEnabled'\)/.test(source) && /writeKv\('phrasesEnabled'/.test(source),
+  '键不一致，会和「台词管理」页各说各话',
+);
+check(
+  '开关直接启停前台服务',
+  /nativeStartPhraseService\(\)/.test(source) && /nativeStopPhraseService\(\)/.test(source),
+  '开关没接服务',
+);
+check(
+  '启动时按开关恢复常驻通知（不再依赖打开台词管理页）',
+  /readKv<boolean>\('phrasesEnabled'\)[\s\S]{0,160}nativeStartPhraseService\(\)/.test(appState),
+  'AppState 里没有启动恢复逻辑',
 );
 
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);

@@ -13,8 +13,9 @@ import { MapChooserDialog } from '../components/schedule';
 import { useAppState } from '../state/AppState';
 import { useNav, useRouteParams } from '../nav/navigation';
 import { mapProviderById } from '../lib/schedule';
-import { isNativeShell, haptic, nativeTestLiveUpdate, onNativeLiveConfirm } from '../lib/native';
+import { isNativeShell, haptic, nativeTestLiveUpdate, nativeStartPhraseService, nativeStopPhraseService, onNativeLiveConfirm } from '../lib/native';
 import { probeOcrAssets, type OcrAssetStatus } from '../lib/ocrStatus';
+import * as db from '../lib/db';
 
 export default function SettingsScreen() {
   const nav = useNav();
@@ -128,8 +129,7 @@ export default function SettingsScreen() {
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   /** 点数字直接输入精确值 */
-  const [styleDialogOpen, setStyleDialogOpen] = useState(false);
-  const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
+  const [styleDialogOpen, setStyleDialogOpen] = useState(false);  const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
   /** 本地识别资源状态：null = 正在探测 */
@@ -156,6 +156,22 @@ export default function SettingsScreen() {
    */
   const apiConfigured = Boolean(settings.visionApiUrl.trim());
   const mapProvider = mapProviderById(settings.mapProvider);
+
+  /**
+   * 通知栏桌宠（实时语料）的开关。值存在 KV 的 `phrasesEnabled` —— 与「台词管理」页共用同一个键，
+   * 两边读写一致；打开即启动前台服务（通知栏出现那条不可滑动清除的常驻通知），关闭即停。
+   */
+  const [phraseEnabled, setPhraseEnabled] = useState(false);
+  useEffect(() => {
+    void db.readKv<boolean>('phrasesEnabled').then((value) => setPhraseEnabled(Boolean(value)));
+  }, []);
+  const togglePhrasePet = (on: boolean) => {
+    setPhraseEnabled(on);
+    void db.writeKv('phrasesEnabled', on);
+    if (on) nativeStartPhraseService();
+    else nativeStopPhraseService();
+    showSnackbar({ message: on ? '通知栏桌宠：已开启' : '通知栏桌宠：已关闭' });
+  };
 
   const toggleDarkMode = () => {
     updateSettings(
@@ -378,7 +394,22 @@ export default function SettingsScreen() {
                 </md-outlined-button>
                 <span className="md-body-small muted">提前量可调：5 / 10 / 15 / 20 / 30 分钟</span>
               </div>
-              {/* -------------------------------- 台词管理（通知栏桌宠的语料与播放设置） */}
+              {/* ------------------------------- 通知栏桌宠开关（作者：通知栏显示的东西，设置里就该看得见） */}
+            <md-list-item type="text" className="rounded-middle">
+              <div slot="start" className="list-icon-badge">
+                <MdIcon name={phraseEnabled ? 'notifications_active' : 'notifications_off'} />
+              </div>
+              <div slot="headline">通知栏桌宠</div>
+              <div className="md-body-small muted" slot="supporting-text">
+                {phraseEnabled
+                  ? '已开启：通知栏常驻状态条，戳一下说一句；到点自动轮播'
+                  : '已关闭：通知栏不显示常驻状态条（语料与间隔在下面的「台词管理」里调）'}
+              </div>
+              <div slot="end">
+                <MdSwitch selected={phraseEnabled} onSelectedChange={togglePhrasePet} ariaLabel="通知栏桌宠开关" />
+              </div>
+            </md-list-item>
+            {/* -------------------------------- 台词管理（通知栏桌宠的语料与播放设置） */}
               <md-list-item type="button" className="rounded-middle" onClick={() => nav.push('phraseManager', {}, 'slide')}>
                 <div slot="start" className="list-icon-badge">
                   <MdIcon name="forum" />
