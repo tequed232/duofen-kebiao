@@ -84,7 +84,7 @@ const filled = await page.evaluate((text) => {
 check('内容已写入输入框', typeof filled === 'number' && filled > 200, String(filled));
 
 await page.waitForTimeout(400);
-const importBtn = page.locator('md-text-button', { hasText: '解析并导入文本' }).first();
+const importBtn = page.locator('md-filled-tonal-button, md-text-button', { hasText: '解析并导入文本' }).first();
 check('「解析并导入文本」按钮存在', (await importBtn.count()) > 0);
 await importBtn.click();
 await page.waitForTimeout(1800);
@@ -130,7 +130,7 @@ await page.evaluate((text) => {
   host.dispatchEvent(new Event('input', { bubbles: true }));
 }, NOT_A_SCHEDULE);
 await page.waitForTimeout(300);
-await page.locator('md-text-button', { hasText: '解析并导入文本' }).first().click();
+await page.locator('md-filled-tonal-button, md-text-button', { hasText: '解析并导入文本' }).first().click();
 await page.waitForTimeout(1500);
 const badSnack = await page.locator('.snackbar').innerText().catch(() => '');
 console.log('  snackbar:', JSON.stringify(badSnack.replace(/\s+/g, ' ').slice(0, 80)));
@@ -188,7 +188,7 @@ await page.evaluate((text) => {
   host.dispatchEvent(new Event('input', { bubbles: true }));
 }, JSON_SCHEDULE);
 await page.waitForTimeout(300);
-await page.locator('md-text-button', { hasText: '解析并导入文本' }).first().click();
+await page.locator('md-filled-tonal-button, md-text-button', { hasText: '解析并导入文本' }).first().click();
 await page.waitForTimeout(1600);
 const jsonSnack = await page.locator('.snackbar').innerText().catch(() => '');
 console.log('  snackbar:', JSON.stringify(jsonSnack.replace(/\s+/g, ' ').slice(0, 90)));

@@ -1504,3 +1504,16 @@ html[data-perf='high'] .m3e-dock {
 .import-guide .import-guide-open {
   --md-text-button-label-text-color: var(--md-sys-color-primary);
 }
+
+/* 「解析并导入文本」：原来是纯文字按钮，和下一节标题糊在一起（作者 2026-09-27 反馈看不到），
+   现在给它实心底色 + 与上下内容拉开距离。 */
+.paste-import-row {
+  margin: 4px 0 16px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.paste-import-row md-filled-tonal-button {
+  --md-filled-tonal-button-container-height: 44px;
+  --md-filled-tonal-button-label-text-weight: 600;
+}

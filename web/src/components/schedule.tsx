@@ -1171,8 +1171,13 @@ export function ScheduleImportSheet({
           rows={4}
           supportingText="首行为「节次/星期 星期一 …」，随后每个节次一行，制表符分隔各天；也可以直接粘一段 JSON 课表"
         />
-        <div>
-          <md-text-button onClick={importText}>解析并导入文本</md-text-button>
+        {/* 作者 2026-09-27 反馈：这颗按钮原来是个纯文字按钮，和下面的「学期开始日期」标题糊在一起，
+            根本看不出是能点的动作。改成有底色、有图标的实心按钮，并和输入框/标题拉开距离。 */}
+        <div className="paste-import-row">
+          <md-filled-tonal-button onClick={importText}>
+            <MdIcon slot="icon" name="send" />
+            解析并导入文本
+          </md-filled-tonal-button>
         </div>
 
         <div className="col gap-8">
