@@ -6,7 +6,6 @@ import avatarBinggan from '../assets/avatars/binggan-bskeke.jpg';
 import avatarChunqiu from '../assets/avatars/chunqiu-fxxggllj.jpg';
 import avatarHanbing from '../assets/avatars/hanbing-bili.webp';
 import avatarLuo from '../assets/avatars/luo-tequed232.jpg';
-import avatarMidada from '../assets/avatars/midada-bili.webp';
 import avatarWeizhou from '../assets/avatars/weizhou-whitemoon319.jpg';
 import appArt from '../assets/illustration.jpg';
 
@@ -126,21 +125,6 @@ export const CREDITS: CreditPerson[] = [
     avatar: avatarWeizhou,
     badge: '该项目顾问',
     links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/WhiteMoon319' }],
-  },
-  {
-    displayName: '米达达',
-    role: '表情包引用',
-    mark: '米',
-    avatar: avatarMidada,
-    tone: 'tertiary',
-    license: {
-      label: 'CC BY-NC',
-      note: '权利人授权：署名 + 禁止商用',
-    },
-    links: [
-      { platform: 'bilibili', label: 'Bilibili', url: 'https://space.bilibili.com/3546769371695776' },
-      { platform: 'x', label: 'X', url: 'https://x.com/miratsu169' },
-    ],
   },
   {
     displayName: '椿湫',

@@ -63,8 +63,8 @@
 5. **仓库拆分**：`duofen-kebiao-web` / `duofen-kebiao-android`（GitHub slug 只能用 ASCII）
    - 方案 A：Android 仓库存 www 预构建快照 + 同步脚本（两端同源）
    - 方案 B：Android 仓库只放原生代码，构建时从 Web 仓库下载产物
-6. **名单口径**：liuli1719 的显示名（星爱流萤 / 小妍）、作者显示名（罗xx / 罗xx（Tequed232））；另外米达达的 B 站昵称是 `miratsu_米达达`，与素材台账里的插画作者 miratsu 是否同一人需要确认。
-   便于对照：`web/src/lib/meta.ts` 的 `CREDITS` 当前实际取值是 `罗xx`、`Hanbing`、`饼干`、`维舟`、`米达达`（附 X 链接 `x.com/miratsu169`）、`椿湫`。
+6. **名单口径**：liuli1719 的显示名（星爱流萤 / 小妍）、作者显示名（罗xx / 罗xx（Tequed232））仍待作者定夺。
+   便于对照：`web/src/lib/meta.ts` 的 `CREDITS` 当前实际取值是 `罗xx`、`Hanbing`、`饼干`、`维舟`、`椿湫`（名片墙 5 张）。
 7. **git 历史瘦身**：历史上提交过的 8 个 `.apk` 仍留在 git 对象库里，`.git` 实测 **128.9 MB**。要连历史一起瘦身必须 `git filter-repo` + 强推 —— 属**破坏性重写**，需作者明确同意后再做。
 
 ## 常用命令

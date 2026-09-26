@@ -372,16 +372,14 @@ node scripts/visual-parity.mjs   # 同一虚拟设备分别截 APK 内嵌资源�
 | 罗xx | 作者 · 项目发起 · 界面动效 · 数据与部署 | [GitHub](https://github.com/tequed232) · [Bilibili](https://space.bilibili.com/407275151) · [抖音](https://www.douyin.com/user/MS4wLjABAAAAj-LAgjc_F9yWFAa3YycsNF9f_E1M3JiLa5ilAzSTn9hJs_44MtP_mM_2DbyLH06F) |
 | 饼干233 | 翻译 · 同学 | [GitHub](https://github.com/BS-keke) · [Bilibili](https://space.bilibili.com/449528062) |
 | 维舟（来自MAA-Meow） | 该项目顾问 | [GitHub](https://github.com/WhiteMoon319) |
-| 米达达 | 表情包引用 | [Bilibili](https://space.bilibili.com/3546769371695776) |
 | Hanbing | 主美画师 · 同学 | [Bilibili](https://b23.tv/0rKu2FX) |
 | 椿湫 | 导师 | [GitHub](https://github.com/fxxggllj) |
 
-表情包原图不进入构建产物。名片墙上每个入口都带对应平台的**剪影图标**（GitHub / Bilibili / 抖音 / X），路径内联在 `web/src/components/brands.tsx`，来自 [Remix Icon](https://github.com/Remix-Design/RemixIcon)（Apache-2.0）。
+名片墙上每个入口都带对应平台的**剪影图标**（GitHub / Bilibili / 抖音 / X），路径内联在 `web/src/components/brands.tsx`，来自 [Remix Icon](https://github.com/Remix-Design/RemixIcon)（Apache-2.0）。
 
 **作品许可**（名片上的 CC 标记，点开可看授权原文）：
 
 - **寒冰（Hanbing）**：**CC BY** —— 署名使用，**不允许任何形式的 AI 修改**；凭据 `docs/permissions/hanbing-cc-by.jpg`。
-- **米达达（miratsu）**：**CC BY-NC** —— 署名 + **禁止商用**（作品不打包进构建产物，只署名与链接）。
 
 ## Liquid Glass 视觉与引用
 

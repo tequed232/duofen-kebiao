@@ -70,7 +70,6 @@ APK 直链（按版本）：
 | 对象 | 链接 |
 | --- | --- |
 | 项目作者（Tequed232）B 站空间 | https://space.bilibili.com/407275151 |
-| 特别感谢：米达达 B 站空间 | https://space.bilibili.com/3546769371695776 |
 
 ## 部署与自动化（仓库内）
 
