@@ -19,6 +19,8 @@
     "check:settings": "node scripts/check-settings-groups.mjs",
     "check:contour": "node scripts/check-contour.mjs",
     "check:schedule-html": "node scripts/check-schedule-html.mjs",
+    "check:schedule-json": "node scripts/check-schedule-json.mjs",
+    "check:import-guide": "node scripts/check-import-guide.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",

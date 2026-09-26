@@ -1480,3 +1480,27 @@ html[data-perf='high'] .m3e-dock {
    那个 '·' 就孤零零挂在换行后的行尾 ——「资源就绪：图像处理库 / 识别引擎 / 中文模型 ·」。
    修复裁字之前它被一起裁掉了，所以看不见；修复之后才暴露出来。
    两行本就是各自独立的句子，改用间距（gap 的列间距）区分即可。 */
+
+/* 导入面板里「让 AI 把课表照片变成文件」的引导块 ——
+   作者 2026-09-26 把「本地导入 HTML / JSON 文件」定为主路径，所以它要显眼、可点进去看教程。 */
+.import-guide {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--md-sys-color-primary-container) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent);
+}
+
+.import-guide code {
+  font-family: var(--md-ref-typeface-mono, ui-monospace, monospace);
+  font-size: 0.92em;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest) 72%, transparent);
+}
+
+.import-guide .import-guide-open {
+  --md-text-button-label-text-color: var(--md-sys-color-primary);
+}

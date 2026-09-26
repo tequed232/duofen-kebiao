@@ -22,6 +22,7 @@ import {
   highlightKeyFor,
 } from '../components/schedule';
 import { useAppState } from '../state/AppState';
+import ImportTutorial from './ImportTutorial';
 import { APP_ART } from '../lib/meta';
 import { useNav } from '../nav/navigation';
 import {
@@ -123,6 +124,7 @@ export default function ScheduleScreen() {
   const [payload, setPayload] = useState<CoursePayload | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mapChooser, setMapChooser] = useState<{ address: string; course: ScheduleCourse } | null>(null);
@@ -524,10 +526,19 @@ export default function ScheduleScreen() {
       <ScheduleImportSheet
         open={importOpen}
         onClose={() => setImportOpen(false)}
+        onOpenTutorial={() => setTutorialOpen(true)}
         onImported={(message) => {
           setImportOpen(false);
           showSnackbar({ message });
         }}
+      />
+
+      {/* 作者要求：主路径是「本地导入 HTML / JSON 文件」，所以要有一条直达
+          「图片 → AI → 文件」教程的入口（含可直接复制的提示词） */}
+      <ImportTutorial
+        open={tutorialOpen}
+        onClose={() => setTutorialOpen(false)}
+        initialTab="schedule"
       />
 
       <MonthDateDialog

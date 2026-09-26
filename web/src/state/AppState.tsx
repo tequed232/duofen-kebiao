@@ -112,8 +112,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       void db.removeKv(db.SCHEDULE_KEY);
       return;
     }
-    setImportedSchedule(data);
-    void db.writeKv(db.SCHEDULE_KEY, data);
+    // 导入的课表可能没带「学期开始日期」—— 模型给的一段 JSON 常常就没有这个字段。
+    // 而主页要拿它算「现在是第几周」，算不出来时周次过滤会把课全挡掉，
+    // 表现就是作者报的「导入了，主页却还是旧表」。所以缺的字段按
+    // 「上一份课表 → 内置课表」继承，导入方不用关心这些元数据。
+    setImportedSchedule((previous) => {
+      const base = previous ?? EMBEDDED_SCHEDULE;
+      const merged: ScheduleData = {
+        ...data,
+        termStart: data.termStart || base.termStart || EMBEDDED_SCHEDULE.termStart,
+        term: data.term || base.term || EMBEDDED_SCHEDULE.term,
+        owner: data.owner && data.owner !== '未署名' ? data.owner : base.owner || data.owner,
+        days: data.days?.length ? data.days : base.days?.length ? base.days : EMBEDDED_SCHEDULE.days,
+      };
+      void db.writeKv(db.SCHEDULE_KEY, merged);
+      return merged;
+    });
   }, []);
 
   /** 教材：内置教材库 + 用户在界面上识别/填写/移除的结果 */

@@ -95,6 +95,10 @@ jobs:
           run_guard imports        node scripts/check-imports.mjs
           # ② 需要 esbuild（依赖已 npm ci）
           run_guard isbn           node scripts/check-isbn.mjs
+          # 课表 JSON 导入（两种形状 + 围栏/说明文字 + 解析不出课程必须抛错）。
+          # 作者 2026-09-26 报「HTML / JSON 导入失效」时，JSON 这条路是**根本不存在**的；
+          # 主页那半条（导入后真的换表、缺 termStart 要继承）由 import-e2e 兜
+          run_guard schedule-json   node scripts/check-schedule-json.mjs
           # 课表 → 系统日历的映射（节次时间 / 周次 / 标记 / ICS 折行）：真机写入路径在 CI 里跑不了，
           # 但这段纯映射能被机器判定 —— 而「一键清除」全靠那条标记字符串
           run_guard calendar-export node scripts/check-calendar-export.mjs
@@ -133,6 +137,9 @@ jobs:
           # 真实导入界面端到端：把「模型回复」整段粘进去，看课表是否真进来
           # （schedule-html 只验解析器；这条验的是导入教程教用户走的那条路真的通）
           APP_URL=http://127.0.0.1:5173/ run_guard import-e2e  node scripts/check-import-e2e.mjs
+          # 导入教程：主路径必须是「本地导入 HTML/JSON 文件」，而且提示词里的示例要真能导入
+          #   （示例抠出来喂给真实解析器；只做文案检查挡不住契约漂移）
+          APP_URL=http://127.0.0.1:5173/ run_guard import-guide node scripts/check-import-guide.mjs
           # 底栏运动行为：轻点必须是「移过去 duang」（有中间帧 + 过冲）、拖动停住后色块要追上手指。
           # 后者是 2026-09-25 真 bug 的探针：弹簧用底栏内坐标、applyFrame 又减一次 geo.left，
           # 色块拖动时整体偏左一个左边距（实测残余 39px 不收敛；修好后 3px）。

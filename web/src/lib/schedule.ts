@@ -7,6 +7,7 @@
  * by the user is stored in IndexedDB and overrides the embedded one.
  */
 import { parseScheduleHtml } from './scheduleHtml';
+import { looksLikeJson, parseScheduleJson } from './scheduleJson';
 
 export type ScheduleSection = 'morning' | 'noon' | 'afternoon' | 'evening';
 
@@ -733,6 +734,9 @@ export async function parseScheduleFile(file: File): Promise<ScheduleData> {
     return parseRtfSchedule(await file.arrayBuffer());
   }
   const text = await file.text();
+  // JSON 要在「纯文本兜底」之前认：模型/别的工具导出的课表常是一段 JSON，
+  // 掉进 parseTextSchedule 只会得到「没有解析到课表节次」（作者 2026-09-26 报的就是这条）
+  if (name.endsWith('.json') || looksLikeJson(text)) return parseScheduleJson(text);
   if (name.endsWith('.html') || name.endsWith('.htm') || /<table/i.test(text)) {
     return parseHtmlSchedule(text);
   }

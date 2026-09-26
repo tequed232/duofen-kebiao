@@ -31,6 +31,43 @@ export function SnackbarLayer({ bottom = 16 }: { bottom?: number }) {
   );
 }
 
+/* ------------------------------------------------------------ alert dialog */
+
+/**
+ * 只告知、不做选择（一个「知道了」收尾）。
+ *
+ * 为什么不能只用 snackbar：作者 2026-09-26 要求「没有读取到可用内容的警告窗口」——
+ * 导入失败这种事必须是**挡住视线的对话框**：snackbar 三秒就走，用户很可能正盯着别处，
+ * 回头只看到"课表没变"，根本不知道导入失败了。
+ */
+export function AlertDialog({
+  open,
+  headline,
+  body,
+  children,
+  closeLabel = '知道了',
+  onClose,
+}: {
+  open: boolean;
+  headline: string;
+  /** 内容用 body 传或直接当 children 写都行（两种写法混用过一次，正文整块不见了） */
+  body?: ReactNode;
+  children?: ReactNode;
+  closeLabel?: string;
+  onClose: () => void;
+}) {
+  return (
+    <MdDialog
+      open={open}
+      headline={headline}
+      onClosed={onClose}
+      actions={<md-text-button onClick={onClose}>{closeLabel}</md-text-button>}
+    >
+      {body ?? children}
+    </MdDialog>
+  );
+}
+
 /* -------------------------------------------------------- confirm dialog -- */
 
 export function ConfirmDialog({

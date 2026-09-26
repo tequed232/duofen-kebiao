@@ -13,7 +13,7 @@ import { analyzeImage } from '../lib/api';
 import { recognizeCover } from '../lib/localRecognize';
 import { listSnapshots, relativeTime, saveSnapshot, type ScheduleSnapshot } from '../lib/scheduleCache';
 import { guessPublisher, matchCourseByText, stripPriceLines } from '../lib/textbooks';
-import { ExpandableSheet } from './overlays';
+import { AlertDialog, ExpandableSheet } from './overlays';
 import {
   MAP_PROVIDERS,
   SCHEDULE_SECTIONS,
@@ -43,6 +43,8 @@ import {
   type SchedulePeriod,
   type ScheduleSection,
 } from '../lib/schedule';
+import { looksLikeJson, parseScheduleJson } from '../lib/scheduleJson';
+import { IMPORT_FILE_HINT } from '../lib/importPrompts';
 import { useAppState } from '../state/AppState';
 import { pickFile, prepareImageFile } from '../lib/imaging';
 
@@ -993,10 +995,13 @@ export function ScheduleImportSheet({
   open,
   onClose,
   onImported,
+  onOpenTutorial,
 }: {
   open: boolean;
   onClose: () => void;
   onImported: (message: string) => void;
+  /** 打开「导入教程」（含可复制的提示词）：本面板会先关掉自己，避免两层弹层叠着 */
+  onOpenTutorial: () => void;
 }) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const { settings, updateSettings, setSchedule, schedule, scheduleImported, showSnackbar } = useAppState();
@@ -1005,6 +1010,12 @@ export function ScheduleImportSheet({
   const [termStart, setTermStart] = useState(settings.termStart || schedule.termStart);
   /** 本地缓存课表（快照）：导入时自动留档，可一键恢复 */
   const [snapshots, setSnapshots] = useState<ScheduleSnapshot[]>([]);
+  /** 「没有读取到可用内容」的警告窗口（作者要求：这种事必须挡住视线，不能只飘一条 snackbar） */
+  const [warning, setWarning] = useState<{ headline: string; detail: string } | null>(null);
+
+  /** 一份课表里到底有几门课：0 门就等于「什么都没读到」，不能当导入成功 */
+  const countCourses = (data: ScheduleData) =>
+    data.periods.reduce((total, period) => total + period.days.reduce((sum, day) => sum + day.length, 0), 0);
 
   const refreshSnapshots = () => {
     void listSnapshots().then(setSnapshots);
@@ -1027,6 +1038,9 @@ export function ScheduleImportSheet({
     setBusy(true);
     try {
       const parsed = await parseScheduleFile(file);
+      // 「解析器没报错」不等于「读到了课」：一份只有节次、没有课程的课表导入进来，
+      // 主页会因为"没有课程就回落内置课表"继续显示旧表 —— 用户看到的就是"导入了但没变"。
+      if (!countCourses(parsed)) throw new Error('里面没有解析到任何课程');
       // 本地缓存：留一份快照，之后可一键恢复（最多 3 份）
       await saveSnapshot(parsed, file.name);
       refreshSnapshots();
@@ -1035,9 +1049,10 @@ export function ScheduleImportSheet({
     } catch (error) {
       const reason = error instanceof Error ? error.message : '未知错误';
       showSnackbar({
-        message: `“${file.name}”解析失败：${reason}。支持教务系统导出的 .doc/.rtf、另存为的 .html，以及 .csv/.txt 文本。`,
+        message: `“${file.name}”解析失败：${reason}。支持教务系统导出的 .doc/.rtf、另存为的 .html、.json（应用形状或扁平 courses[]），以及 .csv/.txt 文本。`,
         duration: 8000,
       });
+      setWarning({ headline: '没有读取到可用的课表内容', detail: `“${file.name}”：${reason}` });
     } finally {
       setBusy(false);
     }
@@ -1051,12 +1066,20 @@ export function ScheduleImportSheet({
     try {
       // 粘贴内容里带 <table> 就按 HTML 课表解析（与「选文件」那条路的判定一致）——
       // 以前粘贴路径只会走纯文本解析器，于是从网页里复制的表格一直报「没有解析到课表节次」。
-      const parsed = /<table/i.test(pasted) ? parseHtmlSchedule(pasted) : parseTextSchedule(pasted);
+      // JSON 同理：模型给的常常就是一段 JSON（```json 围栏 + 前后说明文字也算）。
+      const parsed = /<table/i.test(pasted)
+        ? parseHtmlSchedule(pasted)
+        : looksLikeJson(pasted)
+          ? parseScheduleJson(pasted)
+          : parseTextSchedule(pasted);
+      if (!countCourses(parsed)) throw new Error('里面没有解析到任何课程');
       setSchedule(parsed);
       setPasted('');
       onImported(`已从文本导入：${parsed.periods.length} 个节次`);
     } catch (error) {
-      showSnackbar({ message: `文本解析失败：${error instanceof Error ? error.message : '未知错误'}`, duration: 6000 });
+      const reason = error instanceof Error ? error.message : '未知错误';
+      showSnackbar({ message: `文本解析失败：${reason}`, duration: 6000 });
+      setWarning({ headline: '没有读取到可用的课表内容', detail: `粘贴的内容：${reason}` });
     }
   };
 
@@ -1102,7 +1125,7 @@ export function ScheduleImportSheet({
         <div className="button-group" style={{ justifyContent: 'flex-start' }}>
           <md-filled-tonal-button onClick={() => void importFile()} disabled={busy ? '' : undefined}>
             <MdIcon slot="icon" name="folder_open" />
-            用系统文件管理器选择
+            导入课表文件
           </md-filled-tonal-button>
           <md-outlined-button onClick={() => { setSchedule(null); onImported('已恢复内置课表'); }}>
             <MdIcon slot="icon" name="settings_backup_restore" />
@@ -1110,8 +1133,34 @@ export function ScheduleImportSheet({
           </md-outlined-button>
         </div>
         <div className="md-body-small muted">
-          点击后会调起系统自带的文件浏览器（Android 文件管理器 / iOS 文件 / 桌面资源管理器），文件类型不限；
-          选中后按内容自动识别：教务系统导出的 .doc/.rtf、另存为的 .html 表格、.csv/.txt 文本。导入结果保存在本机。
+          点「导入课表文件」会调起系统自带的文件浏览器（Android 文件管理器 / iOS 文件 / 桌面资源管理器），
+          文件类型不限，选中后按内容自动识别：{IMPORT_FILE_HINT}。导入结果保存在本机。
+        </div>
+
+        {/* 作者 2026-09-26 的要求：主路径是「本地导入 HTML / JSON 文件」，
+            所以这里直接把「怎么用 AI 把课表照片变成文件」的教程挂在这一步旁边 */}
+        <div className="import-guide">
+          <div className="row gap-8" style={{ alignItems: 'center' }}>
+            <MdIcon name="auto_awesome" size={18} />
+            <span className="md-title-small-emphasized flex-1">没有现成的课表文件？让 AI 帮你转</span>
+          </div>
+          <div className="md-body-small muted mt-4">
+            把课表截图交给 DeepSeek / Gemini / ChatGPT，附上教程里的提示词，让它输出
+            <strong> HTML 或 JSON</strong>，存成 <code>.html</code> / <code>.json</code> 文件后用上面的按钮导入 ——
+            这是最省事、也最不容易出错的一条路。
+          </div>
+          <div className="row gap-8 mt-8 wrap">
+            <md-text-button
+              className="import-guide-open"
+              onClick={() => {
+                onClose();
+                onOpenTutorial();
+              }}
+            >
+              <MdIcon slot="icon" name="menu_book" />
+              看导入教程（含可复制的提示词）
+            </md-text-button>
+          </div>
         </div>
 
         <MdTextField
@@ -1120,7 +1169,7 @@ export function ScheduleImportSheet({
           onValueChange={setPasted}
           type="textarea"
           rows={4}
-          supportingText="首行为「节次/星期 星期一 …」，随后每个节次一行，制表符分隔各天"
+          supportingText="首行为「节次/星期 星期一 …」，随后每个节次一行，制表符分隔各天；也可以直接粘一段 JSON 课表"
         />
         <div>
           <md-text-button onClick={importText}>解析并导入文本</md-text-button>
@@ -1156,6 +1205,23 @@ export function ScheduleImportSheet({
           </div>
         </div>
       </div>
+
+      {/* 没读到可用内容时的警告窗口（作者要求：这种事不能只飘一条会自己消失的 snackbar） */}
+      <AlertDialog
+        open={Boolean(warning)}
+        headline={warning?.headline ?? '没有读取到可用的课表内容'}
+        onClose={() => setWarning(null)}
+      >
+        <div className="col gap-12">
+          <span>{warning?.detail}</span>
+          <span className="muted">
+            当前课表没有被改动。可以试试：教务系统导出的 .doc/.rtf、网页另存的 .html 表格、.json
+            （应用形状 {'{ "periods": [{ "days": [[…]] }] }'} 或扁平
+            {' { "courses": [{ "name": …, "day": …, "period": … }] }'}），以及制表符分隔的 .csv/.txt；
+            也可以直接把内容贴进下面的「粘贴课表文本」。
+          </span>
+        </div>
+      </AlertDialog>
     </ExpandableSheet>
   );
 }

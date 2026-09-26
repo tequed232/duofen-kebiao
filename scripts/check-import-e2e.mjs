@@ -137,11 +137,67 @@ console.log('  snackbar:', JSON.stringify(badSnack.replace(/\s+/g, ' ').slice(0,
 check('解析不出节次时必须报失败', /没有解析到/.test(badSnack), `实际：「${badSnack.trim()}」`);
 check('不得把空导入说成成功', !/已从文本导入|已导入/.test(badSnack), `实际：「${badSnack.trim()}」`);
 
+// 作者 2026-09-26 的要求：没读到可用内容必须有个**挡住视线的警告窗口**，
+// 不能只飘一条会自己消失的 snackbar（用户回头只看到"课表没变"，不知道导入失败过）
+// 读对话框全文：md-dialog 是自定义元素，host 的 innerText 拿不到 slot 里的内容，
+// 所以直接取它光 DOM 里各 slot 节点的 textContent
+const warnDialog = await page.evaluate(() => {
+  const dialog = document.querySelector('md-dialog[open]');
+  if (!dialog) return '';
+  return Array.from(dialog.querySelectorAll('[slot]'))
+    .map((node) => node.textContent ?? '')
+    .join(' ');
+});
+check('必须弹出「没有读取到可用内容」的警告窗口', /没有读取到可用/.test(warnDialog), `对话框内容：「${warnDialog.replace(/\s+/g, ' ').slice(0, 70)}」`);
+check('警告窗口要说明当前课表没被改动', /没有被改动/.test(warnDialog), '警告窗口里没有这句');
+// 关闭：用真实鼠标点「知道了」。Material Web 的按钮在 slot="actions" 里，
+// Playwright 的 locator.click 会误判成"被父层拦住"，所以按坐标点（跟用户点一样）。
+const okBtn = await page.locator('md-dialog[open] md-text-button').last().boundingBox();
+if (okBtn) await page.mouse.click(okBtn.x + okBtn.width / 2, okBtn.y + okBtn.height / 2);
+await page.waitForTimeout(900);
+const stillOpen = await page.evaluate(() => Boolean(document.querySelector('md-dialog[open]')));
+check('点「知道了」之后警告窗口要关掉', !stillOpen, '对话框还开着');
+
 await page.keyboard.press('Escape').catch(() => {});
 await page.waitForTimeout(600);
 const bodyAfter = await page.locator('.phone').innerText().catch(() => '');
 const kept = EXPECTED.filter((name) => bodyAfter.includes(name));
 check('失败时不得清空原有课表', kept.length === EXPECTED.length, `只剩 ${kept.length} 门：${kept.join('/')}`);
+
+/* ---------------------------------------------- [5] JSON 也要能导入，并且真的到主页
+   作者 2026-09-26 报的「HTML / JSON 导入失效，主页拿不到新课表」：JSON 那条路原来**不存在**，
+   粘 JSON 会掉进纯文本解析器报「没有解析到课表节次」。这里钉两件事：
+     a. 扁平 courses[] 形状（模型最常吐的）能导入；
+     b. **故意不给 termStart**：主页要拿学期开始日期算"当前第几周"，缺了它周次过滤会把课全挡掉，
+        表现就是"导入了但主页没变"——所以 AppState 必须从上一份/内置课表继承这个字段。
+        这条断言就是为了让那种"看起来导入成功、其实主页没换"的回归没法再悄悄发生。 */
+console.log('\n[5] 粘贴 JSON 课表（不给 termStart，必须继承）');
+const JSON_SCHEDULE = JSON.stringify({
+  term: '2026-2027-1',
+  courses: [
+    { name: 'JSON 程序设计', day: '星期一', period: '第1-2节', teacher: '王五', room: '3-101', weeks: '1-16' },
+    { name: 'JSON 大学物理', day: '星期三', period: '第3-4节', teacher: '孙八', room: '2-101', weeks: [1, 2, 3] },
+  ],
+});
+
+await page.locator('.appbar-import').click();
+await page.waitForTimeout(900);
+await page.evaluate((text) => {
+  const host = document.querySelector('md-outlined-text-field');
+  host.value = text;
+  host.dispatchEvent(new Event('input', { bubbles: true }));
+}, JSON_SCHEDULE);
+await page.waitForTimeout(300);
+await page.locator('md-text-button', { hasText: '解析并导入文本' }).first().click();
+await page.waitForTimeout(1600);
+const jsonSnack = await page.locator('.snackbar').innerText().catch(() => '');
+console.log('  snackbar:', JSON.stringify(jsonSnack.replace(/\s+/g, ' ').slice(0, 90)));
+check('JSON 必须报导入成功（而不是「没有解析到课表节次」）', /已从文本导入|已导入/.test(jsonSnack) && !/没有解析到/.test(jsonSnack), jsonSnack);
+
+await page.keyboard.press('Escape').catch(() => {});
+await page.waitForTimeout(700);
+const jsonBody = await page.locator('.phone').innerText().catch(() => '');
+check('JSON 里的课必须出现在主页课表上', jsonBody.includes('JSON 程序设计') && jsonBody.includes('JSON 大学物理'), '主页没看到 JSON 导入的课');
 
 if (errors.length) console.log('  页面错误:', errors.slice(0, 3).join(' | '));
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
