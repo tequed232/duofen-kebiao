@@ -21,7 +21,9 @@ const GROUPS = [
   { title: '实时通知', rows: ['上课提醒（灵动岛）', '通知栏桌宠', '台词管理', '实时通知（流体云）自检'] },
   { title: '屏幕安全区', rows: ['上端安全区', '下端安全区'] },
   { title: '导航与学校', rows: ['默认跳转地图', '学校名称'] },
-  { title: '图像识别与资源', rows: ['本地识别', '允许联网取识别资源', '接口配置'] },
+  { title: '图像识别与资源', rows: ['封面识别方式', '接口配置'] },
+  { title: '主页', rows: ['显示「导航课程」', '主页浮动按钮区'] },
+  { title: '课表编辑', rows: ['课表数据与导入', '查看教材', '添加到系统日程', '清除本 App 写入的日程'] },
   { title: '关于', rows: ['关于本软件', '开源相关'] },
 ];
 
@@ -225,17 +227,17 @@ console.log('\n=== 设置首页只放「分类入口」（Clash Verge 式）==='
  * 静态部分钉两件事：① 六个入口与 `show('<id>')` 的门是一一对应的（漏一个就是"点进去空白"）；
  * ② 入口必须通过路由推 `settingsSection` 子屏，而不是在原地展开。
  */
-const HUB_IDS = ['appearance', 'notify', 'safearea', 'nav', 'ocr', 'about'];
+const HUB_IDS = ['appearance', 'notify', 'safearea', 'nav', 'ocr', 'home', 'edit', 'about'];
 const missingGate = HUB_IDS.filter((id) => !new RegExp(`show\\('${id}'\\)`).test(source));
 check(`六个分类都有对应的子屏门（show('id')）`, missingGate.length === 0, `缺少：${missingGate.join('、')}`);
 check('入口通过 settingsSection 路由跳子屏', /nav\.push\('settingsSection',\s*\{\s*section:\s*id\s*\}/.test(source), '没有推子屏路由');
-const hubIds = [...source.matchAll(/\['(appearance|notify|safearea|nav|ocr|about)',\s*'([a-z_]+)',\s*'([^']+)'/g)].map((m) => m[1]);
+const hubIds = [...source.matchAll(/\['(appearance|notify|safearea|nav|ocr|home|edit|about)',\s*'([a-z_]+)',\s*'([^']+)'/g)].map((m) => m[1]);
 check(
-  `入口表就是那六类（实际 ${hubIds.join('、') || '(空)'}）`,
+  `入口表就是那八类（实际 ${hubIds.join('、') || '(空)'}）`,
   HUB_IDS.every((id) => hubIds.includes(id)) && hubIds.length === HUB_IDS.length,
   '入口与分类对不上',
 );
-check('子屏标题表覆盖六个分类', HUB_IDS.every((id) => new RegExp(`${id}:\\s*'`).test(source)), 'SECTION_TITLES 缺项');
+check('子屏标题表覆盖八个分类', HUB_IDS.every((id) => new RegExp(`${id}:\\s*'`).test(source)), 'SECTION_TITLES 缺项');
 check('子屏顶栏有返回（点了能回去）', /onBack=\{atHub \? undefined : \(\) => nav\.pop\(\)\}/.test(source), '子屏没有返回按钮');
 
 /* 「滑块只存在于它自己的屏里」——作者原话是「滑块选项什么的都不许出错」。

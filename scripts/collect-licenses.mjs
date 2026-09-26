@@ -10,7 +10,7 @@
  *   node scripts/collect-licenses.mjs            # 生成并写回两个文件
  *   node scripts/collect-licenses.mjs --check    # 只校验：署名清单与依赖不一致就非零退出（CI 用）
  *
- * 为什么要 --check：本地封面识别引入 `@techstark/opencv-js` 与 `tesseract.js`（都是 Apache-2.0）时，
+ * 为什么要 --check：曾经引入本地识别依赖（`@techstark/opencv-js` 与 `tesseract.js`，都是 Apache-2.0）时，
  * 功能上了但**署名清单没同步** —— README 与设置页「开源相关」都缺这两条署名，
  * 而没有任何东西会因此报错。有了 --check，这类「加了依赖忘署名」会在 PR 的守卫表里直接变红。
  *

@@ -31,11 +31,6 @@ jobs:
       - name: Build web (→ dist/)
         run: npm run build
 
-      # opencv.js 与 Tesseract 引擎从 node_modules 复制（离线可用），
-      # 只有中文语言包走一次官方 jsDelivr 镜像（约 21 MB）
-      - name: Fetch local-OCR assets (→ web/public/ocr/)
-        run: npm run setup:ocr
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:

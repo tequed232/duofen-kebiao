@@ -7,7 +7,6 @@
   "scripts": {
     "icons": "node scripts/subset-icons.mjs",
     "icons:app": "node scripts/make-icons.mjs",
-    "setup:ocr": "node scripts/setup-ocr.mjs",
     "dev": "vite",
     "build": "node scripts/subset-icons.mjs && node scripts/check-icons.mjs && vite build",
     "apk": "gradlew.bat assembleRelease",
@@ -21,6 +20,8 @@
     "check:schedule-html": "node scripts/check-schedule-html.mjs",
     "check:schedule-json": "node scripts/check-schedule-json.mjs",
     "check:import-guide": "node scripts/check-import-guide.mjs",
+    "check:viewport": "node scripts/check-viewport.mjs",
+    "check:home-nav": "node scripts/check-home-nav-toggle.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",
@@ -34,11 +35,9 @@
     "@fontsource/roboto": "^5.3.0",
     "@material/material-color-utilities": "^0.4.0",
     "@material/web": "^2.5.0",
-    "@techstark/opencv-js": "^5.0.0-release.1",
     "material-symbols": "^0.47.4",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "tesseract.js": "^7.0.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

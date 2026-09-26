@@ -55,6 +55,25 @@ const check = (label, ok, detail) => {
   console.log(`  ${ok ? '✓' : '✗'} ${label}${ok || !detail ? '' : ` —— ${detail}`}`);
 };
 
+
+/**
+ * 打开「课表数据」面板。
+ * 入口在 2026-09-29 从主页右上角的铅笔搬到了 **设置 → 课表编辑 → 课表数据与导入**，
+ * 所以守卫也走真实路径。注意：设置页在 DOM 里有两份屏幕副本，非活动那份带
+ * `aria-hidden="true"` 且会**拦住点击**，所以要按标题在活动屏幕里选，并 force 点击。
+ */
+const activeRow = (page, title) =>
+  page.locator(`.screen:not([aria-hidden="true"]) md-list-item:has([slot="headline"]:text-is("${title}"))`).first();
+
+const openImportSheet = async (page) => {
+  await page.locator('.m3e-dock-tab', { hasText: '设置' }).first().click();
+  await page.waitForTimeout(800);
+  await activeRow(page, '课表编辑').click({ force: true, timeout: 5000 });
+  await page.waitForTimeout(700);
+  await activeRow(page, '课表数据与导入').click({ force: true, timeout: 5000 });
+  await page.waitForTimeout(1000);
+};
+
 const browser = await chromium.launch({ channel: 'chromium' });
 const page = await browser.newPage({ viewport: { width: 460, height: 940 }, deviceScaleFactor: 2 });
 const errors = [];
@@ -64,7 +83,7 @@ await page.goto(URL, { waitUntil: 'load' });
 await page.waitForTimeout(2600); // 开屏
 
 console.log('\n[1] 打开导入面板');
-await page.locator('.appbar-import').click();
+await openImportSheet(page);
 await page.waitForTimeout(900);
 const pasteField = page.locator('md-outlined-text-field').first();
 const sheetVisible = await pasteField.isVisible().catch(() => false);
@@ -122,7 +141,7 @@ const NOT_A_SCHEDULE = `这是模型给的表格，不过它不是课表：
   <tr><td>张三</td><td>95</td></tr>
 </table>`;
 
-await page.locator('.appbar-import').click();
+await openImportSheet(page);
 await page.waitForTimeout(900);
 await page.evaluate((text) => {
   const host = document.querySelector('md-outlined-text-field');
@@ -180,7 +199,7 @@ const JSON_SCHEDULE = JSON.stringify({
   ],
 });
 
-await page.locator('.appbar-import').click();
+await openImportSheet(page);
 await page.waitForTimeout(900);
 await page.evaluate((text) => {
   const host = document.querySelector('md-outlined-text-field');

@@ -10,9 +10,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { MdIcon, MdIconButton, MdTextField, useMdDialog } from './md';
 import { analyzeImage } from '../lib/api';
-import { recognizeCover } from '../lib/localRecognize';
 import { listSnapshots, relativeTime, saveSnapshot, type ScheduleSnapshot } from '../lib/scheduleCache';
-import { guessPublisher, matchCourseByText, stripPriceLines } from '../lib/textbooks';
+import { guessPublisher, matchCourseByText } from '../lib/textbooks';
 import { AlertDialog, ExpandableSheet } from './overlays';
 import {
   MAP_PROVIDERS,
@@ -654,7 +653,7 @@ export function TextbookSection({ courseName }: { courseName: string }) {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  /** 本地识别的进度文案（OpenCV 预处理 / OCR / 匹配），空串表示不在识别中 */
+  /** 识别进度文案（交给多模态接口那一步），空串表示不在识别中 */
   const [ocrProgress, setOcrProgress] = useState('');
   const [cover, setCover] = useState<string | null>(null);
   const [ocrText, setOcrText] = useState('');
@@ -693,73 +692,48 @@ export function TextbookSection({ courseName }: { courseName: string }) {
   };
 
   /**
-   * 选择封面图片：从相册选图后先识别，再进对话框确认（相机功能已剔除）。
+   * 选择封面图片：从相册选图后交给**多模态模型**识别，再进对话框确认（相机功能已剔除）。
    *
-   * 识别顺序：**本地优先**（OpenCV 预处理 + Tesseract 中文 OCR，图片不出设备），
-   * 本地拿不到结果且用户配了图片转文字 API 时，才回落到外部多模态模型。
+   * 2026-09-27 下线了本地识别（OpenCV 预处理 + Tesseract 中文 OCR）：作者实测免费多模态模型
+   * 读封面又准又省事，而本地那套要给每个包塞 40+ MB 的 wasm 与中文模型（APK 从 26 MB 掉到
+   * 4 MB 就是这一刀）。现在只有一条识别路：设置里配好「多模态接口」→ 交给它读；
+   * 没配就只保存封面，让用户在对话框里手填或粘贴封面文字。
    */
   const captureCover = async () => {
     const file = await pickFile('教材封面', 'image/*');
     if (!file) return;
     setBusy(true);
-    let localNote = '';
     try {
       const dataUrl = await prepareImageFile(file, settings.cameraSharpness);
       setCover(dataUrl);
 
-      // ① 本地识别
-      try {
-        const result = await recognizeCover(dataUrl, {
-          allowCdn: settings.localOcrCdn,
-          courseNames,
-          onProgress: (progress) => setOcrProgress(progress.text),
-        });
-        if (result.best.trim()) {
-          // 「封面文字」里不预填定价行：它对匹配课程、判断是哪本书都没用，
-          // 但 OCR 一定会读到，留着只会让这栏看起来塞了无关信息。
-          const cover = stripPriceLines(result.best);
-          // 已经读出的 ISBN 若就在上述文字里，就不要再补一行 —— 否则同一个书号
-          // 会出现两次（原文的带连字符形式 + 归一化形式）。
-          const coverDigits = cover.replace(/[^0-9Xx]/g, '');
-          const needIsbnLine = Boolean(result.isbn) && !coverDigits.includes(result.isbn as string);
-          const text = [cover, needIsbnLine ? `ISBN ${result.isbn}` : ''].filter(Boolean).join('\n');
-          const matched = result.course ?? courseName;
-          openDialog({ ocr: text, cover: dataUrl, matched });
-          showSnackbar({
-            message: result.matchedBy === 'library'
-              ? `本地识别完成，匹配到《${matched}》${result.publisher ? ` · ${result.publisher}` : ''}`
-              : `本地识别出封面文字${result.publisher ? `，出版社：${result.publisher}` : ''}`,
-            duration: 4000,
-          });
-          return;
-        }
-        localNote = '本地没读出可用文字';
-      } catch (error) {
-        localNote = error instanceof Error ? error.message : '本地识别不可用';
-      } finally {
-        setOcrProgress('');
-      }
-
-      // ② 回落到外部多模态 API（可选，需用户自行配置）
       if (settings.visionApiUrl.trim()) {
         try {
+          setOcrProgress('正在交给多模态接口识别…');
           const result = await analyzeImage(dataUrl, settings);
           const text = [result.summary, ...result.keyPoints].join('\n');
           const matched = matchCourseByText(text, courseNames)?.course ?? courseName;
           openDialog({ ocr: text, cover: dataUrl, matched });
-          showSnackbar({ message: `已用外部 API 识别，匹配到《${matched}》`, duration: 4000 });
+          showSnackbar({ message: `已用多模态接口识别，匹配到《${matched}》`, duration: 4000 });
           return;
         } catch (error) {
-          localNote += `；外部 API 也失败：${error instanceof Error ? error.message : '未知错误'}`;
+          showSnackbar({
+            message: `识别失败：${error instanceof Error ? error.message : '未知错误'}。封面已保存，可以手填或粘贴文字。`,
+            duration: 8000,
+          });
+        } finally {
+          setOcrProgress('');
         }
       }
 
-      // ③ 都没成功：仍然保存封面，让用户手填或粘贴文字
+      // 没配接口（或接口失败）：仍然保存封面，让用户手填或粘贴
       openDialog({ cover: dataUrl, matched: courseName });
-      showSnackbar({
-        message: `${localNote}。可点「导入教程」看本地识别怎么准备，或直接粘贴封面文字。`,
-        duration: 8000,
-      });
+      if (!settings.visionApiUrl.trim()) {
+        showSnackbar({
+          message: '还没配置多模态接口：封面已保存，可在对话框里手填，或点「导入教程」看怎么配。',
+          duration: 8000,
+        });
+      }
     } finally {
       setOcrProgress('');
       setBusy(false);
@@ -836,16 +810,19 @@ export function TextbookSection({ courseName }: { courseName: string }) {
 
       {/* 「添加课程（选图识别 / 手动填写）」只在**还没有教材**时出现 */}
       {hasBook ? null : (
-        <div className="button-group" style={{ justifyContent: 'flex-start' }}>
-          <md-filled-tonal-button className="btn-s" onClick={() => void captureCover()} disabled={busy ? '' : undefined}>
-            <MdIcon slot="icon" name="photo_camera" />
-            选图识别封面
-          </md-filled-tonal-button>
-          <md-outlined-button className="btn-s" onClick={() => openDialog()}>
-            <MdIcon slot="icon" name="edit_note" />
-            手动填写
-          </md-outlined-button>
-        </div>
+        <>
+          <div className="button-group" style={{ justifyContent: 'flex-start' }}>
+            <md-filled-tonal-button className="btn-s" onClick={() => void captureCover()} disabled={busy ? '' : undefined}>
+              <MdIcon slot="icon" name="photo_camera" />
+              选图识别封面
+            </md-filled-tonal-button>
+            <md-outlined-button className="btn-s" onClick={() => openDialog()}>
+              <MdIcon slot="icon" name="edit_note" />
+              手动填写
+            </md-outlined-button>
+          </div>
+          {ocrProgress ? <div className="md-body-small muted mt-8">{ocrProgress}</div> : null}
+        </>
       )}
 
       <md-dialog ref={dialogRef} className="app-dialog">

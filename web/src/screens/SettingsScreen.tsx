@@ -14,7 +14,6 @@ import { useAppState } from '../state/AppState';
 import { useNav, useRouteParams } from '../nav/navigation';
 import { mapProviderById } from '../lib/schedule';
 import { isNativeShell, haptic, nativeTestLiveUpdate, nativeStartPhraseService, nativeStopPhraseService, onNativeLiveConfirm } from '../lib/native';
-import { probeOcrAssets, type OcrAssetStatus } from '../lib/ocrStatus';
 import * as db from '../lib/db';
 
 export default function SettingsScreen() {
@@ -42,6 +41,8 @@ export default function SettingsScreen() {
     safearea: '屏幕安全区',
     nav: '导航与学校',
     ocr: '图像识别与资源',
+    home: '主页',
+    edit: '课表编辑',
     about: '关于',
   };
   /**
@@ -125,27 +126,14 @@ export default function SettingsScreen() {
   const OPTION_TITLES: Record<string, string> = Object.fromEntries(
     OPTION_CHOICES.map((entry) => [entry.id, entry.title]),
   );
-  const { settings, updateSettings, seed, dynamicColor, schedule, showSnackbar } = useAppState();
+  const { settings, updateSettings, seed, dynamicColor, schedule, showSnackbar, requestUiCommand } = useAppState();
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
   const [schoolDialogOpen, setSchoolDialogOpen] = useState(false);
   /** 点数字直接输入精确值 */
   const [styleDialogOpen, setStyleDialogOpen] = useState(false);  const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
   const [schoolDraft, setSchoolDraft] = useState(settings.schoolName);
-  /** 本地识别资源状态：null = 正在探测 */
-  const [ocrStatus, setOcrStatus] = useState<OcrAssetStatus | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
-
-  // 进设置页就探一次识别资源（HEAD 请求，不下载内容）
-  useEffect(() => {
-    let cancelled = false;
-    void probeOcrAssets().then((status) => {
-      if (!cancelled) setOcrStatus(status);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // keep the sliders in sync when settings are changed elsewhere (e.g. 撤销)
 
@@ -203,7 +191,9 @@ export default function SettingsScreen() {
                     ['notify', 'notifications_active', '实时通知', settings.classReminder ? `上课提醒已开（提前 ${settings.classReminderLead} 分钟）· 台词管理` : '上课提醒已关 · 台词管理'],
                     ['safearea', 'aspect_ratio', '屏幕安全区', `上端 ${settings.insetTop < 0 ? '自动' : `${settings.insetTop}dp`} · 下端 ${settings.insetBottom < 0 ? '自动' : `${settings.insetBottom}dp`}`],
                     ['nav', 'map', '导航与学校', `${mapProvider ? mapProvider.label : '未设置地图'} · ${settings.schoolName || '未填学校名称'}`],
-                    ['ocr', 'image_search', '图像识别与资源', `本地识别${ocrStatus?.ready ? '就绪' : ocrStatus ? '缺资源' : '检查中'} · 联网取资源${settings.localOcrCdn ? '允许' : '禁止'}`],
+                    ['ocr', 'image_search', '图像识别与资源', apiConfigured ? '封面识别走多模态接口' : '未配置接口 · 封面识别不可用'],
+                    ['home', 'home', '主页', settings.navCourse ? '显示「导航课程」按钮' : '已隐藏「导航课程」按钮'],
+                    ['edit', 'edit_calendar', '课表编辑', '导入课表 · 查看教材 · 系统日程'],
                     ['about', 'info', '关于', '应用信息 · 开源相关 · 动态取色'],
                   ] as const
                 ).map(([id, icon, title, summary], index, all) => (
@@ -562,67 +552,19 @@ export default function SettingsScreen() {
 
             {show('ocr') ? <SectionHeader icon="image_search" title="图像识别与资源" /> : null}
             <div className="list-group" style={show('ocr') ? undefined : { display: 'none' }}>
-              {/* -------------------------------------- 本地识别资源状态 + CDN 开关 */}
+              {/* 本地识别（OpenCV + Tesseract）已于 2026-09-27 下线：免费多模态模型读封面更准，
+                  而本地那套要给每个包塞 40+ MB 的 wasm 与中文模型（APK 26 MB → 4 MB）。
+                  这里如实说明「识别走接口」，不再有资源检查/联网开关。 */}
               <md-list-item type="text" className="rounded-outer-top">
                 <div slot="start" className="list-icon-badge">
-                  <MdIcon name={ocrStatus === null ? 'speed' : ocrStatus.ready ? 'check_circle' : 'error'} />
+                  <MdIcon name={apiConfigured ? 'check_circle' : 'error'} />
                 </div>
-                <div slot="headline">本地识别</div>
+                <div slot="headline">封面识别方式</div>
                 <div className="list-inline-texts" slot="supporting-text">
-                  {ocrStatus === null ? (
-                    <span>正在检查识别资源…</span>
-                  ) : ocrStatus.ready ? (
-                    <>
-                      <span>资源就绪：图像处理库 / 识别引擎 / 中文模型</span>
-                      <span>封面识别全程在本机，图片不出设备</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>
-                        缺少{!ocrStatus.opencv ? ' 图像处理库' : ''}
-                        {!ocrStatus.engine ? ' 识别引擎' : ''}
-                        {!ocrStatus.lang ? ' 中文模型' : ''}
-                      </span>
-                      <span>开发者执行 npm run setup:ocr 补齐</span>
-                    </>
-                  )}
+                  <span>{apiConfigured ? '走下面配好的多模态接口' : '还没配置接口：封面识别暂不可用'}</span>
+                  <span>已不再内置本地识别：省掉 40+ MB 模型，识别效果反而更好</span>
                 </div>
-                <div slot="end">
-                  <MdIconButton
-                    icon="refresh"
-                    label="重新检查识别资源"
-                    onClick={() => {
-                      haptic('select');
-                      setOcrStatus(null);
-                      void probeOcrAssets().then(setOcrStatus);
-                    }}
-                  />
-                </div>
-              </md-list-item>
-              <md-list-item type="text" className="rounded-middle">
-                <div slot="start" className="list-icon-badge">
-                  <MdIcon name={settings.localOcrCdn ? 'download' : 'storage'} />
-                </div>
-                <div slot="headline">允许联网取识别资源</div>
-                <div className="list-inline-texts" slot="supporting-text">
-                  <span>{settings.localOcrCdn ? '允许：缺资源时从 CDN 取引擎' : '禁止：只用本机资源'}</span>
-                  <span>中文模型与图片始终在本机，不上传</span>
-                </div>
-                <div slot="end">
-                  <MdSwitch
-                    selected={settings.localOcrCdn}
-                    onSelectedChange={(value) =>
-                      updateSettings(
-                        { localOcrCdn: value },
-                        {
-                          message: value
-                            ? '已允许联网取识别资源（图片仍不出设备）'
-                            : '已禁止联网：识别只使用本机资源',
-                        },
-                      )
-                    }
-                  />
-                </div>
+                <MdIcon slot="end" name="auto_awesome" />
               </md-list-item>
               {/* ------------------------------------------------ 5 API编辑 */}
               <md-list-item
@@ -636,6 +578,137 @@ export default function SettingsScreen() {
                 <div slot="headline">接口配置</div>
                 <div slot="supporting-text">
                   {apiConfigured ? '已配置，点击可修改' : '唯一的通用接口配置：图片识别（教材封面用）'}
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+            </div>
+
+            {show('home') ? <SectionHeader icon="home" title="主页" /> : null}
+            <div className="list-group" style={show('home') ? undefined : { display: 'none' }}>
+              {/* 作者 2026-09-29 要求：主页的「导航课程」要能开关，并且说明这一栏是干什么的 */}
+              <md-list-item type="text" className="rounded-outer-top">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="navigation" />
+                </div>
+                <div slot="headline">显示「导航课程」</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>
+                    {settings.navCourse
+                      ? '开启：主页右下角显示一颗「导航课程」，一键去时间上离现在最近的那节课'
+                      : '关闭：主页不再显示这颗按钮，右下角只留「回到今天」'}
+                  </span>
+                  <span>这颗按钮与左边的「筛选课程」同属主页右下角的浮动按钮区</span>
+                </div>
+                <div slot="end">
+                  {/* id 是给守卫用的稳定钩子：md-switch 上的 aria-label 会被渲染成 data-aria-label，
+                      按 aria 属性选不稳（2026-09-29 实测）。 */}
+                  <MdSwitch
+                    id="home-nav-course-switch"
+                    selected={settings.navCourse}
+                    onSelectedChange={() =>
+                      updateSettings(
+                        { navCourse: !settings.navCourse },
+                        { message: settings.navCourse ? '已隐藏「导航课程」' : '已显示「导航课程」' },
+                      )
+                    }
+                    ariaLabel="显示导航课程开关"
+                  />
+                </div>
+              </md-list-item>
+
+              {/* 浮动按钮区简介：把「容器」讲清楚，避免用户以为是两套东西 */}
+              <md-list-item type="text" className="rounded-outer-bottom">
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="widgets" />
+                </div>
+                <div slot="headline">主页浮动按钮区</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>左边：筛选课程（常驻）· 右边：导航课程 / 回到今天</span>
+                  <span>按钮贴底栏上沿排布，自动避开安全区与底栏，不与底栏重叠</span>
+                </div>
+              </md-list-item>
+            </div>
+
+            {show('edit') ? <SectionHeader icon="edit_calendar" title="课表编辑" /> : null}
+            <div className="list-group" style={show('edit') ? undefined : { display: 'none' }}>
+              {/* 作者 2026-09-29：把主页上那几颗「编辑类」入口整体搬到这里 ——
+                  主页只留看课表，编辑相关的集中一处。导入 / 日历是主页的局部弹层，
+                  所以通过 AppState 的 uiCommand 请主页代劳，并顺手切回课表页。 */}
+              <md-list-item
+                type="button"
+                className="rounded-outer-top"
+                onClick={() => {
+                  haptic('select');
+                  selectTab('schedule');
+                  requestUiCommand('openScheduleImport');
+                }}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="edit" />
+                </div>
+                <div slot="headline">课表数据与导入</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>导入 HTML / JSON 课表文件、粘贴文本、本地缓存快照与恢复内置</span>
+                  <span>原「主页右上角铅笔」入口，2026-09-29 起集中到本板块</span>
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+
+              <md-list-item
+                type="button"
+                className="rounded-middle"
+                onClick={() => {
+                  haptic('select');
+                  nav.push('textbookList', {}, 'slide');
+                }}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="menu_book" />
+                </div>
+                <div slot="headline">查看教材</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>按课程看「课堂要带的书」，可识别封面或手动填写</span>
+                  <span>原「主页右上角书本」入口</span>
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+
+              <md-list-item
+                type="button"
+                className="rounded-middle"
+                onClick={() => {
+                  haptic('select');
+                  selectTab('schedule');
+                  requestUiCommand('calendarAdd');
+                }}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="event_available" />
+                </div>
+                <div slot="headline">添加到系统日程</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>把整学期课表写进系统日历（每条带「来自多分课表」标记）</span>
+                  <span>原「主页课表上方那颗绿色按钮」</span>
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+
+              <md-list-item
+                type="button"
+                className="rounded-outer-bottom"
+                onClick={() => {
+                  haptic('select');
+                  selectTab('schedule');
+                  requestUiCommand('calendarRemove');
+                }}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="event_busy" />
+                </div>
+                <div slot="headline">清除本 App 写入的日程</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>只删带「来自多分课表」标记的日程，手动添加的不受影响</span>
+                  <span>原「主页课表上方那颗小图标」</span>
                 </div>
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>

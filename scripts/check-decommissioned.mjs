@@ -38,6 +38,35 @@ const REMOVED = [
       /--native-dock/, // 给原生底栏预留高度的 CSS 变量（含注入与读取）
     ],
   },
+  {
+    name: 'local-ocr（本地识别：OpenCV + Tesseract，2026-09-27 下线）',
+    scanRoots: ['app/', 'web/'],
+    forbidPaths: [
+      /web\/src\/lib\/(localOcr|localOcrTypes|ocrStatus|localRecognize|opencvLoader|opencvPreprocess)\.ts$/,
+      /scripts\/setup-ocr\.mjs$/,
+    ],
+    forbidTokens: [
+      /localRecognize/,
+      /recognizeCover/,
+      /opencvLoader/,
+      /opencvPreprocess/,
+      /localOcrCdn/,
+      /syncOcrAssets/,
+      /chi_sim/,
+    ],
+  },
+  {
+    // 外围入口（包清单 / CI / 构建脚本）单列一条：它们不在 app、web 下。
+    // token 一律拼接写，否则本文件自己就会被自己的规则命中（守卫必须扫不到自己）。
+    name: 'local-ocr 的外围入口（包清单 / CI / 构建脚本）',
+    scanRoots: ['package.json', '.github/', 'vite.config.ts', 'scripts/check-apk-parity.mjs'],
+    forbidTokens: [
+      new RegExp('setup' + ':ocr'),
+      new RegExp('sync' + 'OcrAssets'),
+      new RegExp('opencv' + '-js'),
+      new RegExp('tesseract' + '\\.js'),
+    ],
+  },
 ];
 
 let tracked = [];

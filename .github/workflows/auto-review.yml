@@ -88,7 +88,7 @@ jobs:
           run_guard secrets        node scripts/check-secrets.mjs
           run_guard web-security   node scripts/check-web-security.mjs
           run_guard version        node scripts/check-version.mjs
-          # 开源署名清单是否跟得上依赖（本地识别引入 opencv-js / tesseract.js 时曾漏掉署名）
+          # 开源署名清单是否跟得上依赖（曾经引入新依赖时漏掉署名）
           run_guard licenses       node scripts/collect-licenses.mjs --check
           # 导入自检：防「用了没导入」导致整页白屏。它此前**没有任何 workflow 跑它**
           # （仓库 12 个 check 脚本里有 2 个是这种状态），所以随时可能悄悄烂掉。
@@ -140,6 +140,10 @@ jobs:
           # 导入教程：主路径必须是「本地导入 HTML/JSON 文件」，而且提示词里的示例要真能导入
           #   （示例抠出来喂给真实解析器；只做文案检查挡不住契约漂移）
           APP_URL=http://127.0.0.1:5173/ run_guard import-guide node scripts/check-import-guide.mjs
+          # 各种屏幕比例 / 被浏览器切割的视口：底栏、浮动按钮、面板不许跑出屏幕
+          APP_URL=http://127.0.0.1:5173/ run_guard viewport     node scripts/check-viewport.mjs
+          # 设置 → 主页 的「显示『导航课程』」开关必须真的控制主页那颗按钮
+          APP_URL=http://127.0.0.1:5173/ run_guard home-nav-toggle node scripts/check-home-nav-toggle.mjs
           # 底栏运动行为：轻点必须是「移过去 duang」（有中间帧 + 过冲）、拖动停住后色块要追上手指。
           # 后者是 2026-09-25 真 bug 的探针：弹簧用底栏内坐标、applyFrame 又减一次 geo.left，
           # 色块拖动时整体偏左一个左边距（实测残余 39px 不收敛；修好后 3px）。

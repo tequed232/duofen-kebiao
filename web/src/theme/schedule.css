@@ -1517,3 +1517,31 @@ html[data-perf='high'] .m3e-dock {
   --md-filled-tonal-button-container-height: 44px;
   --md-filled-tonal-button-label-text-weight: 600;
 }
+
+/* 周次块中间那颗按钮：点它唤起系统原生日期选择器（原来那颗与它重复的日期按钮已删）。 */
+.week-label-button {
+  position: relative;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.week-label-button:active { opacity: 0.7; }
+
+/* 隐藏的原生日期输入：只借用系统的选择器 UI，不占版面 */
+.week-date-input {
+  position: absolute;
+  inset: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: none;
+}

@@ -16,7 +16,6 @@ import {
   CourseDetailSheet,
   DayTimeline,
   MapChooserDialog,
-  MonthDateDialog,
   PagedWeekBoard,
   ScheduleImportSheet,
   highlightKeyFor,
@@ -52,12 +51,12 @@ import {
   coursesOfDay,
   formatAddress,
   formatMonthDay,
-  formatMonthDayWeekday,
   isSameDay,
   openMapLink,
   mapProviderById,
   maxWeekOf,
   parseISODate,
+  toISODate,
   startOfWeek,
   termMonths,
   weekNumberFor,
@@ -114,8 +113,26 @@ export default function ScheduleScreen() {
     scheduleHighlight,
     setScheduleHighlight,
     showSnackbar,
+    uiCommand,
+    clearUiCommand,
   } = useAppState();
   const termStart = settings.termStart || schedule.termStart;
+
+  /**
+   * 设置页里的「课表编辑」把三件事请主页代劳（导入面板 / 写系统日历 / 清除日历）：
+   * 这些都是主页的局部状态，所以走 uiCommand 转交，消费完立刻清空，避免重复触发。
+   */
+  useEffect(() => {
+    if (!uiCommand) return;
+    if (uiCommand.kind === 'openScheduleImport') setImportOpen(true);
+    else if (uiCommand.kind === 'calendarAdd' || uiCommand.kind === 'calendarRemove') {
+      setCalendarDialog(uiCommand.kind === 'calendarAdd' ? 'add' : 'remove');
+      setCalendarInfo(nativeCalendar ? nativeCalendarStatus() : { permission: 'unknown', count: 0, calendar: '' });
+    }
+    clearUiCommand();
+    // nativeCalendar 是每次渲染重算的常量表达式，故意不进依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uiCommand, clearUiCommand]);
 
   const today = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState(() =>
@@ -125,7 +142,6 @@ export default function ScheduleScreen() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [tutorialOpen, setTutorialOpen] = useState(false);
-  const [dateOpen, setDateOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [mapChooser, setMapChooser] = useState<{ address: string; course: ScheduleCourse } | null>(null);
   /**
@@ -139,12 +155,12 @@ export default function ScheduleScreen() {
   const [calendarInfo, setCalendarInfo] = useState<NativeCalendarStatus>({ permission: 'unknown', count: 0, calendar: '' });
   const [calendarBusy, setCalendarBusy] = useState(false);
   const { ref: scrollRef, scrolled } = useScrolled<HTMLDivElement>();
-  /* 顶部两个小组件也用液态玻璃透镜（参数与底栏同一套） */
-  const dateLensRef = useRef<HTMLButtonElement>(null);
+  /* 顶部两个小组件也用液态玻璃透镜（参数与底栏同一套）；
+     日期选择器是周次块里的隐藏 input（点中间唤起系统原生选择器） */
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const weekLensRef = useRef<HTMLDivElement>(null);
   /* 「导航课程」半屏弹层的展开源矩形：没有具体来源元素时传空 ref（弹层从自身位置展开） */
   const navSheetRef = useRef<HTMLElement | null>(null);
-  useLens(dateLensRef, LENS_PLAYER);
   useLens(weekLensRef, LENS_PLAYER);
 
   const week = weekNumberFor(selectedDate, termStart);
@@ -228,7 +244,6 @@ export default function ScheduleScreen() {
   const selectTab = (tab: 'schedule' | 'search' | 'settings') => nav.selectTab(tab);
 
   const todayCount = coursesOfDay(schedule, weekdayIndex(today), weekNumberFor(today, termStart)).length;
-  const monthLabel = `${selectedDate.getFullYear()}年${selectedDate.getMonth() + 1}月`;
 
   /* -------------------------------------- 课表 → 系统日历（两个按钮 + 范围提示） -- */
   const calendarEvents = useMemo(() => buildCalendarEvents(schedule, { termStart }), [schedule, termStart]);
@@ -338,12 +353,7 @@ export default function ScheduleScreen() {
               <img src={APP_ART} alt="" />
             </button>
           }
-          actions={
-            <>
-              <MdIconButton className="appbar-textbooks" icon="menu_book" label="查看教材" onClick={() => { haptic('select'); nav.push('textbookList', {}, 'slide'); }} />
-              <MdIconButton className="appbar-import" icon="edit" label="课表数据与导入" onClick={() => { haptic('select'); setImportOpen(true); }} />
-            </>
-          }
+          actions={undefined}
         />
 
         <div className="screen-content" ref={scrollRef} style={{ paddingLeft: 0, paddingRight: 0 }}>
@@ -357,38 +367,49 @@ export default function ScheduleScreen() {
               <span>{scheduleImported ? '已导入课表' : '内置课表'}</span>
             </div>
 
-            {/* 系统日历：大按钮 = 一键写入日程，小按钮 = 一键清除本 App 写的日程 */}
-            <div className="schedule-calendar-row">
-              <md-filled-button className="btn-s" onClick={() => openCalendarDialog('add')}>
-                <MdIcon slot="icon" name="event_available" />
-                添加到系统日程
-              </md-filled-button>
-              <MdIconButton
-                className="schedule-calendar-clear"
-                icon="event_busy"
-                label="清除本 App 写入的日程"
-                onClick={() => openCalendarDialog('remove')}
-              />
-              <span className="flex-1" />
-              <span className="md-label-small muted schedule-owner">{schedule.owner}</span>
-            </div>
+            {/* 系统日历、查看教材、课表数据与导入都搬到「设置 → 课表编辑」了
+                （作者 2026-09-29：主页只留看课表这件事）。这里的说明文字也不再重复解释权署名。 */}
 
             <div className="row gap-8 mt-8" style={{ flexWrap: 'wrap' }}>
-              <button type="button" className="schedule-datebutton liquid-glass" ref={dateLensRef} onClick={() => setDateOpen(true)}>
-                <MdIcon name="event" size={16} />
-                {monthLabel} · {formatMonthDayWeekday(selectedDate)}
-                <MdIcon name="expand_more" size={16} />
-              </button>
               <span className="md-label-medium muted flex-1">
                 {months.length ? `课表覆盖 ${months[0].label} – ${months[months.length - 1].label}` : ''}
               </span>
             </div>
 
+            {/* 周次块：**点中间**唤起系统原生的日期选择器，直接跳到具体某一天。
+                原来那颗「2026年9月 · 9月24日 周四」按钮与这块信息重复，已删除；
+                也不再走「按月份/周次列表」的弹层（作者 2026-09-29：那个设计太繁琐）。 */}
             <div className="week-stepper liquid-glass" ref={weekLensRef}>
               <MdIconButton icon="chevron_left" label="上一周" onClick={() => shiftWeek(-1)} />
-              <span className="week-label md-title-small-emphasized">
+              <button
+                type="button"
+                className="week-label week-label-button md-title-small-emphasized"
+                aria-label="选择具体日期"
+                onClick={() => {
+                  const input = dateInputRef.current;
+                  if (!input) return;
+                  haptic('select');
+                  if (typeof input.showPicker === 'function') input.showPicker();
+                  else input.click();
+                }}
+              >
                 第 {week} 周 · {formatMonthDay(addDays(startOfWeek(selectedDate), 6))} 止
-              </span>
+                <input
+                  ref={dateInputRef}
+                  className="week-date-input"
+                  type="date"
+                  value={toISODate(selectedDate)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (!value) return;
+                    const picked = parseISODate(value);
+                    if (picked) {
+                      setSelectedDate(picked);
+                      haptic('select');
+                    }
+                  }}
+                />
+              </button>
               <MdIconButton icon="chevron_right" label="下一周" onClick={() => shiftWeek(1)} />
             </div>
           </div>
@@ -444,13 +465,17 @@ export default function ScheduleScreen() {
       </div>
 
       {/* 右下角常驻按钮：作者 2026-09-25 反馈"两个挤在一起太满"，改成
-          ① 「导航课程」靠左停靠；
+          ① 「导航课程」靠左停靠（**可在设置 → 主页 里关掉**，2026-09-29 作者要求）；
           ② 「回到今天」**只在当前看得不是今天时**才出现；
           ③ 整行 bottom 取 --dock-band + 12px，与底栏保持距离。 */}
       <div className="schedule-fab-row">
-        <md-fab className="schedule-nav-fab" variant="tonal" label="导航课程" onClick={openNavCourse}>
-          <MdIcon slot="icon" name="near_me" />
-        </md-fab>
+        {settings.navCourse ? (
+          <md-fab className="schedule-nav-fab" variant="tonal" label="导航课程" onClick={openNavCourse}>
+            <MdIcon slot="icon" name="near_me" />
+          </md-fab>
+        ) : (
+          <span />
+        )}
         {isSameDay(selectedDate, today) ? null : (
           <md-fab className="schedule-today-fab" variant="primary" label="回到今天" onClick={goToday}>
             <MdIcon slot="icon" name="today" />
@@ -541,18 +566,8 @@ export default function ScheduleScreen() {
         initialTab="schedule"
       />
 
-      <MonthDateDialog
-        open={dateOpen}
-        schedule={schedule}
-        value={selectedDate}
-        onCancel={() => setDateOpen(false)}
-        onPick={(date) => {
-          setSelectedDate(date);
-          setCollapsed(false);
-          setDateOpen(false);
-          showSnackbar({ message: `已定位到 ${formatMonthDayWeekday(date)}（第 ${weekNumberFor(date, termStart)} 周）` });
-        }}
-      />
+      {/* 跳转日期改用系统原生选择器（周次块中间那颗按钮里的隐藏 input），
+          原来的「按月份 / 周次列表」弹层已按作者要求删除。 */}
 
       <MapChooserDialog
         open={Boolean(mapChooser)}

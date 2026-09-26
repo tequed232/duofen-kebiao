@@ -402,7 +402,7 @@ Tequed232 拥有本项目的最终解释权。
 <!-- LICENSES:BEGIN -->
 ## 开源相关（Open source）
 
-本项目共引入 **23** 个开源依赖，按用途分门别类列出（与设置里「关于 → 开源相关」一致）。
+本项目共引入 **21** 个开源依赖，按用途分门别类列出（与设置里「关于 → 开源相关」一致）。
 感谢每一位作者与维护者。
 
 > 自动生成：修改依赖后运行 `node scripts/collect-licenses.mjs` 重新整理。
@@ -474,10 +474,8 @@ _未归类的依赖_
 
 | 名称 | 版本 | 许可 | 版权 / 开发者 |
 | --- | --- | --- | --- |
-| [@techstark/opencv-js](https://github.com/TechStark/opencv-js) | 5.0.0-release.1 | Apache-2.0 | Wilson |
 | [@types/react](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react) | 19.3.0 | MIT | Asana |
 | [@types/react-dom](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom) | 19.3.0 | MIT | Asana |
-| [tesseract.js](https://github.com/naptha/tesseract.js) | 7.0.0 | Apache-2.0 | 未提供版权方信息 |
 
 ### 参考实现（未引入代码）
 

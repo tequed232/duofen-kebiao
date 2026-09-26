@@ -55,7 +55,7 @@
 ### B. 阻塞：需要真机
 
 3. **灵动岛实况复核**：设置 → 实时通知（流体云）→「发送实况测试」，看状态栏是否出现；`adb shell dumpsys notification --noredact | findstr promotedOngoing` 复核 `promotedOngoing=true`。
-   （真机 realme GT7 在本次会话中接入过，覆盖安装、本地识别资源、封面识别链路均已验；复核这项时设备已断开。）
+   （真机 realme GT7 在本次会话中接入过，覆盖安装与封面识别链路均已验；复核这项时设备已断开。本地识别已于 2026-09-27 下线。）
 4. **界面缩放三档**的真机观感。
 
 ### C. 阻塞：需要作者决策（不自行决定）
@@ -73,7 +73,7 @@
 npm run build                 # 网页构建（输出 dist/）
 npm run icons:app             # 换了 docs/icon-source.jpg 之后：重生成全套应用图标（18 张）
 npm run check:app-icons       # 图标守卫：与「按原图现算一遍」逐像素比对（已进 CI）
-npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈希比对；ocr/ 按设计只进 APK，不算不一致
+npm run apk:parity            # APK 内嵌资源 ↔ 网页构建 逐文件哈希比对（现在两边应当**完全一致**）
 npm run check:hygiene         # 仓库卫生：安装包/压缩包不允许被跟踪（APK 只进 Release）
 node scripts/check-imports.mjs     # 导入自检（防「用了没导入」导致白屏）
 node scripts/check-secrets.mjs     # 密钥扫描
@@ -102,7 +102,7 @@ pwsh -File scripts/verify-device.ps1   # 一键：安装 + 截图 + 点底栏三
 4. **~~Chromium/WebView 丢弃 `backdrop-filter: url(#svg)`~~（2026-09 更正：此说法不成立）**。实测 Chromium 153 上 `url()` 与 `feImage` 位移图**都生效**，背景确实能被掰弯 —— 见 `scripts/check-backdrop-refraction.mjs`（已进 CI）。当初的假阴性来自「用 `feImage` 做位移图、开/关截图一致」就判定 `url()` 被丢弃：`feImage` 取不到图时位移恒为 0，同样会一致，两者没分开测。教训是**量引擎行为时必须带一个必然生效的对照**（那里是 `blur`），否则一次假阴性会被写进文档再被四处引用。
 5. **真机掉帧**多来自：逐帧 `getBoundingClientRect()`、改 `width`、移动元素挂 SVG 滤镜。
 6. 仓库**不收录**构建产物与截图（曾因此被密钥扫描误报）。
-7. **`apk:parity` 曾经"永远失败"**：它把 APK 里多出的 22 个 `ocr/` 文件当成不一致，而那是**设计如此**（`stripLocalOcrFromDist` 把 `dist/ocr` 删掉保住网页产物 2.1 MB，`syncOcrAssets` 又把它塞进 APK）。现在只豁免 `ocr/` 这一个前缀，其它多出来的文件仍报不一致 —— 改这条守卫时**务必保留反向用例**，否则它会退化成"永远绿"。
+7. **`apk:parity` 曾经"永远失败"（本地识别下线后已不再有例外）**：它把 APK 里多出的 22 个 `ocr/` 文件当成不一致，而那是**设计如此**（`stripLocalOcrFromDist` 把 `dist/ocr` 删掉保住网页产物 2.1 MB，`syncOcrAssets` 又把它塞进 APK）。现在只豁免 `ocr/` 这一个前缀，其它多出来的文件仍报不一致 —— 改这条守卫时**务必保留反向用例**，否则它会退化成"永远绿"。
 8. **改含中文的脚本不要走 PowerShell 的文本 cmdlet**：`Set-Content` / `[IO.File]::WriteAllText` 会把 UTF-8 写坏（实测：3561 字节的文件涨到 5506 字节、中文全成乱码、node 直接报 ESM 加载失败）。用编辑工具或 Node 的 `fs` 写。
 9. **「不在 CI 里的守卫」等于没有守卫 —— 这个坑在本仓库已复现四次**：`apk:parity`（假失败）、`check-import-e2e`（选择器过期 → 永远报找不到输入框）、`verify.mjs`（19 步挂 11 步）、以及 `check-about-credits` 与 `check-imports`（**零 workflow 引用**，谁都没跑过）。它们共同的特征是**坏得很安静**，而人看到"仓库里有这个脚本"就以为覆盖到了。
    加新守卫时请一并做到两件事：**接进 `.github/workflows/auto-review.yml` 的守卫清单**，并**按「先证明它能红」验一遍**（造一个它该抓的错，看它是否真报红）。只写脚本不接 CI，等于给自己留一个未来的假象。

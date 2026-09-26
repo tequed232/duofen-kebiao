@@ -12,7 +12,7 @@
  * 提醒里要显示「带：某教材」时，书名由 WebView 传给原生，原生不需要自己存一份。
  *
  * 识别流程（web/src/components/schedule.tsx）：
- *   选封面图 → 本地 OpenCV + Tesseract 识别（或可选的外部多模态接口）；
+ *   选封面图 → 多模态接口识别（本地 OpenCV + Tesseract 已于 2026-09-27 下线）；
  *   也可粘贴/输入封面文字，同样本地匹配。结果写入 IndexedDB，
  *   在「课程详情 → 教材」里显示。
  */

@@ -58,7 +58,18 @@ interface AppStateValue {
   showSnackbar: (options: Omit<SnackbarMessage, 'id' | 'duration'> & { duration?: number }) => void;
   hideSnackbar: () => void;
   snackbar: SnackbarMessage | null;
+  /**
+   * 跨屏指令：设置页里放着的功能（导入课表 / 写系统日历）要由主页执行，
+   * 而这类动作是主页的局部状态（弹层开关）。用一个带时间戳的指令对象转交，
+   * 主页消费后清空 —— 比把两个屏的状态互相 import 干净得多。
+   */
+  uiCommand: { kind: UiCommandKind; at: number } | null;
+  requestUiCommand: (kind: UiCommandKind) => void;
+  clearUiCommand: () => void;
 }
+
+/** 设置页可以请主页代劳的动作 */
+export type UiCommandKind = 'openScheduleImport' | 'calendarAdd' | 'calendarRemove';
 
 const AppStateContext = createContext<AppStateValue | null>(null);
 
@@ -77,6 +88,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [importedSchedule, setImportedSchedule] = useState<ScheduleData | null>(null);
   const [textbookOverrides, setTextbookOverrides] = useState<Record<string, Textbook>>({});
   const [scheduleHighlight, setScheduleHighlight] = useState<ScheduleHighlight | null>(null);
+  const [uiCommand, setUiCommand] = useState<{ kind: UiCommandKind; at: number } | null>(null);
+  const requestUiCommand = useCallback<AppStateValue['requestUiCommand']>((kind) => {
+    setUiCommand({ kind, at: Date.now() });
+  }, []);
+  const clearUiCommand = useCallback(() => setUiCommand(null), []);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -244,6 +260,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       showSnackbar,
       hideSnackbar,
       snackbar,
+      uiCommand,
+      requestUiCommand,
+      clearUiCommand,
     }),
     [
       ready,
@@ -260,6 +279,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       showSnackbar,
       hideSnackbar,
       snackbar,
+      uiCommand,
+      requestUiCommand,
+      clearUiCommand,
     ],
   );
 

@@ -222,14 +222,6 @@ export const LICENSE_GROUPS: LicenseGroup[] = [
     "items": [
       {
         "category": "other",
-        "title": "@techstark/opencv-js",
-        "version": "5.0.0-release.1",
-        "license": "Apache-2.0",
-        "holder": "Wilson",
-        "url": "https://github.com/TechStark/opencv-js"
-      },
-      {
-        "category": "other",
         "title": "@types/react",
         "version": "19.3.0",
         "license": "MIT",
@@ -243,14 +235,6 @@ export const LICENSE_GROUPS: LicenseGroup[] = [
         "license": "MIT",
         "holder": "Asana",
         "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom"
-      },
-      {
-        "category": "other",
-        "title": "tesseract.js",
-        "version": "7.0.0",
-        "license": "Apache-2.0",
-        "holder": "未提供版权方信息",
-        "url": "https://github.com/naptha/tesseract.js"
       }
     ]
   }

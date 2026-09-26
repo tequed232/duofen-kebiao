@@ -95,29 +95,22 @@ export default function ImportTutorial({ open, onClose, initialTab = 'textbook' 
           <SectionHeader icon="photo_camera" title="第 1 步 · 拍照或选封面" />
           <p className="md-body-small muted">
             在「课程详情 → 教材」里点选图，把教材封面拍清楚即可。
-            <strong>图片只在本机处理，不会上传到任何服务器。</strong>
           </p>
 
-          <SectionHeader icon="bolt" title="第 2 步 · 本地自动识别" />
+          <SectionHeader icon="auto_awesome" title="第 2 步 · 交给多模态接口识别" />
           <p className="md-body-small muted">
-            识别分两步走，全部跑在你的设备上：
+            识别走你在 <strong>设置 → 图像识别与资源 → 接口配置</strong> 里填的多模态模型
+            （DeepSeek / Gemini / ChatGPT 这类都行）：把封面图交给它，读出书名、出版社与 ISBN，
+            再自动匹配到课表里的课程。
+            <strong>没配接口就只能手动填写</strong> —— 应用里已经不再内置本地识别了。
           </p>
-          <ol className="md-body-small muted tutorial-list">
-            <li>
-              <strong>OpenCV 预处理</strong>：自动裁出封面、聚出文字区、二值化抗反光 ——
-              手机随手拍的照片也能读。
-            </li>
-            <li>
-              <strong>Tesseract 中文 OCR</strong>：把封面上的字读出来，再和内置教材库匹配，
-              给出<strong>书名、出版社</strong>；封面印了 ISBN 的话还会做国际标准校验位验证。
-            </li>
-          </ol>
           <p className="md-body-small muted">
-            首次使用需要本机有识别模型（约 40 MB，放在 <code>web/public/ocr/</code>）。
-            开发者执行一次 <code>npm run setup:ocr</code> 即可；设置 → 接口配置里能看到是否就绪。
+            为什么去掉本地识别（2026-09-27）：OpenCV + Tesseract 那套要给每个安装包塞
+            40+ MB 的引擎与中文模型，识别率却不如免费多模态模型；下线之后 APK 从 26 MB
+            降到 4 MB 左右，识别效果反而更好。
           </p>
 
-          <SectionHeader icon="storage" title="可选 · 认不准时用多模态模型" />
+          <SectionHeader icon="storage" title="可选 · 认不准时自己问一遍" />
           <p className="md-body-small muted">
             封面太糊、艺术字太多时，可以把封面图交给 DeepSeek / Gemini / ChatGPT，
             用下面的提示词让它读成文字，再把结果粘回应用的输入框：

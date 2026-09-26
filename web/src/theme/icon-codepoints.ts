@@ -88,7 +88,6 @@ export const ICON_CODEPOINTS: Record<string, number> = {
   "school": 0xe80c,
   "search": 0xe8b6,
   "search_off": 0xea76,
-  "select": 0xf74d,
   "send": 0xe163,
   "settings": 0xe8b8,
   "settings_backup_restore": 0xe8ba,
