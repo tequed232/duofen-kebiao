@@ -161,25 +161,36 @@ body {
   pointer-events: none;
 }
 
-/* ---- 可预测式返回（Android 14+ 手势返回）：预览层跟手，同样从中间放大弹出 ----
-   --predictive 由原生通过 window.DuofenBack.progress() 写入（0 → 1）。 */
+/* ---- 可预测式返回（Android 14+ 手势返回）：跟手预览 ----
+   --predictive 由原生通过 window.DuofenBack.progress() 写入（0 → 1）。
+
+   逐帧对照 Telegram 录屏（build\vtrans-sheet.png，11.13s → 12.04s）得到的形态：
+   **正在被退出的那一屏以顶边为锚点缩下去** —— 顶栏钉在最上面不动，内容往上收，
+   底边抬起来并收下缘圆角；底下那一屏（上一屏）原地满屏露出来，松手直接落在它上面。 */
+
+/* 垫在底下的「上一屏」：原地满屏露出来（不缩放、不位移） */
 .screen.peek {
   transform-origin: 50% 50%;
-  transform: scale(calc(0.86 + 0.14 * var(--predictive, 0)));
-  opacity: calc(0.4 + 0.6 * var(--predictive, 0));
+  transform: none;
+  opacity: 1;
 }
 
+/* 正在被退出的当前屏：顶边锚点 + 缩小 + 下缘圆角（几乎不淡出，Telegram 里那张卡一直很清楚） */
 .phone.predictive > .screen:not(.peek) {
-  transform-origin: 50% 50%;
-  transform: scale(calc(1 + 0.06 * var(--predictive, 0)));
-  opacity: calc(1 - 0.55 * var(--predictive, 0));
+  transform-origin: 50% 0%;
+  transform: scale(calc(1 - 0.12 * var(--predictive, 0)));
+  opacity: calc(1 - 0.06 * var(--predictive, 0));
+  border-radius: 0 0 calc(28px * var(--predictive, 0)) calc(28px * var(--predictive, 0));
+  overflow: hidden;
+  will-change: transform, opacity;
 }
 
 /* 手势取消时平滑退回原状（手势进行中不加过渡，保证完全跟手） */
 .phone.predictive-cancel > .screen {
   transition:
     transform 180ms cubic-bezier(0.05, 0.7, 0.1, 1),
-    opacity 180ms linear;
+    opacity 180ms linear,
+    border-radius 180ms linear;
 }
 /* ------------------------------------------------------------------ utils */
 .row {
@@ -553,10 +564,17 @@ html[data-contour='bold'] .screen > .screen-inner {
   position: relative;
   z-index: 1;
 }
-/* 可预测式返回「提交」瞬间：从手势当前进度平滑推到终态。
-   手势进行中不能有过渡（要完全跟手），所以过渡只挂在提交这一刻的类上。 */
-.phone.predictive-commit > .screen {
+/* 可预测式返回「提交」之后：那张卡**继续往上缩走**（不是标准弹出动画）。
+   手势进行中不能有过渡（要完全跟手），所以过渡只挂在这一刻的类上。 */
+.screen.predictive-out {
   transition:
-    transform 170ms cubic-bezier(0.05, 0.7, 0.1, 1),
-    opacity 170ms linear;
+    transform 180ms cubic-bezier(0.05, 0.7, 0.1, 1),
+    opacity 180ms linear,
+    border-radius 180ms linear;
+  transform-origin: 50% 0%;
+  transform: scale(0.88);
+  opacity: 0;
+  border-radius: 0 0 28px 28px;
+  overflow: hidden;
+  pointer-events: none;
 }

@@ -81,6 +81,8 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
   const [stack, setStack] = useState<RouteEntry[]>([initialEntry]);
   const [enteringKey, setEnteringKey] = useState<string | null>(null);
   const [exiting, setExiting] = useState<RouteEntry | null>(null);
+  /** 可预测式返回提交后、正在"下沉退场"的那一屏（不跑标准弹出动画，见 popstate 里的分支） */
+  const [commitOut, setCommitOut] = useState<RouteEntry | null>(null);
   const stackRef = useRef(stack);
   stackRef.current = stack;
   const timers = useRef<number[]>([]);
@@ -161,25 +163,20 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
         const removed = previous[previous.length - 1];
         const phone = document.querySelector('.phone') as HTMLElement | null;
         /**
-         * 可预测式返回**提交**：预览态本来就已经把「上一屏」放大到满屏（`--predictive: 1`
-         * 时 scale 1 / opacity 1），所以这里只需把它从**手势当前进度**平滑推到 1 就收尾了。
-         *
-         * 以前这里不管三七二十一又设了一次 `exiting`，于是同一段过场被播两遍：
-         * 预览弹一次（跟手），标准弹出动画再弹一次（松手瞬间还会从半途跳回去）——
-         * 就是作者报的「用原生可预测式返回也会弹出两次 + 冲击效果」。
+         * 可预测式返回**提交**（作者 2026-09-29 对照 Telegram 定的口径）：
+         * 手势期间「正在被退出的那一屏」已经跟着手指**下沉**（缩小 + 下移 + 变暗 + 收圆角），
+         * 底下那一屏原地露出来。松手就让它**继续沉下去退场**，然后落在底下那一屏上 ——
+         * 不再叠一次标准弹出动画（那会让同一段过场播两遍，就是"弹出两次 + 冲击"）。
          */
         if (predictiveRef.current && phone?.classList.contains('predictive')) {
           predictiveRef.current = false;
           setEnteringKey(null);
-          setStack(next);
-          phone.classList.add('predictive-commit');
-          void phone.offsetWidth; // 先让过渡生效，再从当前进度推到 1（否则会和赋值同帧被合并掉）
-          phone.style.setProperty('--predictive', '1');
-          schedule(() => {
-            phone.classList.remove('predictive', 'predictive-commit');
-            phone.style.setProperty('--predictive', '0');
-            setPeeking(null);
-          }, 180);
+          setCommitOut(removed); // 让它继续下沉着退场（类名是 predictive-out，不是 exit-*）
+          setStack(next); // 预览层里那一屏成为新的一屏
+          setPeeking(null);
+          phone.classList.remove('predictive', 'predictive-cancel');
+          phone.style.setProperty('--predictive', '0');
+          schedule(() => setCommitOut(null), 200);
           return;
         }
         setEnteringKey(null);
@@ -325,7 +322,7 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   return (
     <NavContext.Provider value={value}>
-      <NavRenderContext.Provider value={{ enteringKey, exiting, peeking }}>{children}</NavRenderContext.Provider>
+      <NavRenderContext.Provider value={{ enteringKey, exiting, peeking, commitOut }}>{children}</NavRenderContext.Provider>
     </NavContext.Provider>
   );
 }
@@ -334,10 +331,12 @@ const NavRenderContext = createContext<{
   enteringKey: string | null;
   exiting: RouteEntry | null;
   peeking: RouteEntry | null;
+  commitOut: RouteEntry | null;
 }>({
   enteringKey: null,
   exiting: null,
   peeking: null,
+  commitOut: null,
 });
 
 /**
@@ -357,10 +356,10 @@ export function NavHost({
   background?: ReactNode;
 }) {
   const { stack } = useNav();
-  const { enteringKey, exiting, peeking } = useContext(NavRenderContext);
+  const { enteringKey, exiting, peeking, commitOut } = useContext(NavRenderContext);
   // The exiting entry keeps its React key so the component instance (scroll
   // position, ...) is preserved while it animates away.
-  const layers = exiting ? [...stack, exiting] : stack;
+  const layers = commitOut ? [...stack, commitOut] : exiting ? [...stack, exiting] : stack;
 
   return (
     <>
@@ -378,8 +377,10 @@ export function NavHost({
         const Screen = screens[entry.route];
         const isTop = entry.key === stack[stack.length - 1].key;
         const isExiting = exiting?.key === entry.key;
+        const isPredictiveOut = commitOut?.key === entry.key;
         const classes = ['screen', `dir-${entry.direction ?? 'forward'}`];
         if (isExiting) classes.push(`exit-${entry.transition}`);
+        else if (isPredictiveOut) classes.push('predictive-out');
         else if (entry.key === enteringKey) classes.push(`enter-${entry.transition}`);
         return (
           <div

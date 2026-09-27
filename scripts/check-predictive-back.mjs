@@ -78,6 +78,38 @@ await page.waitForTimeout(180);
 const peekCount = await page.locator('.screen.peek').count();
 check('预览层渲染出来了（.screen.peek）', peekCount === 1, `peek=${peekCount}`);
 
+/**
+ * 逐帧对照 Telegram 录屏（build\vtrans-sheet.png）定的口径：
+ *   **正在被退出的那一屏以顶边为锚点缩下去**（顶栏钉住、内容往上收、下缘收圆角），
+ *   底下那一屏原地满屏露出来。
+ * 所以这里量：退出屏必须 scale < 1、transform-origin 在顶部、没有明显下移、下缘有圆角；
+ * 底下那屏保持原尺寸。
+ */
+const during = await page.evaluate(() => {
+  const read = (el) => {
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    const m = /matrix\(([^)]+)\)/.exec(cs.transform);
+    const p = m ? m[1].split(',').map((v) => Number(v.trim())) : null;
+    return {
+      raw: cs.transform,
+      sx: p ? p[0] : 1,
+      ty: p ? p[5] : 0,
+      origin: cs.transformOrigin,
+      bottomRadius: parseFloat(cs.borderBottomLeftRadius) || 0,
+    };
+  };
+  // 当前屏（正在被退出的那屏）：aria-hidden="false"；非激活的标签屏是 "true"
+  const top = [...document.querySelectorAll('.screen:not(.peek)')].find((el) => el.getAttribute('aria-hidden') !== 'true');
+  return { outgoing: read(top), peek: read(document.querySelector('.screen.peek')) };
+});
+console.log('   手势中（progress=0.6）:', JSON.stringify(during));
+check('被退出的屏在缩下去（scale < 1）', (during.outgoing?.sx ?? 1) < 0.99, `scaleX=${during.outgoing?.sx}`);
+check('缩放锚点在顶边（transform-origin 的 Y 为 0）', /^\d+(\.\d+)?px 0px/.test(during.outgoing?.origin ?? ''), `origin=${during.outgoing?.origin}`);
+check('没有整体下移（|translateY| ≤ 1px）', Math.abs(during.outgoing?.ty ?? 99) <= 1, `translateY=${during.outgoing?.ty}`);
+check('下缘有圆角（≥ 8px）', (during.outgoing?.bottomRadius ?? 0) >= 8, `border-bottom-radius=${during.outgoing?.bottomRadius}`);
+check('底下那屏原地满屏（transform 为 none）', during.peek?.raw === 'none', `peek transform=${during.peek?.raw}`);
+
 await page.waitForTimeout(150);
 await page.evaluate(() => window.history.back()); // = 原生 performBack() → webView.goBack()
 await page.waitForTimeout(700);
@@ -105,6 +137,7 @@ for (const line of trace.slice(0, 12)) console.log('     ' + line);
 console.log('   收尾状态:', JSON.stringify(peekTransform));
 
 check('提交时**没有再叠一遍标准弹出动画**（无 .screen.exit-*）', exitEvents.length === 0, `出现了 ${exitEvents.length} 条：${exitEvents.slice(0, 3).join(' | ')}`);
+check('提交后那一屏是"继续下沉退场"（出现过 .predictive-out）', /predictive-out/.test(trace.join(' ')), '没有 predictive-out 轨迹');
 check('手势态收干净了（.phone 不再是 predictive/commit）', !peekTransform.predictiveLeft && !peekTransform.commitLeft, JSON.stringify(peekTransform));
 check('只退了一层（层数 −1）', peekTransform.screens === screensBefore - 1, `前 ${screensBefore} → 后 ${peekTransform.screens}`);
 check('顶层屏回到正常尺寸（transform 为 none 或单位矩阵）', /none|matrix\(1, 0, 0, 1, 0, 0\)/.test(peekTransform.topTransform), `transform=${peekTransform.topTransform}`);
