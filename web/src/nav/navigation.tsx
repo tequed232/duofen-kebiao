@@ -151,6 +151,13 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
     };
   }, []);
 
+  // 把"历史栈还能不能退"同步给原生壳：原生据此决定左边缘要不要从系统手势里排除
+  // （可退 = 原生拖拽返回接管；根屏 = 还给系统做"离开应用"）。
+  useEffect(() => {
+    const bridge = (window as unknown as { DuofenNative?: { setCanGoBack?: (can: boolean) => void } }).DuofenNative;
+    bridge?.setCanGoBack?.(stack.length > 1);
+  }, [stack.length]);
+
   useEffect(() => {
     // 自己管理滚动位置：返回时不要浏览器强行恢复，避免动画中跳位（可预测式返回更顺滑）
     if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';

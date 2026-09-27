@@ -169,8 +169,28 @@ class MainActivity : ComponentActivity() {
 
         // 【回滚】原生 Dock 在作者真机上不可用（可见但点击无反应），已停用：
         // 网页自己绘制的 Material 3 底栏（在浏览器里已验证可用）重新接管导航。
-        root.addView(
+        //
+        // 原生边缘拖拽返回（Telegram 那套思路）：自己接管左边缘的横向拖拽，
+        // 用本地算出的 0..1 进度驱动网页里那套与 Telegram 录屏对齐的预览。
+        // 这样跟手预览不再依赖系统「预测性返回」的开发者开关与合成器转发（两个坑都实测过）。
+        // 系统那条路（右边缘 / 三键返回 / 手势）保持不动，两条路共用同一套网页预览。
+        val swipeBack = SwipeBackLayout(this).apply {
+            canDragBack = { webView.canGoBack() }
+            onStart = { notifyWebBack("start", 0f) }
+            onProgress = { progress -> notifyWebBack("progress", progress) }
+            onCancel = { notifyWebBack("cancel", 0f) }
+            onCommit = { performBack() }
+        }
+        swipeBackRef = swipeBack
+        swipeBack.addView(
             webView,
+            android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        root.addView(
+            swipeBack,
             android.widget.FrameLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -286,6 +306,9 @@ class MainActivity : ComponentActivity() {
     /** 上一次真正执行返回退栈的时刻，用来吞掉同一次手势里的重复派发 */
     private var lastBackAt = 0L
 
+    /** 原生边缘拖拽返回的容器（见 SwipeBackLayout）：网页每次导航后同步边缘排除状态 */
+    private var swipeBackRef: SwipeBackLayout? = null
+
     /** 网页侧的历史栈优先；栈空了才真的退出应用 */
     private fun performBack() {
         /**
@@ -302,6 +325,8 @@ class MainActivity : ComponentActivity() {
         } else {
             finish()
         }
+        // 退栈后重新评估：根屏上要把左边缘还给系统返回手势（见 SwipeBackLayout.setEdgeExcluded）
+        webView.post { swipeBackRef?.setEdgeExcluded(webView.canGoBack()) }
     }
 
     /** 把返回手势的相位与进度同步给网页（仅 Android 14+ 的预测式返回会用到） */
@@ -424,6 +449,15 @@ class MainActivity : ComponentActivity() {
          *   · "tick"   —— 轻刻度（拖动经过某格、周数 / 日期步进）
          *   · "heavy"  —— 重触感（「回到今天」这类一锤定音的操作，用 LONG_PRESS 的力度）
          */
+        /**
+         * 网页历史栈是否可退。可退时把左边缘从系统手势里排除（触摸归原生拖拽返回），
+         * 根屏上还回去 —— 保证"在主页左滑离开应用"仍然由系统执行。
+         */
+        @JavascriptInterface
+        fun setCanGoBack(can: Boolean) {
+            runOnUiThread { swipeBackRef?.setEdgeExcluded(can) }
+        }
+
         @JavascriptInterface
         fun haptic(kind: String) {
             runOnUiThread {
