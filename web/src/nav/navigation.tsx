@@ -81,8 +81,6 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
   const [stack, setStack] = useState<RouteEntry[]>([initialEntry]);
   const [enteringKey, setEnteringKey] = useState<string | null>(null);
   const [exiting, setExiting] = useState<RouteEntry | null>(null);
-  /** 可预测式返回提交后、正在"下沉退场"的那一屏（不跑标准弹出动画，见 popstate 里的分支） */
-  const [commitOut, setCommitOut] = useState<RouteEntry | null>(null);
   const stackRef = useRef(stack);
   stackRef.current = stack;
   const timers = useRef<number[]>([]);
@@ -94,69 +92,8 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
 
-  /**
-   * 可预测式返回（Android 14+ / 手势返回）：
-   * 原生把 开始 / 进度 / 取消 三相转成 JS 调用，网页据此把**上一屏**按手势进度
-   * 从画面中间放大弹出（与统一转场同一套缩放），松手前的预览完全跟手；
-   * 手势取消退回原状，真正触发时交给 `history.back()` → popstate 走正常弹出。
-   * 浏览器里这套 API 不存在，整段逻辑不参与。
-   */
-  const [peeking, setPeeking] = useState<RouteEntry | null>(null);
-  /** 手势是否正处于预测式返回预览中（start 置 true；提交 / 取消后置 false） */
-  const predictiveRef = useRef(false);
-
-  useEffect(() => {
-    const phone = () => document.querySelector('.phone') as HTMLElement | null;
-    const clear = () => {
-      const el = phone();
-      el?.classList.remove('predictive', 'predictive-commit', 'predictive-cancel');
-      el?.style.setProperty('--predictive', '0');
-      predictiveRef.current = false;
-      setPeeking(null);
-    };
-    const api = {
-      start: () => {
-        const current = stackRef.current;
-        if (current.length < 2) return;
-        predictiveRef.current = true;
-        phone()?.classList.add('predictive');
-        phone()?.style.setProperty('--predictive', '0');
-        setPeeking(current[current.length - 2]);
-      },
-      progress: (value: number) => {
-        const clamped = Math.min(1, Math.max(0, Number(value) || 0));
-        /**
-         * ⚠️ 必须**同步**写，不能 rAF 合并。
-         * 试过 rAF 合并（"每帧最多写一次"）：系统做返回手势时，被拖动的那一帧里
-         * WebView 的 rAF 会被节流/暂停，`--predictive` 于是写不进去 —— 实测表现就是
-         * 「跟手预览没了 / 卡住不动」。而当初卡顿的元凶并不是这次赋值（0.03ms/次），
-         * 是它引发的模糊/折射重采样 —— 那部分已经在 CSS 里于手势期间关掉了。
-         */
-        phone()?.style.setProperty('--predictive', clamped.toFixed(3));
-      },
-      cancel: () => {
-        const el = phone();
-        el?.classList.add('predictive-cancel');
-        el?.style.setProperty('--predictive', '0');
-        window.setTimeout(clear, 200);
-      },
-      commit: () => {
-        /* 真正的前进由原生调用 webView.goBack() → popstate 完成，这里只留预览 */
-      },
-    };
-    (window as unknown as { DuofenBack?: unknown }).DuofenBack = api;
-    return () => {
-      delete (window as unknown as { DuofenBack?: unknown }).DuofenBack;
-      clear();
-    };
-  }, []);
-
-  // 把"历史栈还能不能退"同步给原生壳：原生据此决定左边缘要不要从系统手势里排除
-  // （可退 = 原生拖拽返回接管；根屏 = 还给系统做"离开应用"）。
-  useEffect(() => {
-    const bridge = (window as unknown as { DuofenNative?: { setCanGoBack?: (can: boolean) => void } }).DuofenNative;
-    bridge?.setCanGoBack?.(stack.length > 1);
-  }, [stack.length]);
+  /* 可预测式返回（预览 / 拖拽 / 相变）已按作者要求整段移除：留白给他自己实现。
+     这里保留下来的只有"普通返回"：原生 performBack() → history.back() → popstate 正常出栈。 */
 
   useEffect(() => {
     // 自己管理滚动位置：返回时不要浏览器强行恢复，避免动画中跳位（可预测式返回更顺滑）
@@ -175,34 +112,9 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
       if (next.length < previous.length) {
         const removed = previous[previous.length - 1];
-        const phone = document.querySelector('.phone') as HTMLElement | null;
-        /**
-         * 可预测式返回**提交**（作者 2026-09-29 对照 Telegram 定的口径）：
-         * 手势期间「正在被退出的那一屏」跟着手指缩下去，底下那一屏原地露出来；
-         * 松手让那张卡**继续缩着沉走**（`.predictive-out`，320ms）再落定 —— 有一种
-         * "层叠退场"的观感，而不是硬切；同时**不叠**标准弹出动画（叠了就是"弹两次 + 冲击"）。
-         * 这里只用**一个实例**（不复制第二份渲染），所以不会有文字重影。
-         */
-        if (predictiveRef.current && phone?.classList.contains('predictive')) {
-          predictiveRef.current = false;
-          setEnteringKey(null);
-          setCommitOut(removed); // 继续沉走退场（类名 predictive-out，不是 exit-*）
-          setStack(next); // 预览层里那一屏成为新的一屏
-          setPeeking(null);
-          phone.classList.remove('predictive', 'predictive-cancel');
-          phone.style.setProperty('--predictive', '0');
-          // 延时要 ≥ .predictive-out 的过渡时长（320/260ms），否则动画会被中途卸载
-          schedule(() => setCommitOut(null), 380);
-          return;
-        }
         setEnteringKey(null);
         setExiting(removed);
         setStack(next);
-        // 预测式返回的预览到此结束：清掉手势态，交给正常弹出动画收尾
-        phone?.classList.remove('predictive', 'predictive-cancel');
-        phone?.style.setProperty('--predictive', '0');
-        predictiveRef.current = false;
-        setPeeking(null);
         schedule(() => setExiting(null), DURATION[removed.transition] + 100);
         return;
       }
@@ -338,7 +250,7 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   return (
     <NavContext.Provider value={value}>
-      <NavRenderContext.Provider value={{ enteringKey, exiting, peeking, commitOut }}>{children}</NavRenderContext.Provider>
+      <NavRenderContext.Provider value={{ enteringKey, exiting }}>{children}</NavRenderContext.Provider>
     </NavContext.Provider>
   );
 }
@@ -346,13 +258,9 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 const NavRenderContext = createContext<{
   enteringKey: string | null;
   exiting: RouteEntry | null;
-  peeking: RouteEntry | null;
-  commitOut: RouteEntry | null;
 }>({
   enteringKey: null,
   exiting: null,
-  peeking: null,
-  commitOut: null,
 });
 
 /**
@@ -372,32 +280,20 @@ export function NavHost({
   background?: ReactNode;
 }) {
   const { stack } = useNav();
-  const { enteringKey, exiting, peeking, commitOut } = useContext(NavRenderContext);
+  const { enteringKey, exiting } = useContext(NavRenderContext);
   // The exiting entry keeps its React key so the component instance (scroll
   // position, ...) is preserved while it animates away.
-  const layers = commitOut ? [...stack, commitOut] : exiting ? [...stack, exiting] : stack;
+  const layers = exiting ? [...stack, exiting] : stack;
 
   return (
     <>
-      {/*
-        可预测式返回的预览：**不渲染副本**。
-        之前额外渲染一份「上一屏」，提交那一帧真身与副本会同时在场 —— 实测就是作者看到的
-        "退出时新界面的残影"。现在改成：把栈里那一层（真正的上一屏）标成 `peek` 露出来，
-        同时把手势期间**其余层全部隐藏**（见 base.css 的 .phone.predictive 规则），
-        既保证露出来的就是上一屏，也没有任何重影。
-      */}
       {layers.map((entry) => {
         const Screen = screens[entry.route];
         const isTop = entry.key === stack[stack.length - 1].key;
         const isExiting = exiting?.key === entry.key;
-        const isPredictiveOut = commitOut?.key === entry.key;
-        const isPeek = peeking?.key === entry.key;
         const classes = ['screen', `dir-${entry.direction ?? 'forward'}`];
         if (isExiting) classes.push(`exit-${entry.transition}`);
-        else if (isPredictiveOut) classes.push('predictive-out');
         else if (entry.key === enteringKey) classes.push(`enter-${entry.transition}`);
-        if (isPeek) classes.push('peek');
-        if (peeking && isTop) classes.push('predictive-top');
         return (
           <div
             key={entry.key}

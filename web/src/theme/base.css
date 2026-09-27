@@ -1,519 +1,435 @@
-/* ============================================================================
-   Base layout: browser stage, 412x892dp portrait phone frame, screen stack and
-   Material 3 Expressive screen transitions.
-   ========================================================================= */
-
-* {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-}
-
-body {
-  font-family: var(--md-ref-typeface-brand);
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  overscroll-behavior: none;
-}
-
-#root {
-  height: 100%;
-}
-
-/* Desktop: a centered phone frame on a neutral backdrop derived from the scheme. */
-.stage {
-  height: 100dvh;
-  width: 100%;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--md-sys-color-scrim, #000) 42%, var(--md-sys-color-surface));
-}
-
-.phone {
-  position: relative;
-  width: min(412px, 100vw);
-  height: min(892px, 100dvh);
-  overflow: hidden;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  isolation: isolate;
-}
-
-@media (min-width: 460px) and (min-height: 940px) {
-  .phone {
-    border-radius: 32px;
-    box-shadow: var(--md-sys-elevation-3);
-  }
-}
-
-/* ---------------------------------------------------------------- screens */
-.screen {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  overflow: hidden;
-  /* ⚠️ 这行是**承重**的，别为了省合成的开销删掉：
-     `will-change: transform` 会给每一屏建立**包含块**，主页那些 `position: fixed` 的
-     浮动按钮/回到今天才会被圈在本屏内（上一屏盖住它时就看不见）。
-     2026-09-29 实测：去掉它之后 fixed 元素改为相对整个 .phone 定位，
-     浮动按钮浮到所有屏之上，设置页/外观页底下还透出主页课表 —— 界面"叠在一起"。 */
-  will-change: transform, opacity;
-}
-
-.screen-content {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 8px 16px 12px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: none;
-  transition:
-    transform var(--md-sys-motion-spring-spatial-default-duration, 500ms)
-      var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)),
-    opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear,
-    filter var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
-  transform-origin: top center;
-}
-
-.screen-content::-webkit-scrollbar {
-  display: none;
-}
-
-/* wrapper so an expanding panel can sink the whole screen content under it */
-.screen-inner {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  transition:
-    transform var(--md-sys-motion-spring-spatial-default-duration, 500ms)
-      var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)),
-    opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear,
-    filter var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
-  transform-origin: top center;
-}
-
-/* "the other components sink below the panel and stack at the bottom" */
-.screen-inner.stacked {
-  transform: translate3d(0, 9%, 0) scale(0.9);
-  filter: brightness(0.94);
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-.app-bar,
-.nav-bar {
-  transition:
-    transform var(--md-sys-motion-spring-spatial-default-duration, 500ms)
-      var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)),
-    opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
-}
-
-/* ==================================================== 页面过渡（M3 规范） ==
-   替换此前"浮动弹入"的做法：按 M3 的 Fade through 与 Shared axis X 实现，
-   位移更小、无弹跳，视觉上是平滑转换而不是跳入。 */
-
-/* 中间弹出（pop）：**所有屏幕切换统一用它** ——
-   新页从画面正中放大弹出，旧页轻轻放大淡出；不再区分前进 / 返回方向。
-   用 MOBILE 端一贯的「居中缩放 + 淡入淡出」，避免横向位移在窄屏上"跑掉"。 */
-@keyframes m3-pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.86);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes m3-pop-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(1.06);
-  }
-}
-
-/* 兼容旧设置里保存的 fade / slide / zoom：一律走中间弹出 */
-.screen.enter-fade,
-.screen.enter-zoom,
-.screen.enter-slide,
-.screen.enter-slide.back {
-  animation: m3-pop-in var(--m3-pop-in-duration, 300ms) cubic-bezier(0.05, 0.7, 0.1, 1) both;
-}
-
-.screen.exit-fade,
-.screen.exit-zoom,
-.screen.exit-slide,
-.screen.exit-slide.back {
-  animation: m3-pop-out var(--m3-pop-out-duration, 220ms) cubic-bezier(0.3, 0, 0.8, 0.15) both;
-  pointer-events: none;
-}
-
-/* ---- 可预测式返回（Android 14+ 手势返回）：跟手预览 ----
-   --predictive 由原生通过 window.DuofenBack.progress() 写入（0 → 1）。
-
-   逐帧对照 Telegram 录屏（build\vtrans-sheet.png，11.13s → 12.04s）得到的形态：
-   **正在被退出的那一屏以顶边为锚点缩下去** —— 顶栏钉在最上面不动，内容往上收，
-   底边抬起来并收下缘圆角；底下那一屏（上一屏）原地满屏露出来，松手直接落在它上面。 */
-
-/* 垫在底下的「上一屏」：随进度**从下方托上来**（起点略小略低），松手正好落定。
-   transform-origin 放底边，"托上来"的观感才明确。 */
-.screen.peek {
-  transform-origin: 50% 100%;
-  transform: translateY(calc(3% * (1 - var(--predictive, 0)))) scale(calc(0.96 + 0.04 * var(--predictive, 0)));
-  opacity: 1;
-  z-index: 1;
-}
-
-/* 正在被退出的当前屏：**以顶边为锚点缩下去**（顶栏不动、内容往上收、底边抬起、下缘圆角）。
-   幅度按作者反馈调大：之前 0.12 的系数在短拖动下只有 ~3% 变化，肉眼看等于没动
-   （原话"完全没有下沉效果"）。现在 0.22，并且原生侧把"半屏宽拖动"算作满进度，
-   拖 1/4 屏就已经明显在缩。 */
-.phone.predictive > .screen:not(.peek) {
-  transform-origin: 50% 0%;
-  /* 下沉 = 缩小 + 整体往下压（顶边也下移，"沉"才有实感）。
-     系数按作者要求调高：缩放 0.42、下压 4%、半径 36px；配合原生侧 1/3 屏宽即满进度。
-     预期：1/8 屏短拖 p≈0.35 → 左右各内缩约 27px、下移约 11px；拖满 p=1 → 缩到 0.58。 */
-  transform: translateY(calc(4% * var(--predictive, 0))) scale(calc(1 - 0.42 * var(--predictive, 0)));
-  will-change: transform;
-  border-radius: 0 0 36px 36px;
-  /* 下沉时压一点阴影：卡片"离开"的层次关系一眼看出来 */
-  box-shadow: 0 22px 56px color-mix(in srgb, var(--md-sys-color-shadow, #000) 34%, transparent);
-}
-
-/* 手势进行中：只让「当前屏」和「上一屏（.peek）」画，其余层（含别的标签屏）全部隐藏。
-   否则栈下面某一层（实测是主页）会从缩下去的那块里透出来，看着像"背景冒出了主页"。 */
-.phone.predictive > .screen:not(.peek):not(.predictive-top) {
-  visibility: hidden;
-}
-
-/* 手势取消 / 提交的那一帧起，隐藏规则立刻失效；此时正在"沉走"的那张卡单独提层，
-   保证它不会和下面的新屏互相穿插。 */
-.screen.predictive-out {
-  z-index: 2;
-}
-
-/* 手势取消时平滑退回原状（手势进行中不加过渡，保证完全跟手） */
-.phone.predictive-cancel > .screen {
-  transition:
-    transform 180ms cubic-bezier(0.05, 0.7, 0.1, 1),
-    opacity 180ms linear,
-    border-radius 180ms linear;
-}
-
-/* ---- 手势期间关掉"看背景"的效果 -------------------------------------------
-   模糊（backdrop-filter）与 SVG 位移折射都必须在**每一帧**重新采样背景；
-   被缩放的那一屏里有底边栏那套玻璃，等于每帧重算三次模糊 + 一次折射。
-   真机实测（RMX6688 / 365×800 / dpr 3.5，2 次慢速手势返回）：
-     开：帧间隔中位 8.3ms、p95 41ms、>50ms 的长帧 31 个
-   所以手势这一两秒里把它们降级成半透明实心（这些元素本来就有底色），松手立刻恢复。
-   注意：不碰 html[data-perf]（那是用户的性能模式设置，手势不该改它）。 */
-.phone.predictive .m3e-dock,
-.phone.predictive .m3e-dock-scatter,
-.phone.predictive .liquid-glass,
-.phone.predictive .nav-bar.glass md-navigation-bar {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-/* 折射层/散射层：整个隐藏（SVG filter: url(#…) 作用在背景上，是这里最贵的一项） */
-.phone.predictive .m3e-dock-refraction,
-.phone.predictive .m3e-dock-scatter {
-  display: none !important;
-}
-/* ------------------------------------------------------------------ utils */
-.row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  min-width: 0;
-}
-
-.col {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.spacer {
-  flex: 1 1 auto;
-}
-
-.scroll-y {
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-.scroll-y::-webkit-scrollbar {
-  display: none;
-}
-
-.scroll-x {
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-}
-.scroll-x::-webkit-scrollbar {
-  display: none;
-}
-
-/* ripple + slight scale feedback for anything clickable that is not a
-   Material Web component (those ship md-ripple themselves). */
-.tap {
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform var(--md-sys-motion-spring-effects-fast-duration, 150ms)
-    var(--md-sys-motion-spring-effects-fast, ease-out);
-}
-
-.tap:active {
-  transform: scale(0.97);
-}
-
-.tap::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: currentColor;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
-}
-
-.tap:active::after {
-  opacity: 0.08;
-}
-
-/* focus ring for keyboard users */
-:focus-visible {
-  outline: 3px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
-}
-
-/* Motion accessibility: honour the OS setting. */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
-  }
-}
-
-/* ------------------------------------------------ liquid glass nav bar ----- */
-/* 液态玻璃：模糊 + 饱和度提升 + 边缘高光，颜色仍来自 surfaceContainer 角色 */
-.nav-bar.glass md-navigation-bar {
-  --md-navigation-bar-container-color: color-mix(in srgb, var(--md-sys-color-surface-container) 72%, transparent);
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
-  position: relative;
-}
-
-.nav-bar.glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 35%, transparent);
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--md-sys-color-surface) 55%, transparent),
-    transparent 60%
-  );
-}
-
-/* 玻璃的折射高光：用 SVG 位移滤镜做一个柔和的光带（不引入外部依赖） */
-.nav-bar.glass::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  filter: url(#liquid-glass-refraction);
-  opacity: 0.35;
-  background: radial-gradient(
-    120% 80% at 20% 0%,
-    color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent),
-    transparent 70%
-  );
-}
-
-/* 液态玻璃包装层不能挡住底边栏的点击：把导航条抬到玻璃高光之上 */
-.nav-bar.glass md-navigation-bar {
-  position: relative;
-  z-index: 2;
-}
-
-.nav-bar.glass > div > * {
-  pointer-events: none;
-}
-
-.nav-bar.glass > div > md-navigation-bar,
-.nav-bar.glass > div > md-navigation-bar * {
-  pointer-events: auto;
-}
-
-/* 开屏与关于页的美术资源 */
-
-.about-art {
-  width: 100%;
-  max-width: 240px;
-  border-radius: 20px;
-  display: block;
-  margin-top: 8px;
-}
-
-/* ------------------------------------------- 系统状态栏 / 刘海屏安全区 ----- */
-/* 浏览器（刘海屏、PWA、微信）里用 env() 留出安全区；
-   APK 里由原生给 WebView 加 insets padding，因此这里跳过，避免重复留白 */
-html:not(.native-shell) .stage {
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
-    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-}
-
-html:not(.native-shell) .phone {
-  height: min(892px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
-}
-
-/* APK 里原生已经让出了状态栏，顶部不再叠加内边距 */
-html.native-shell .stage {
-  padding: 0;
-  background: var(--md-sys-color-surface);
-}
-
-html.native-shell .phone {
-  height: 100dvh;
-  border-radius: 0;
-}
-
-/* ================================================ 全屏 + 矮屏紧凑适配 ==== */
-/* 用户设备为 1080×1920（≈360×640dp）：不再为状态栏预留空白，改为真·全屏，
-   并针对矮屏收紧间距、压缩课表/时间轴的可视高度，避免内容被挤出屏幕。 */
-html.native-shell .stage,
-.stage {
-  padding: 0;
-}
-
-html.native-shell .phone {
-  height: 100dvh;
-  border-radius: 0;
-}
-
-@media (max-height: 760px) {
-  .screen-content {
-    padding: 8px 12px 10px;
-  }
-
-  .app-bar {
-    min-height: 52px;
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
-
-  .app-bar .md-headline-small,
-  .app-bar .md-headline-small-emphasized {
-    font-size: 22px;
-    line-height: 28px;
-  }
-
-  .glass-nav {
-    padding: 6px 12px 8px;
-  }
-
-  .glass-nav-inner {
-    height: 60px;
-  }
-
-  .glass-tab {
-    height: 48px;
-    font-size: 11px;
-  }
-
-  .week-board-body {
-    max-height: 42vh;
-  }
-
-  .week-cell {
-    min-height: 46px;
-  }
-
-  .course-chip {
-    font-size: 11px;
-  }
-}
-/* 兜底：低性能设备或用户关闭动效时，标签切换直接瞬时切换（不做任何过渡动画），
-   避免"跳入"观感；由 perf.ts 写入 html[data-perf=low]。 */
-html[data-perf='low'] .screen.enter-fade,
-html[data-perf='low'] .screen.exit-fade,
-html[data-perf='low'] .screen.enter-zoom,
-html[data-perf='low'] .screen.exit-zoom,
-html[data-perf='low'] .screen.enter-slide,
-html[data-perf='low'] .screen.exit-slide {
-  animation: none !important;
-}
-
-html[data-perf='low'] .glass-nav-slider {
-  transition: none !important;
-}
-
-/* 非活动屏幕（栈中其余页面）绝不能接收点击：避免两个底边栏叠加造成双击跳转 */
-.screen[aria-hidden='true'] {
-  pointer-events: none !important;
-}
-
-/* ==================== 单色等高线背景（作者要求：模仿《终末地》） ====================
-   层级：`.contour-layer` 是**每一屏（`.screen`）的第一个孩子** —— 在本屏底色之上、内容之下。
-   为什么不做成 `.phone` 里的全局层：那样就得把 `.screen` 的底色设成透明，
-   而导航栈会把上一屏**留在 DOM 里**（保状态），一透明就会残留上一屏的内容
-   （实测「从主页切到搜索/设置会看到主页内容」就是这个原因）。
-   屏幕保持不透明，装饰只在本屏内部铺 —— 卡片、对话框、底栏照旧是各自的不透明表面。 */
-.contour-layer {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  /* 单色：跟随主题的 on-surface；不引入第二个色相 */
-  color: var(--md-sys-color-on-surface);
-}
-
-/* 内容层压到底纹之上（`.screen-content` 本来就是 relative，这里把整块内容提上来，稳妥） */
-html[data-contour='subtle'] .screen > .screen-inner,
-html[data-contour='bold'] .screen > .screen-inner {
-  position: relative;
-  z-index: 1;
-}
-/* 可预测式返回「提交」之后：那张卡**继续缩着沉走**（不是标准弹出动画）。
-   作者 2026-09-29：要的就是这种"退场后还在、再收掉"的层叠感（松手瞬间不是硬切）。
-   注意时长要与 navigation.tsx 里 setCommitOut(null) 的延时对齐（下面 320/260ms ↔ 360ms），
-   而且是**单实例**——不再渲染第二份副本，所以不会出现文字重影。 */
-.screen.predictive-out {
-  transition:
-    transform 320ms cubic-bezier(0.2, 0, 0, 1),
-    opacity 260ms linear,
-    border-radius 260ms linear;
-  transform-origin: 50% 0%;
-  transform: scale(0.82) translateY(-1.5%);
-  opacity: 0;
-  border-radius: 0 0 32px 32px;
-  overflow: hidden;
-  pointer-events: none;
-}
+/* ============================================================================
+   Base layout: browser stage, 412x892dp portrait phone frame, screen stack and
+   Material 3 Expressive screen transitions.
+   ========================================================================= */
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--md-ref-typeface-brand);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Desktop: a centered phone frame on a neutral backdrop derived from the scheme. */
+.stage {
+  height: 100dvh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--md-sys-color-scrim, #000) 42%, var(--md-sys-color-surface));
+}
+
+.phone {
+  position: relative;
+  width: min(412px, 100vw);
+  height: min(892px, 100dvh);
+  overflow: hidden;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  isolation: isolate;
+}
+
+@media (min-width: 460px) and (min-height: 940px) {
+  .phone {
+    border-radius: 32px;
+    box-shadow: var(--md-sys-elevation-3);
+  }
+}
+
+/* ---------------------------------------------------------------- screens */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  overflow: hidden;
+  /* ⚠️ 这行是**承重**的，别为了省合成的开销删掉：
+     `will-change: transform` 会给每一屏建立**包含块**，主页那些 `position: fixed` 的
+     浮动按钮/回到今天才会被圈在本屏内（上一屏盖住它时就看不见）。
+     2026-09-29 实测：去掉它之后 fixed 元素改为相对整个 .phone 定位，
+     浮动按钮浮到所有屏之上，设置页/外观页底下还透出主页课表 —— 界面"叠在一起"。 */
+  will-change: transform, opacity;
+}
+
+.screen-content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  transition:
+    transform var(--md-sys-motion-spring-spatial-default-duration, 500ms)
+      var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear,
+    filter var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
+  transform-origin: top center;
+}
+
+.screen-content::-webkit-scrollbar {
+  display: none;
+}
+
+/* wrapper so an expanding panel can sink the whole screen content under it */
+.screen-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform var(--md-sys-motion-spring-spatial-default-duration, 500ms)
+      var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear,
+    filter var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
+  transform-origin: top center;
+}
+
+/* "the other components sink below the panel and stack at the bottom" */
+.screen-inner.stacked {
+  transform: translate3d(0, 9%, 0) scale(0.9);
+  filter: brightness(0.94);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.app-bar,
+.nav-bar {
+  transition:
+    transform var(--md-sys-motion-spring-spatial-default-duration, 500ms)
+      var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)),
+    opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
+}
+
+/* ==================================================== 页面过渡（M3 规范） ==
+   替换此前"浮动弹入"的做法：按 M3 的 Fade through 与 Shared axis X 实现，
+   位移更小、无弹跳，视觉上是平滑转换而不是跳入。 */
+
+/* 中间弹出（pop）：**所有屏幕切换统一用它** ——
+   新页从画面正中放大弹出，旧页轻轻放大淡出；不再区分前进 / 返回方向。
+   用 MOBILE 端一贯的「居中缩放 + 淡入淡出」，避免横向位移在窄屏上"跑掉"。 */
+@keyframes m3-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes m3-pop-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+/* 兼容旧设置里保存的 fade / slide / zoom：一律走中间弹出 */
+.screen.enter-fade,
+.screen.enter-zoom,
+.screen.enter-slide,
+.screen.enter-slide.back {
+  animation: m3-pop-in var(--m3-pop-in-duration, 300ms) cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+.screen.exit-fade,
+.screen.exit-zoom,
+.screen.exit-slide,
+.screen.exit-slide.back {
+  animation: m3-pop-out var(--m3-pop-out-duration, 220ms) cubic-bezier(0.3, 0, 0.8, 0.15) both;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ utils */
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.scroll-y {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.scroll-y::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* ripple + slight scale feedback for anything clickable that is not a
+   Material Web component (those ship md-ripple themselves). */
+.tap {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--md-sys-motion-spring-effects-fast-duration, 150ms)
+    var(--md-sys-motion-spring-effects-fast, ease-out);
+}
+
+.tap:active {
+  transform: scale(0.97);
+}
+
+.tap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-spring-effects-default-duration, 200ms) linear;
+}
+
+.tap:active::after {
+  opacity: 0.08;
+}
+
+/* focus ring for keyboard users */
+:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* Motion accessibility: honour the OS setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ------------------------------------------------ liquid glass nav bar ----- */
+/* 液态玻璃：模糊 + 饱和度提升 + 边缘高光，颜色仍来自 surfaceContainer 角色 */
+.nav-bar.glass md-navigation-bar {
+  --md-navigation-bar-container-color: color-mix(in srgb, var(--md-sys-color-surface-container) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  position: relative;
+}
+
+.nav-bar.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 35%, transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--md-sys-color-surface) 55%, transparent),
+    transparent 60%
+  );
+}
+
+/* 玻璃的折射高光：用 SVG 位移滤镜做一个柔和的光带（不引入外部依赖） */
+.nav-bar.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  filter: url(#liquid-glass-refraction);
+  opacity: 0.35;
+  background: radial-gradient(
+    120% 80% at 20% 0%,
+    color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent),
+    transparent 70%
+  );
+}
+
+/* 液态玻璃包装层不能挡住底边栏的点击：把导航条抬到玻璃高光之上 */
+.nav-bar.glass md-navigation-bar {
+  position: relative;
+  z-index: 2;
+}
+
+.nav-bar.glass > div > * {
+  pointer-events: none;
+}
+
+.nav-bar.glass > div > md-navigation-bar,
+.nav-bar.glass > div > md-navigation-bar * {
+  pointer-events: auto;
+}
+
+/* 开屏与关于页的美术资源 */
+
+.about-art {
+  width: 100%;
+  max-width: 240px;
+  border-radius: 20px;
+  display: block;
+  margin-top: 8px;
+}
+
+/* ------------------------------------------- 系统状态栏 / 刘海屏安全区 ----- */
+/* 浏览器（刘海屏、PWA、微信）里用 env() 留出安全区；
+   APK 里由原生给 WebView 加 insets padding，因此这里跳过，避免重复留白 */
+html:not(.native-shell) .stage {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
+html:not(.native-shell) .phone {
+  height: min(892px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)));
+}
+
+/* APK 里原生已经让出了状态栏，顶部不再叠加内边距 */
+html.native-shell .stage {
+  padding: 0;
+  background: var(--md-sys-color-surface);
+}
+
+html.native-shell .phone {
+  height: 100dvh;
+  border-radius: 0;
+}
+
+/* ================================================ 全屏 + 矮屏紧凑适配 ==== */
+/* 用户设备为 1080×1920（≈360×640dp）：不再为状态栏预留空白，改为真·全屏，
+   并针对矮屏收紧间距、压缩课表/时间轴的可视高度，避免内容被挤出屏幕。 */
+html.native-shell .stage,
+.stage {
+  padding: 0;
+}
+
+html.native-shell .phone {
+  height: 100dvh;
+  border-radius: 0;
+}
+
+@media (max-height: 760px) {
+  .screen-content {
+    padding: 8px 12px 10px;
+  }
+
+  .app-bar {
+    min-height: 52px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .app-bar .md-headline-small,
+  .app-bar .md-headline-small-emphasized {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .glass-nav {
+    padding: 6px 12px 8px;
+  }
+
+  .glass-nav-inner {
+    height: 60px;
+  }
+
+  .glass-tab {
+    height: 48px;
+    font-size: 11px;
+  }
+
+  .week-board-body {
+    max-height: 42vh;
+  }
+
+  .week-cell {
+    min-height: 46px;
+  }
+
+  .course-chip {
+    font-size: 11px;
+  }
+}
+/* 兜底：低性能设备或用户关闭动效时，标签切换直接瞬时切换（不做任何过渡动画），
+   避免"跳入"观感；由 perf.ts 写入 html[data-perf=low]。 */
+html[data-perf='low'] .screen.enter-fade,
+html[data-perf='low'] .screen.exit-fade,
+html[data-perf='low'] .screen.enter-zoom,
+html[data-perf='low'] .screen.exit-zoom,
+html[data-perf='low'] .screen.enter-slide,
+html[data-perf='low'] .screen.exit-slide {
+  animation: none !important;
+}
+
+html[data-perf='low'] .glass-nav-slider {
+  transition: none !important;
+}
+
+/* 非活动屏幕（栈中其余页面）绝不能接收点击：避免两个底边栏叠加造成双击跳转 */
+.screen[aria-hidden='true'] {
+  pointer-events: none !important;
+}
+
+/* ==================== 单色等高线背景（作者要求：模仿《终末地》） ====================
+   层级：`.contour-layer` 是**每一屏（`.screen`）的第一个孩子** —— 在本屏底色之上、内容之下。
+   为什么不做成 `.phone` 里的全局层：那样就得把 `.screen` 的底色设成透明，
+   而导航栈会把上一屏**留在 DOM 里**（保状态），一透明就会残留上一屏的内容
+   （实测「从主页切到搜索/设置会看到主页内容」就是这个原因）。
+   屏幕保持不透明，装饰只在本屏内部铺 —— 卡片、对话框、底栏照旧是各自的不透明表面。 */
+.contour-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  /* 单色：跟随主题的 on-surface；不引入第二个色相 */
+  color: var(--md-sys-color-on-surface);
+}
+
+/* 内容层压到底纹之上（`.screen-content` 本来就是 relative，这里把整块内容提上来，稳妥） */
+html[data-contour='subtle'] .screen > .screen-inner,
+html[data-contour='bold'] .screen > .screen-inner {
+  position: relative;
+  z-index: 1;
+}
+/* 可预测式返回「提交」之后：那张卡**继续缩着沉走**（不是标准弹出动画）。
+   作者 2026-09-29：要的就是这种"退场后还在、再收掉"的层叠感（松手瞬间不是硬切）。
+   注意时长要与 navigation.tsx 里 setCommitOut(null) 的延时对齐（下面 320/260ms ↔ 360ms），
+   而且是**单实例**——不再渲染第二份副本，所以不会出现文字重影。 */
