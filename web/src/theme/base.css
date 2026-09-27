@@ -173,23 +173,29 @@ body {
    **正在被退出的那一屏以顶边为锚点缩下去** —— 顶栏钉在最上面不动，内容往上收，
    底边抬起来并收下缘圆角；底下那一屏（上一屏）原地满屏露出来，松手直接落在它上面。 */
 
-/* 垫在底下的「上一屏」：原地满屏露出来（不缩放、不位移）。
-   手势期间它要压在其它（已隐藏的）层之上，所以给一个自己人之间的 z-index。 */
+/* 垫在底下的「上一屏」：随进度**从下方托上来**（起点略小略低），松手正好落定。
+   transform-origin 放底边，"托上来"的观感才明确。 */
 .screen.peek {
-  transform-origin: 50% 50%;
-  transform: none;
+  transform-origin: 50% 100%;
+  transform: translateY(calc(3% * (1 - var(--predictive, 0)))) scale(calc(0.96 + 0.04 * var(--predictive, 0)));
   opacity: 1;
   z-index: 1;
 }
 
-/* 正在被退出的当前屏：顶边锚点 + 缩小（**只动 transform**） */
+/* 正在被退出的当前屏：**以顶边为锚点缩下去**（顶栏不动、内容往上收、底边抬起、下缘圆角）。
+   幅度按作者反馈调大：之前 0.12 的系数在短拖动下只有 ~3% 变化，肉眼看等于没动
+   （原话"完全没有下沉效果"）。现在 0.22，并且原生侧把"半屏宽拖动"算作满进度，
+   拖 1/4 屏就已经明显在缩。 */
 .phone.predictive > .screen:not(.peek) {
   transform-origin: 50% 0%;
-  transform: scale(calc(1 - 0.12 * var(--predictive, 0)));
+  /* 下沉 = 缩小 + 整体往下压（顶边也下移，"沉"才有实感）。
+     系数按作者要求调高：缩放 0.42、下压 4%、半径 36px；配合原生侧 1/3 屏宽即满进度。
+     预期：1/8 屏短拖 p≈0.35 → 左右各内缩约 27px、下移约 11px；拖满 p=1 → 缩到 0.58。 */
+  transform: translateY(calc(4% * var(--predictive, 0))) scale(calc(1 - 0.42 * var(--predictive, 0)));
   will-change: transform;
-  /* 圆角必须是**常量**：跟着 --predictive 每帧改半径会让浏览器每帧重新裁切/栅格化整屏。
-     opacity 同理不做动画（整屏透明度动画同样要重新合成）。 */
-  border-radius: 0 0 28px 28px;
+  border-radius: 0 0 36px 36px;
+  /* 下沉时压一点阴影：卡片"离开"的层次关系一眼看出来 */
+  box-shadow: 0 22px 56px color-mix(in srgb, var(--md-sys-color-shadow, #000) 34%, transparent);
 }
 
 /* 手势进行中：只让「当前屏」和「上一屏（.peek）」画，其余层（含别的标签屏）全部隐藏。

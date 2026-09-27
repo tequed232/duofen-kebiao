@@ -51,6 +51,12 @@ class SwipeBackLayout @JvmOverloads constructor(
         private const val FLING_VELOCITY = 600f
         /** 进度变化的发送阈值（避免每个像素都过一次 JS 桥） */
         private const val PROGRESS_EPSILON = 0.004f
+        /**
+         * 手指走完屏幕宽度的这个比例就算"进度到 1"。
+         * 取 0.33（1/3 屏）：系数按作者要求调高后，短拖动就要有明确的下沉幅度
+         * （之前按整屏宽换算，拖 1/4 屏只有 0.25 的进度 × 很小的缩放系数，肉眼等于没动）。
+         */
+        private const val TRAVEL_FRACTION = 0.33f
     }
 
     /** 宿主说"这一下可以退吗"（网页历史栈是否可退） */
@@ -192,10 +198,10 @@ class SwipeBackLayout @JvmOverloads constructor(
         return dragging
     }
 
-    /** 手指位移 → 0..1 进度（拖满一屏宽为 1） */
+    /** 手指位移 → 0..1 进度（走满屏宽的 [TRAVEL_FRACTION] 即到 1，短拖动就能看到下沉） */
     private fun progressOf(x: Float): Float {
         if (width <= 0) return 0f
-        return ((x - startX) / width.toFloat()).coerceIn(0f, 1f)
+        return ((x - startX) / (width * TRAVEL_FRACTION)).coerceIn(0f, 1f)
     }
 
     private fun sendProgress(value: Float, force: Boolean = false) {

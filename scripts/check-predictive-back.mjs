@@ -105,6 +105,10 @@ const during = await page.evaluate(() => {
 });
 console.log('   手势中（progress=0.6）:', JSON.stringify(during));
 check('被退出的屏在缩下去（scale < 1）', (during.outgoing?.sx ?? 1) < 0.99, `scaleX=${during.outgoing?.sx}`);
+// 下沉幅度必须"一眼看得见"：作者 2026-09-29 反馈过"完全没有下沉效果"（系数太小）。
+// 这里在 progress=0.6 处钉住下限：缩放 ≤ 0.85（即内缩 ≥ 27px @365），半径 ≥ 20px。
+check('下沉幅度够大（progress=0.6 时 scale ≤ 0.85）', (during.outgoing?.sx ?? 1) <= 0.85, `scaleX=${during.outgoing?.sx}`);
+check('下缘圆角够明显（≥ 20px）', (during.outgoing?.bottomRadius ?? 0) >= 20, `radius=${during.outgoing?.bottomRadius}`);
 check('缩放锚点在顶边（transform-origin 的 Y 为 0）', /^\d+(\.\d+)?px 0px/.test(during.outgoing?.origin ?? ''), `origin=${during.outgoing?.origin}`);
 check('没有整体下移（|translateY| ≤ 1px）', Math.abs(during.outgoing?.ty ?? 99) <= 1, `translateY=${during.outgoing?.ty}`);
 check('下缘有圆角（≥ 8px）', (during.outgoing?.bottomRadius ?? 0) >= 8, `border-bottom-radius=${during.outgoing?.bottomRadius}`);
