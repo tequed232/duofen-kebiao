@@ -40,7 +40,6 @@ export default function SettingsScreen() {
     notify: '实时通知',
     safearea: '屏幕安全区',
     nav: '导航与学校',
-    ocr: '图像识别与资源',
     home: '主页',
     edit: '课表编辑',
     about: '关于',
@@ -187,13 +186,12 @@ export default function SettingsScreen() {
               <div className="list-group">
                 {(
                   [
+                    ['home', 'home', '主页', settings.navCourse ? '显示「导航课程」按钮' : '已隐藏「导航课程」按钮'],
+                    ['edit', 'edit_calendar', '课表编辑', '导入课表 · 查看教材 · 系统日程 · 识别接口'],
                     ['appearance', 'palette', '外观', `${settings.darkMode ? '深色' : '浅色'} · 缩放 ${settings.uiScale === 'small' ? '小' : settings.uiScale === 'large' ? '大' : '标准'} · 色散 ${settings.dispersion} · 扭曲 ${settings.dockWarp}`],
                     ['notify', 'notifications_active', '实时通知', settings.classReminder ? `上课提醒已开（提前 ${settings.classReminderLead} 分钟）· 台词管理` : '上课提醒已关 · 台词管理'],
                     ['safearea', 'aspect_ratio', '屏幕安全区', `上端 ${settings.insetTop < 0 ? '自动' : `${settings.insetTop}dp`} · 下端 ${settings.insetBottom < 0 ? '自动' : `${settings.insetBottom}dp`}`],
                     ['nav', 'map', '导航与学校', `${mapProvider ? mapProvider.label : '未设置地图'} · ${settings.schoolName || '未填学校名称'}`],
-                    ['ocr', 'image_search', '图像识别与资源', apiConfigured ? '封面识别走多模态接口' : '未配置接口 · 封面识别不可用'],
-                    ['home', 'home', '主页', settings.navCourse ? '显示「导航课程」按钮' : '已隐藏「导航课程」按钮'],
-                    ['edit', 'edit_calendar', '课表编辑', '导入课表 · 查看教材 · 系统日程'],
                     ['about', 'info', '关于', '应用信息 · 开源相关 · 动态取色'],
                   ] as const
                 ).map(([id, icon, title, summary], index, all) => (
@@ -550,38 +548,8 @@ export default function SettingsScreen() {
               </md-list-item>
             </div>
 
-            {show('ocr') ? <SectionHeader icon="image_search" title="图像识别与资源" /> : null}
-            <div className="list-group" style={show('ocr') ? undefined : { display: 'none' }}>
-              {/* 本地识别（OpenCV + Tesseract）已于 2026-09-27 下线：免费多模态模型读封面更准，
-                  而本地那套要给每个包塞 40+ MB 的 wasm 与中文模型（APK 26 MB → 4 MB）。
-                  这里如实说明「识别走接口」，不再有资源检查/联网开关。 */}
-              <md-list-item type="text" className="rounded-outer-top">
-                <div slot="start" className="list-icon-badge">
-                  <MdIcon name={apiConfigured ? 'check_circle' : 'error'} />
-                </div>
-                <div slot="headline">封面识别方式</div>
-                <div className="list-inline-texts" slot="supporting-text">
-                  <span>{apiConfigured ? '走下面配好的多模态接口' : '还没配置接口：封面识别暂不可用'}</span>
-                  <span>已不再内置本地识别：省掉 40+ MB 模型，识别效果反而更好</span>
-                </div>
-                <MdIcon slot="end" name="auto_awesome" />
-              </md-list-item>
-              {/* ------------------------------------------------ 5 API编辑 */}
-              <md-list-item
-                type="button"
-                className="rounded-outer-bottom"
-                onClick={() => nav.push('apiEdit', {}, 'slide')}
-              >
-                <div slot="start" className="list-icon-badge">
-                  <MdIcon name="menu_book" />
-                </div>
-                <div slot="headline">接口配置</div>
-                <div slot="supporting-text">
-                  {apiConfigured ? '已配置，点击可修改' : '唯一的通用接口配置：图片识别（教材封面用）'}
-                </div>
-                <MdIcon slot="end" name="chevron_right" />
-              </md-list-item>
-            </div>
+            {/* 「图像识别与资源」这一栏按作者 2026-09-29 的要求删掉了：本地识别下线后它只剩
+                一个「接口配置」，而那正是课本封面识别要用的东西，已并进「课表编辑」。 */}
 
             {show('home') ? <SectionHeader icon="home" title="主页" /> : null}
             <div className="list-group" style={show('home') ? undefined : { display: 'none' }}>
@@ -695,7 +663,7 @@ export default function SettingsScreen() {
 
               <md-list-item
                 type="button"
-                className="rounded-outer-bottom"
+                className="rounded-middle"
                 onClick={() => {
                   haptic('select');
                   selectTab('schedule');
@@ -709,6 +677,24 @@ export default function SettingsScreen() {
                 <div className="list-inline-texts" slot="supporting-text">
                   <span>只删带「来自多分课表」标记的日程，手动添加的不受影响</span>
                   <span>原「主页课表上方那颗小图标」</span>
+                </div>
+                <MdIcon slot="end" name="chevron_right" />
+              </md-list-item>
+              <md-list-item
+                type="button"
+                className="rounded-outer-bottom"
+                onClick={() => {
+                  haptic('select');
+                  nav.push('apiEdit', {}, 'slide');
+                }}
+              >
+                <div slot="start" className="list-icon-badge">
+                  <MdIcon name="auto_awesome" />
+                </div>
+                <div slot="headline">识别接口配置</div>
+                <div className="list-inline-texts" slot="supporting-text">
+                  <span>{apiConfigured ? '已配置多模态接口，点此可修改' : '还没配置：课本封面识别要用它（也可以让别的 AI 读封面后手填）'}</span>
+                  <span>本地识别已下线，封面识别只走这个接口</span>
                 </div>
                 <MdIcon slot="end" name="chevron_right" />
               </md-list-item>

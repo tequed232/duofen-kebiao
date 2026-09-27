@@ -17,13 +17,12 @@ const FILE = 'web/src/screens/SettingsScreen.tsx';
 
 /** 分组口径（改这里 = 改产品决定；守卫与实现共用同一份顺序） */
 const GROUPS = [
+  { title: '主页', rows: ['显示「导航课程」', '主页浮动按钮区'] },
+  { title: '课表编辑', rows: ['课表数据与导入', '查看教材', '添加到系统日程', '清除本 App 写入的日程', '识别接口配置'] },
   { title: '外观', rows: ['深色模式', '界面缩放', '底栏色散', '底栏散射', '底栏扭曲', '性能模式', '等高线背景'] },
   { title: '实时通知', rows: ['上课提醒（灵动岛）', '通知栏桌宠', '台词管理', '实时通知（流体云）自检'] },
   { title: '屏幕安全区', rows: ['上端安全区', '下端安全区'] },
   { title: '导航与学校', rows: ['默认跳转地图', '学校名称'] },
-  { title: '图像识别与资源', rows: ['封面识别方式', '接口配置'] },
-  { title: '主页', rows: ['显示「导航课程」', '主页浮动按钮区'] },
-  { title: '课表编辑', rows: ['课表数据与导入', '查看教材', '添加到系统日程', '清除本 App 写入的日程'] },
   { title: '关于', rows: ['关于本软件', '开源相关'] },
 ];
 
@@ -83,19 +82,29 @@ check(
 const groupOrder = headers
   .map((header) => header.title)
   .filter((title) => GROUPS.some((group) => group.title === title));
+// 2026-09-29：这里原来要求「源码里 JSX 的先后顺序 == 口径顺序」。分组是常驻 DOM + 显隐切换，
+// 源码顺序对用户毫无影响，却让「重排分组」变成搬代码块的力气活（搬错一次就把「关于」连带走）。
+// 现在只要求：分组集合一致 + **设置首页入口表的顺序**（用户真正看到的那一列）与口径一致。
 check(
-  '分组顺序与口径一致',
-  JSON.stringify(groupOrder) === JSON.stringify(GROUPS.map((g) => g.title)),
-  `实际顺序：${groupOrder.join(' → ')}`,
+  '分组集合与口径一致（源码块的先后不再受限）',
+  groupOrder.length === GROUPS.length && GROUPS.every((g) => groupOrder.includes(g.title)),
+  `实际分组：${groupOrder.join(' → ')}`,
 );
 
 console.log('\n=== 每条设置项必须落在自己那一组里 ===');
 const headerLineOf = (title) => headers.find((header) => header.title === title)?.line ?? -1;
+/** 某一组的行区间：按**文件里的下一个分组标题**划，而不是按口径顺序 —— 于是 JSX 块怎么摆都对 */
+const groupRange = (title) => {
+  const inFile = headers
+    .filter((header) => GROUPS.some((group) => group.title === header.title))
+    .sort((a, b) => a.line - b.line);
+  const index = inFile.findIndex((header) => header.title === title);
+  if (index === -1) return { from: -1, to: -1 };
+  return { from: inFile[index].line, to: index + 1 < inFile.length ? inFile[index + 1].line : Number.MAX_SAFE_INTEGER };
+};
 for (let i = 0; i < GROUPS.length; i += 1) {
   const group = GROUPS[i];
-  const from = headerLineOf(group.title);
-  const nextTitle = GROUPS[i + 1]?.title;
-  const to = nextTitle ? headerLineOf(nextTitle) : Number.MAX_SAFE_INTEGER;
+  const { from, to } = groupRange(group.title);
   const inside = rows.filter((row) => row.line > from && row.line < to).map((row) => row.title);
   const wanted = group.rows;
   const ok = wanted.every((row) => inside.includes(row)) && inside.every((row) => wanted.includes(row));
@@ -160,10 +169,7 @@ for (const spec of CONTROL_OWNERS) {
     continue;
   }
   const row = hits[0];
-  const index = GROUPS.findIndex((group) => group.title === spec.group);
-  const from = headerLineOf(spec.group);
-  const nextTitle = GROUPS[index + 1]?.title;
-  const to = nextTitle ? headerLineOf(nextTitle) : Number.MAX_SAFE_INTEGER;
+  const { from, to } = groupRange(spec.group);
   check(`${spec.id} 留在「${spec.group}」内`, row.line > from && row.line < to, `行 ${row.line}，组区间 ${from}–${to}`);
   const above = rows.filter((item) => item.line < row.line).sort((a, b) => b.line - a.line)[0];
   check(`${spec.id} 紧跟在「${spec.owner}」之后`, above?.title === spec.owner, `实际跟在「${above?.title ?? '(无)'}」之后`);
@@ -227,17 +233,17 @@ console.log('\n=== 设置首页只放「分类入口」（Clash Verge 式）==='
  * 静态部分钉两件事：① 六个入口与 `show('<id>')` 的门是一一对应的（漏一个就是"点进去空白"）；
  * ② 入口必须通过路由推 `settingsSection` 子屏，而不是在原地展开。
  */
-const HUB_IDS = ['appearance', 'notify', 'safearea', 'nav', 'ocr', 'home', 'edit', 'about'];
+const HUB_IDS = ['home', 'edit', 'appearance', 'notify', 'safearea', 'nav', 'about'];
 const missingGate = HUB_IDS.filter((id) => !new RegExp(`show\\('${id}'\\)`).test(source));
 check(`六个分类都有对应的子屏门（show('id')）`, missingGate.length === 0, `缺少：${missingGate.join('、')}`);
 check('入口通过 settingsSection 路由跳子屏', /nav\.push\('settingsSection',\s*\{\s*section:\s*id\s*\}/.test(source), '没有推子屏路由');
-const hubIds = [...source.matchAll(/\['(appearance|notify|safearea|nav|ocr|home|edit|about)',\s*'([a-z_]+)',\s*'([^']+)'/g)].map((m) => m[1]);
+const hubIds = [...source.matchAll(/\['(home|edit|appearance|notify|safearea|nav|about)',\s*'([a-z_]+)',\s*'([^']+)'/g)].map((m) => m[1]);
 check(
-  `入口表就是那八类（实际 ${hubIds.join('、') || '(空)'}）`,
+  `入口表就是那七类（实际 ${hubIds.join('、') || '(空)'}）`,
   HUB_IDS.every((id) => hubIds.includes(id)) && hubIds.length === HUB_IDS.length,
   '入口与分类对不上',
 );
-check('子屏标题表覆盖八个分类', HUB_IDS.every((id) => new RegExp(`${id}:\\s*'`).test(source)), 'SECTION_TITLES 缺项');
+check('子屏标题表覆盖七个分类', HUB_IDS.every((id) => new RegExp(`${id}:\\s*'`).test(source)), 'SECTION_TITLES 缺项');
 check('子屏顶栏有返回（点了能回去）', /onBack=\{atHub \? undefined : \(\) => nav\.pop\(\)\}/.test(source), '子屏没有返回按钮');
 
 /* 「滑块只存在于它自己的屏里」——作者原话是「滑块选项什么的都不许出错」。
