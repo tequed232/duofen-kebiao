@@ -30,7 +30,8 @@
     "apk:parity": "node scripts/check-apk-parity.mjs",
     "preview": "vite preview --port 4173",
     "verify": "node scripts/verify.mjs",
-    "check:sheet-motion": "node scripts/check-sheet-motion.mjs"
+    "check:sheet-motion": "node scripts/check-sheet-motion.mjs",
+    "check:dialog-close": "node scripts/check-dialog-close.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.3.0",

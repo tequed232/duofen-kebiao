@@ -340,30 +340,26 @@ export function MdMenu({
  * `open=""` would set `dialog.open = ''` (falsy) and the dialog would never open.
  * Always drive md-dialog through show()/close() instead.
  *
- * 另外：md-dialog 关闭动画结束后会派发 `closed`。如果此时上层状态仍是「打开」
- * （例如又一次点击了编辑按钮），对话框会被这次迟到的 closed 关掉，表现为
- * “点击编辑没反应”。这里在 closed 时如果期望仍是打开状态就重新 show()。
+ * 2026-09-29 改：md-dialog 自己关闭（点遮罩 / Esc / 内部 close）时会派发 `closed`。
+ * 以前这里会「再 show() 一次」来修"第二次点编辑没反应"，但那让**用户主动关掉的对话框
+ * 自己弹回来**——作者报的"点击控件弹两次"就是它。现在改成把上层状态同步成**关**：
+ * 再点一次编辑就是一次正常的 false→true，照样能弹出来，而用户关掉的不会自己回来。
  */
-export function useMdDialog(open: boolean) {
+export function useMdDialog(open: boolean, onClosedByUser?: () => void) {
   const ref = useRef<HTMLElement & { show: () => void; close: () => void; open: boolean }>(null);
   const wantOpen = useRef(open);
   wantOpen.current = open;
+  const closedHandler = useRef(onClosedByUser);
+  closedHandler.current = onClosedByUser;
 
   useEffect(() => {
     const element = ref.current;
     if (!element) return undefined;
     const onClosed = () => {
+      // 还开着（我们主动 show 期间的事件）→ 不用管；真关掉了就把状态同步成 false
+      if (element.open) return;
       if (!wantOpen.current) return;
-      // 迟到的 closed：重新打开，避免“第二次点编辑没反应”
-      window.setTimeout(() => {
-        if (wantOpen.current && !element.open) {
-          try {
-            element.show();
-          } catch {
-            /* ignore */
-          }
-        }
-      }, 0);
+      closedHandler.current?.();
     };
     element.addEventListener('closed', onClosed);
     return () => element.removeEventListener('closed', onClosed);
@@ -431,19 +427,10 @@ export function MdDialog({
     const element = ref.current;
     if (!element) return;
     const onClosedEvent = () => {
-      // 迟到的 closed（上层仍希望打开）时重新弹出，保证「编辑」可重复进入
-      if (wantOpen.current && !element.open) {
-        window.setTimeout(() => {
-          if (wantOpen.current && !element.open) {
-            try {
-              element.show();
-            } catch {
-              /* ignore */
-            }
-          }
-        }, 0);
-        return;
-      }
+      // 对话框被关掉（用户点遮罩/Esc，或内部 close）→ 通知上层把 open 置 false。
+      // 这里**不再**自动 show()：那会让用户关掉的对话框自己弹回来（"弹两次"）。
+      // 上层要再打开，就是一次新的 false→true，走下面那个 effect 正常 show。
+      if (element.open) return;
       closedHandler.current?.();
     };
     element.addEventListener('closed', onClosedEvent);

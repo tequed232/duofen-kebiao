@@ -661,7 +661,8 @@ export function TextbookSection({ courseName }: { courseName: string }) {
   const [publisher, setPublisher] = useState('');
   const [edition, setEdition] = useState('');
   const [target, setTarget] = useState(courseName);
-  const dialogRef = useMdDialog(dialogOpen);
+  // 用户点遮罩/Esc 关掉对话框时把状态同步成关（否则它会自己弹回来 —— 作者报的"弹两次"）
+  const dialogRef = useMdDialog(dialogOpen, () => setDialogOpen(false));
 
   const courseNames = useMemo(() => {
     const names = new Set<string>();
