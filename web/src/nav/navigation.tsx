@@ -100,19 +100,23 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
    * 浏览器里这套 API 不存在，整段逻辑不参与。
    */
   const [peeking, setPeeking] = useState<RouteEntry | null>(null);
+  /** 手势是否正处于预测式返回预览中（start 置 true；提交 / 取消后置 false） */
+  const predictiveRef = useRef(false);
 
   useEffect(() => {
     const phone = () => document.querySelector('.phone') as HTMLElement | null;
     const clear = () => {
       const el = phone();
-      el?.classList.remove('predictive', 'predictive-cancel');
+      el?.classList.remove('predictive', 'predictive-commit', 'predictive-cancel');
       el?.style.setProperty('--predictive', '0');
+      predictiveRef.current = false;
       setPeeking(null);
     };
     const api = {
       start: () => {
         const current = stackRef.current;
         if (current.length < 2) return;
+        predictiveRef.current = true;
         phone()?.classList.add('predictive');
         phone()?.style.setProperty('--predictive', '0');
         setPeeking(current[current.length - 2]);
@@ -155,13 +159,36 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
       if (next.length < previous.length) {
         const removed = previous[previous.length - 1];
+        const phone = document.querySelector('.phone') as HTMLElement | null;
+        /**
+         * 可预测式返回**提交**：预览态本来就已经把「上一屏」放大到满屏（`--predictive: 1`
+         * 时 scale 1 / opacity 1），所以这里只需把它从**手势当前进度**平滑推到 1 就收尾了。
+         *
+         * 以前这里不管三七二十一又设了一次 `exiting`，于是同一段过场被播两遍：
+         * 预览弹一次（跟手），标准弹出动画再弹一次（松手瞬间还会从半途跳回去）——
+         * 就是作者报的「用原生可预测式返回也会弹出两次 + 冲击效果」。
+         */
+        if (predictiveRef.current && phone?.classList.contains('predictive')) {
+          predictiveRef.current = false;
+          setEnteringKey(null);
+          setStack(next);
+          phone.classList.add('predictive-commit');
+          void phone.offsetWidth; // 先让过渡生效，再从当前进度推到 1（否则会和赋值同帧被合并掉）
+          phone.style.setProperty('--predictive', '1');
+          schedule(() => {
+            phone.classList.remove('predictive', 'predictive-commit');
+            phone.style.setProperty('--predictive', '0');
+            setPeeking(null);
+          }, 180);
+          return;
+        }
         setEnteringKey(null);
         setExiting(removed);
         setStack(next);
         // 预测式返回的预览到此结束：清掉手势态，交给正常弹出动画收尾
-        const phone = document.querySelector('.phone') as HTMLElement | null;
         phone?.classList.remove('predictive', 'predictive-cancel');
         phone?.style.setProperty('--predictive', '0');
+        predictiveRef.current = false;
         setPeeking(null);
         schedule(() => setExiting(null), DURATION[removed.transition] + 100);
         return;

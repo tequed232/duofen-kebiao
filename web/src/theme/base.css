@@ -553,3 +553,10 @@ html[data-contour='bold'] .screen > .screen-inner {
   position: relative;
   z-index: 1;
 }
+/* 可预测式返回「提交」瞬间：从手势当前进度平滑推到终态。
+   手势进行中不能有过渡（要完全跟手），所以过渡只挂在提交这一刻的类上。 */
+.phone.predictive-commit > .screen {
+  transition:
+    transform 170ms cubic-bezier(0.05, 0.7, 0.1, 1),
+    opacity 170ms linear;
+}

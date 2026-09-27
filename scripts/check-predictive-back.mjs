@@ -1,0 +1,115 @@
+/**
+ * 守卫：可预测式返回（Android 14+ 手势返回）**提交时不许再叠一次标准弹出动画**。
+ *
+ * 作者 2026-09-29 反馈：「用原生可预测式返回也会导致弹出两次的冲击效果」。
+ * 机制：手势期间网页已经把「上一屏」按进度放大预览（`--predictive` 0→1 时 scale 0.86→1）；
+ * 原生提交时 `webView.goBack()` → `popstate` 里**又**设了一次 `exiting`，同一段过场播两遍，
+ * 而且松手瞬间还会从半途跳回标准动画的起点（冲击感）。
+ *
+ * 这条守卫完全复刻原生那三相调用（页面里原生就是这么调的）：
+ *   start() → progress(0.6) → history.back()（= 原生 goBack → popstate）
+ * 然后断言提交过程中**没有出现 `.screen.exit-*`**（第二遍动画），且预览层平滑收到 scale 1。
+ *
+ * 用法：APP_URL=http://127.0.0.1:5173/ node scripts/check-predictive-back.mjs
+ */
+import { chromium } from 'playwright';
+
+const APP_URL = process.env.APP_URL ?? 'http://127.0.0.1:5173/';
+
+let pass = 0;
+let fail = 0;
+const check = (label, ok, detail = '') => {
+  if (ok) pass += 1;
+  else fail += 1;
+  console.log(`  ${ok ? '✓' : '✗'} ${label}${ok || !detail ? '' : ` —— ${detail}`}`);
+};
+
+const browser = await chromium.launch({ channel: 'chromium' });
+const page = await browser.newPage({ viewport: { width: 412, height: 900 }, deviceScaleFactor: 2 });
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e.message).slice(0, 140)));
+await page.goto(APP_URL, { waitUntil: 'load' });
+await page.waitForTimeout(2600);
+
+console.log('[1] 先入栈一屏（设置 → 外观），让历史栈有 2 层');
+await page.locator('.m3e-dock-tab', { hasText: '设置' }).first().click();
+await page.waitForTimeout(700);
+await page
+  .locator('.screen:not([aria-hidden="true"]) md-list-item:has([slot="headline"]:text-is("外观"))')
+  .first()
+  .click({ force: true });
+await page.waitForTimeout(1000);
+// 注意：首页/搜索/设置 三个标签屏是常驻 DOM 的（非激活的带 aria-hidden），所以层数不是"历史栈深度"
+const screensBefore = await page.locator('.screen').count();
+check('上一层屏已经入栈（层数 ≥ 2）', screensBefore >= 2, `层数 ${screensBefore}`);
+
+// 记录提交过程中的类名变化
+await page.evaluate(() => {
+  window.__pb = [];
+  const t0 = performance.now();
+  const at = () => Math.round(performance.now() - t0);
+  const snap = (why) => {
+    document.querySelectorAll('.screen').forEach((el) => {
+      const cls = String(el.className);
+      if (/exit-|enter-|peek|dir-/.test(cls)) window.__pb.push(`${at()}ms ${why} ${cls}`);
+    });
+    const phone = document.querySelector('.phone');
+    if (phone) window.__pb.push(`${at()}ms ${why} phone=${String(phone.className)} pred=${phone.style.getPropertyValue('--predictive')}`);
+  };
+  new MutationObserver(() => snap('mut')).observe(document.body, { attributes: true, attributeFilter: ['class', 'style'], subtree: true });
+  window.__pbSnap = snap;
+});
+
+console.log('[2] 复刻原生三相：start() → progress(0.6) → 提交（history.back()）');
+const preview = await page.evaluate(() => {
+  window.DuofenBack?.start?.();
+  window.DuofenBack?.progress?.(0.6);
+  return {
+    hasApi: Boolean(window.DuofenBack),
+    predictive: document.querySelector('.phone')?.classList.contains('predictive') ?? false,
+    progress: document.querySelector('.phone')?.style.getPropertyValue('--predictive') ?? '',
+  };
+});
+check('原生桥 window.DuofenBack 存在', preview.hasApi, '没有桥');
+check('手势开始后进入预览态（.phone.predictive）', preview.predictive, `class=${preview.predictive}`);
+check('进度写进了 --predictive', Number(preview.progress) > 0.5, `--predictive=${preview.progress}`);
+// peek 层是 React 状态渲染的，要等一帧才算数
+await page.waitForTimeout(180);
+const peekCount = await page.locator('.screen.peek').count();
+check('预览层渲染出来了（.screen.peek）', peekCount === 1, `peek=${peekCount}`);
+
+await page.waitForTimeout(150);
+await page.evaluate(() => window.history.back()); // = 原生 performBack() → webView.goBack()
+await page.waitForTimeout(700);
+
+const trace = await page.evaluate(() => {
+  window.__pbSnap?.('final');
+  return window.__pb;
+});
+const exitEvents = trace.filter((l) => /exit-/.test(l));
+const peekTransform = await page.evaluate(() => {
+  const phone = document.querySelector('.phone');
+  const top = document.querySelector('.screen:not([aria-hidden="true"]):not(.peek)');
+  return {
+    predictiveLeft: phone?.classList.contains('predictive') ?? false,
+    commitLeft: phone?.classList.contains('predictive-commit') ?? false,
+    progress: phone?.style.getPropertyValue('--predictive') ?? '',
+    topTransform: top ? getComputedStyle(top).transform : 'n/a',
+    screens: document.querySelectorAll('.screen').length,
+    peek: document.querySelectorAll('.screen.peek').length,
+  };
+});
+
+console.log('   事件轨迹（前 12 条）:');
+for (const line of trace.slice(0, 12)) console.log('     ' + line);
+console.log('   收尾状态:', JSON.stringify(peekTransform));
+
+check('提交时**没有再叠一遍标准弹出动画**（无 .screen.exit-*）', exitEvents.length === 0, `出现了 ${exitEvents.length} 条：${exitEvents.slice(0, 3).join(' | ')}`);
+check('手势态收干净了（.phone 不再是 predictive/commit）', !peekTransform.predictiveLeft && !peekTransform.commitLeft, JSON.stringify(peekTransform));
+check('只退了一层（层数 −1）', peekTransform.screens === screensBefore - 1, `前 ${screensBefore} → 后 ${peekTransform.screens}`);
+check('顶层屏回到正常尺寸（transform 为 none 或单位矩阵）', /none|matrix\(1, 0, 0, 1, 0, 0\)/.test(peekTransform.topTransform), `transform=${peekTransform.topTransform}`);
+
+if (errors.length) console.log('  页面错误:', errors.slice(0, 3).join(' | '));
+await browser.close();
+console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
+process.exit(fail ? 1 : 0);

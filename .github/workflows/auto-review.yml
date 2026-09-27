@@ -150,6 +150,8 @@ jobs:
           APP_URL=http://127.0.0.1:5173/ run_guard dialog-close node scripts/check-dialog-close.mjs
           # 课本封面：相机/相册两条入口选到文件之后，封面必须真的进「标记教材」对话框
           APP_URL=http://127.0.0.1:5173/ run_guard cover-import node scripts/check-cover-import.mjs
+          # 可预测式返回提交时不许再叠一遍标准弹出动画（作者报的"原生返回也会弹两次+冲击"）
+          APP_URL=http://127.0.0.1:5173/ run_guard predictive-back node scripts/check-predictive-back.mjs
           # 底栏运动行为：轻点必须是「移过去 duang」（有中间帧 + 过冲）、拖动停住后色块要追上手指。
           # 后者是 2026-09-25 真 bug 的探针：弹簧用底栏内坐标、applyFrame 又减一次 geo.left，
           # 色块拖动时整体偏左一个左边距（实测残余 39px 不收敛；修好后 3px）。

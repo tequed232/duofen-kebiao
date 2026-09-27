@@ -283,8 +283,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** 上一次真正执行返回退栈的时刻，用来吞掉同一次手势里的重复派发 */
+    private var lastBackAt = 0L
+
     /** 网页侧的历史栈优先；栈空了才真的退出应用 */
     private fun performBack() {
+        /**
+         * 一次返回手势可能被派发两次（平台 `OnBackInvoked` 与 androidx `OnBackPressed` 各来一次）。
+         * 连退两层历史在网页侧就表现为「上一屏弹了两次」+ 一次多余的冲击动画，
+         * 所以 350ms 内的重复直接吞掉 —— 真实的连续两次返回不会这么快。
+         */
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastBackAt < 350) return
+        lastBackAt = now
+
         if (webView.canGoBack()) {
             webView.goBack()
         } else {
