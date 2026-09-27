@@ -110,9 +110,17 @@ check('被退出的屏在缩下去（scale < 1）', (during.outgoing?.sx ?? 1) <
 check('下沉幅度够大（progress=0.6 时 scale ≤ 0.85）', (during.outgoing?.sx ?? 1) <= 0.85, `scaleX=${during.outgoing?.sx}`);
 check('下缘圆角够明显（≥ 20px）', (during.outgoing?.bottomRadius ?? 0) >= 20, `radius=${during.outgoing?.bottomRadius}`);
 check('缩放锚点在顶边（transform-origin 的 Y 为 0）', /^\d+(\.\d+)?px 0px/.test(during.outgoing?.origin ?? ''), `origin=${during.outgoing?.origin}`);
-check('没有整体下移（|translateY| ≤ 1px）', Math.abs(during.outgoing?.ty ?? 99) <= 1, `translateY=${during.outgoing?.ty}`);
-check('下缘有圆角（≥ 8px）', (during.outgoing?.bottomRadius ?? 0) >= 8, `border-bottom-radius=${during.outgoing?.bottomRadius}`);
-check('底下那屏原地满屏（transform 为 none）', during.peek?.raw === 'none', `peek transform=${during.peek?.raw}`);
+check('下沉时有下压位移（progress=0.6 时 translateY ≥ 6px）', (during.outgoing?.ty ?? 0) >= 6, `translateY=${during.outgoing?.ty}`);
+check('下缘圆角够明显（≥ 20px）', (during.outgoing?.bottomRadius ?? 0) >= 20, `radius=${during.outgoing?.bottomRadius}`);
+/**
+ * 上一屏要「从下方托上来」：progress=0.6 时它应当略小（scale < 1）且往下偏（ty > 0），
+ * 随进度收敛到满屏。原先断言它"原地满屏（transform: none）"是旧形态，作者已要求改成层叠下沉。
+ */
+check(
+  '上一屏在托上来（scale < 1 且 translateY > 0）',
+  during.peek?.sx !== undefined && during.peek.sx < 1 && during.peek.ty > 0,
+  `peek scale=${during.peek?.sx} ty=${during.peek?.ty}`,
+);
 
 /**
  * 两条防回归：
