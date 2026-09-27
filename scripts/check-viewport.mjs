@@ -122,6 +122,49 @@ for (const vp of VIEWPORTS) {
   );
 }
 
+/* ---- 最窄视口下打开课程详情：教材区那几颗按钮不许被右边缘裁掉 ----
+   真机事故（2026-09-29）：366dp 上三颗按钮（拍照识别封面 / 从相册选图 / 手动填写）
+   排不下，第三颗被裁成半个字。这里在最窄视口复现并钉住。 */
+for (const vp of [VIEWPORTS[1], VIEWPORTS[0]]) {
+  console.log(`\n[课程详情按钮行] ${vp.name} ${vp.width}×${vp.height}`);
+  await page.setViewportSize({ width: vp.width, height: vp.height });
+  await page.goto(APP_URL, { waitUntil: 'load' });
+  await page.waitForTimeout(2600);
+  const chip = page.locator('.course-chip').first();
+  if ((await chip.count()) === 0) {
+    check('找得到一节课来打开详情', false, '课表上没有任何 .course-chip');
+    continue;
+  }
+  await chip.click({ force: true });
+  await page.waitForTimeout(1200);
+  const overflow = await page.evaluate(() => {
+    const panel = document.querySelector('.sheet-panel');
+    if (!panel) return { noPanel: true };
+    const buttons = [...panel.querySelectorAll('md-filled-tonal-button, md-outlined-button, md-text-button, md-filled-button')];
+    const boxes = buttons.map((b) => {
+      const r = b.getBoundingClientRect();
+      return { text: (b.textContent ?? '').trim().slice(0, 12), left: r.left, right: r.right, width: r.width };
+    });
+    // 关着的对话框里的按钮尺寸是 0×0，不算「被压窄」——只看真正渲染出来的
+    const rendered = boxes.filter((b) => b.width > 1);
+    return {
+      vw: window.innerWidth,
+      worst: boxes.reduce((max, b) => Math.max(max, b.right), 0),
+      outside: boxes.filter((b) => b.right > window.innerWidth + 1).map((b) => b.text),
+      zero: rendered.filter((b) => b.width < 24).map((b) => b.text),
+      count: rendered.length,
+    };
+  });
+  check('详情弹层打开了', !overflow.noPanel, '找不到 .sheet-panel');
+  if (overflow.noPanel) continue;
+  check(
+    `详情里的按钮都没被右边缘裁掉（最右 ${Math.round(overflow.worst)} ≤ 视口 ${overflow.vw}）`,
+    overflow.outside.length === 0,
+    `越界按钮：${overflow.outside.join('、') || '(无)'}`,
+  );
+  check('按钮都有正常宽度（没被压成一条）', overflow.zero.length === 0, `过窄：${overflow.zero.join('、') || '(无)'}`);
+}
+
 /* ---- 极端视口下打开「课表数据」面板：面板与主按钮必须真的在视口里 ---- */
 for (const vp of [VIEWPORTS[4], VIEWPORTS[3]]) {
   console.log(`\n[面板] ${vp.name} ${vp.width}×${vp.height}`);

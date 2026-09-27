@@ -814,7 +814,9 @@ export function TextbookSection({ courseName }: { courseName: string }) {
       {/* 「添加课程（选图识别 / 手动填写）」只在**还没有教材**时出现 */}
       {hasBook ? null : (
         <>
-          <div className="button-group" style={{ justifyContent: 'flex-start' }}>
+          {/* 三颗按钮在 366dp 的真机上排不下：原来第三颗「手动填写」会被右边缘裁掉
+              （2026-09-29 真机截图实测）。这里允许换行 + 行间距，窄屏自动落到第二行。 */}
+          <div className="button-group pill" style={{ justifyContent: 'flex-start', flexWrap: 'wrap', rowGap: 8 }}>
             <md-filled-tonal-button className="btn-s" onClick={() => void captureCover('camera')} disabled={busy ? '' : undefined}>
               <MdIcon slot="icon" name="photo_camera" />
               拍照识别封面

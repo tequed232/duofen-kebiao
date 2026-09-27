@@ -1645,3 +1645,32 @@ button.credit-license:focus-visible {
 .tutorial-prompt .credit-link {
   margin: 0 12px 12px;
 }
+
+/* 胶囊按钮组：作者 2026-09-29「把按钮风格统一成椭圆」——
+   组内每一颗都是完整胶囊（覆盖 .button-group 的 expressive 拼接形状），间距也相应拉开。 */
+.button-group.pill {
+  gap: 8px;
+}
+
+.button-group.pill > * {
+  --md-filled-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-filled-button-container-shape-start-start: 999px;
+  --md-filled-button-container-shape-start-end: 999px;
+  --md-filled-button-container-shape-end-start: 999px;
+  --md-filled-button-container-shape-end-end: 999px;
+  --md-filled-tonal-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-filled-tonal-button-container-shape-start-start: 999px;
+  --md-filled-tonal-button-container-shape-start-end: 999px;
+  --md-filled-tonal-button-container-shape-end-start: 999px;
+  --md-filled-tonal-button-container-shape-end-end: 999px;
+  --md-outlined-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-outlined-button-container-shape-start-start: 999px;
+  --md-outlined-button-container-shape-start-end: 999px;
+  --md-outlined-button-container-shape-end-start: 999px;
+  --md-outlined-button-container-shape-end-end: 999px;
+  --md-text-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-text-button-container-shape-start-start: 999px;
+  --md-text-button-container-shape-start-end: 999px;
+  --md-text-button-container-shape-end-start: 999px;
+  --md-text-button-container-shape-end-end: 999px;
+}

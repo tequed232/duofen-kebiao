@@ -124,6 +124,14 @@ android {
     }
 
     buildTypes {
+        /**
+         * 调试包带 .debug 后缀：与正式包**并存安装**（签名不同不会互相覆盖，
+         * 也就不会清掉设备上已经导入的课表/设置）。真机上排查动效与点击问题时用它。
+         */
+        debug {
+            applicationIdSuffix = ".debug"
+            isMinifyEnabled = false
+        }
         release {
             isMinifyEnabled = false
             // 有 keystore.properties 就用正式签名，否则退回 debug 签名（CI 不会因此变红）

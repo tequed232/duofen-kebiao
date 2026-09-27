@@ -173,8 +173,16 @@ export function ExpandableSheet({
       const target = panel.getBoundingClientRect();
       const source = sourceRef.current?.getBoundingClientRect();
       const from = source && source.width > 0 ? source : target;
-      const scaleX = Math.max(0.02, from.width / target.width);
-      const scaleY = Math.max(0.02, from.height / target.height);
+      /**
+       * 起始缩放要有下限（作者 2026-09-29 反馈的「冲击感」）：
+       * 素材卡/按钮往往只有几十像素高，除以弹层高度会算出 0.02 —— 面板从**一根头发丝**里
+       * 窜出来，真机上（365×800、dpr 3.5）逐帧采样实测起点就是 scaleY=0.02。
+       * 现在把起点压到不超过「一半大小」，既保留"从点的地方长出来"的 M3 空间感，
+       * 又不会像被弹了一下。 */
+      const MIN_SCALE_X = 0.6;
+      const MIN_SCALE_Y = 0.35;
+      const scaleX = Math.min(1, Math.max(MIN_SCALE_X, from.width / target.width));
+      const scaleY = Math.min(1, Math.max(MIN_SCALE_Y, from.height / target.height));
       const dx = from.left - target.left;
       const dy = from.top - target.top;
       panel.style.transition = 'none';
@@ -193,8 +201,9 @@ export function ExpandableSheet({
     if (phase === 'closing') {
       const target = panel.getBoundingClientRect();
       const source = sourceRef.current?.getBoundingClientRect();
-      const scaleX = source && source.width > 0 ? Math.max(0.02, source.width / target.width) : 0.9;
-      const scaleY = source && source.height > 0 ? Math.max(0.02, source.height / target.height) : 0.4;
+      // 关门也走同一套下限：不然"收回去"会缩成一根线，看起来像被抽走（与开门对称）
+      const scaleX = source && source.width > 0 ? Math.min(1, Math.max(0.6, source.width / target.width)) : 0.9;
+      const scaleY = source && source.height > 0 ? Math.min(1, Math.max(0.35, source.height / target.height)) : 0.4;
       const dx = source && source.width > 0 ? source.left - target.left : 0;
       const dy = source && source.height > 0 ? source.top - target.top : 40;
       panel.style.transition = `transform ${MOTION.spatial.fast.duration}s ${MOTION.spatial.fast.css}`;

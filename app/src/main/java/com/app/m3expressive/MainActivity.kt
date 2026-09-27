@@ -12,6 +12,7 @@ import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
+import android.provider.MediaStore
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -46,6 +47,8 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+    /** 拍照那条路（ACTION_IMAGE_CAPTURE）我们指定的输出 URI：成功时 data 常为 null，得靠它把图交回网页 */
+    private var pendingCaptureUri: Uri? = null
     private var confirmReceiver: android.content.BroadcastReceiver? = null
     /** 通知里的「课本」动作被点击：下次页面加载完成后跳到教材窗口 */
     private var pendingTextbooks = false
@@ -66,8 +69,16 @@ class MainActivity : ComponentActivity() {
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
-        val data = result.data?.data
-        fileChooserCallback?.onReceiveValue(if (data != null) arrayOf(data) else null)
+        // 相机那条路：成功时 data 里通常没有图片，图片写在 pendingCaptureUri 指向的文件里
+        val captured = pendingCaptureUri
+        pendingCaptureUri = null
+        val picked = result.data?.data
+        val uri = when {
+            result.resultCode == android.app.Activity.RESULT_OK && captured != null -> captured
+            result.resultCode == android.app.Activity.RESULT_OK -> picked
+            else -> null
+        }
+        fileChooserCallback?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
         fileChooserCallback = null
     }
 
@@ -97,7 +108,14 @@ class MainActivity : ComponentActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
-        webView = WebView(this).apply {
+        // 仅**可调试构建**打开 WebView 远程调试（release 保持关闭）。
+    // 真机上「弹层动效 / 点击弹两次 / 卡顿」这类问题只能在这一层看：连上 CDP 就能复用
+    // 网页侧那套探针，不必再用截图猜。
+    if ((applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+        WebView.setWebContentsDebuggingEnabled(true)
+    }
+
+    webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.databaseEnabled = true
@@ -330,7 +348,12 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        /** 网页的 <input type=file> → 系统内置文件资源浏览器 */
+        /**
+         * 网页的 <input type=file>：
+         *   · 带 capture（网页写的是 capture="environment"）→ **直接调系统相机拍照**；
+         *     以前这里无视 isCaptureEnabled，一律走文件浏览器，于是"拍照识别封面"变成"选文件"。
+         *   · 否则 → 系统文件选择器（课表可能是 .doc/.rtf/.html/.csv/.json 或图片，不限制类型）。
+         */
         override fun onShowFileChooser(
             view: WebView,
             callback: ValueCallback<Array<Uri>>,
@@ -338,10 +361,38 @@ class MainActivity : ComponentActivity() {
         ): Boolean {
             fileChooserCallback?.onReceiveValue(null)
             fileChooserCallback = callback
+
+            if (params.isCaptureEnabled) {
+                val dir = java.io.File(cacheDir, "captures").apply { mkdirs() }
+                val file = java.io.File(dir, "cover-${System.currentTimeMillis()}.jpg")
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "${packageName}.fileprovider",
+                    file,
+                )
+                pendingCaptureUri = uri
+                val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                    putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                return runCatching {
+                    fileChooserLauncher.launch(intent)
+                    true
+                }.getOrElse {
+                    pendingCaptureUri = null
+                    false
+                }
+            }
+
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
-                // 课表可能是 .doc/.rtf/.html/.csv 或图片：不限制类型，交给系统选择器
-                type = "*/*"
+                val accepted = params.acceptTypes.filter { it.isNotBlank() }
+                type = when {
+                    accepted.isEmpty() -> "*/*"
+                    accepted.any { it.startsWith("image/") } && accepted.all { it.startsWith("image/") } -> "image/*"
+                    else -> "*/*"
+                }
+                if (accepted.size == 1 && accepted.first().startsWith("image/")) type = "image/*"
             }
             return runCatching {
                 fileChooserLauncher.launch(intent)
