@@ -67,16 +67,16 @@ const preview = await page.evaluate(() => {
   return {
     hasApi: Boolean(window.DuofenBack),
     predictive: document.querySelector('.phone')?.classList.contains('predictive') ?? false,
-    progress: document.querySelector('.phone')?.style.getPropertyValue('--predictive') ?? '',
   };
 });
 check('原生桥 window.DuofenBack 存在', preview.hasApi, '没有桥');
 check('手势开始后进入预览态（.phone.predictive）', preview.predictive, `class=${preview.predictive}`);
-check('进度写进了 --predictive', Number(preview.progress) > 0.5, `--predictive=${preview.progress}`);
-// peek 层是 React 状态渲染的，要等一帧才算数
+// peek 层是 React 状态渲染的、--predictive 是 rAF 合并后写的，都要等一帧才算数
 await page.waitForTimeout(180);
 const peekCount = await page.locator('.screen.peek').count();
 check('预览层渲染出来了（.screen.peek）', peekCount === 1, `peek=${peekCount}`);
+const progressValue = await page.evaluate(() => Number(document.querySelector('.phone')?.style.getPropertyValue('--predictive') ?? 0));
+check('进度写进了 --predictive（rAF 合并后）', progressValue > 0.5, `--predictive=${progressValue}`);
 
 /**
  * 逐帧对照 Telegram 录屏（build\vtrans-sheet.png）定的口径：
@@ -109,6 +109,29 @@ check('缩放锚点在顶边（transform-origin 的 Y 为 0）', /^\d+(\.\d+)?px
 check('没有整体下移（|translateY| ≤ 1px）', Math.abs(during.outgoing?.ty ?? 99) <= 1, `translateY=${during.outgoing?.ty}`);
 check('下缘有圆角（≥ 8px）', (during.outgoing?.bottomRadius ?? 0) >= 8, `border-bottom-radius=${during.outgoing?.bottomRadius}`);
 check('底下那屏原地满屏（transform 为 none）', during.peek?.raw === 'none', `peek transform=${during.peek?.raw}`);
+
+/**
+ * 两条防回归：
+ *  ① 预览用**栈里那一层**（不是再渲染一份副本）—— 副本会在提交那一帧与真身重叠，实测就是"残影"；
+ *  ② 被预览的那层必须**紧贴在当前屏下面**（DOM 顺序相邻），否则缩下去露出来的可能是别的标签屏
+ *     （实测看到背景冒出主页就是这个）。
+ */
+const structure = await page.evaluate(() => {
+  const all = [...document.querySelectorAll('.screen')];
+  const peek = document.querySelector('.screen.peek');
+  const top = all.find((el) => el.classList.contains('predictive-top'));
+  return {
+    total: all.length,
+    peekCount: all.filter((el) => el.classList.contains('peek')).length,
+    adjacent: Boolean(peek && top && peek.nextElementSibling === top),
+    hiddenCount: all.filter((el) => getComputedStyle(el).visibility === 'hidden').length,
+  };
+});
+console.log('   手势中的层结构:', JSON.stringify(structure));
+check('没有为预览额外渲染副本（层数不变）', structure.total === screensBefore, `手势中层数 ${structure.total}，手势前 ${screensBefore}`);
+check('只标记了一层 .peek', structure.peekCount === 1, `peek=${structure.peekCount}`);
+check('被预览的那层紧贴当前屏下面（DOM 相邻）', structure.adjacent, '不相邻，可能露出别的屏');
+check('其余层都隐藏了（不会透出别的标签屏）', structure.hiddenCount >= structure.total - 2, `hidden=${structure.hiddenCount} / total=${structure.total}`);
 
 await page.waitForTimeout(150);
 await page.evaluate(() => window.history.back()); // = 原生 performBack() → webView.goBack()

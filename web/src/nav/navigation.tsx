@@ -104,6 +104,9 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
   const [peeking, setPeeking] = useState<RouteEntry | null>(null);
   /** 手势是否正处于预测式返回预览中（start 置 true；提交 / 取消后置 false） */
   const predictiveRef = useRef(false);
+  /** 每帧最多写一次 --predictive（见 progress） */
+  const pendingRef = useRef(0);
+  const progressFrame = useRef(0);
 
   useEffect(() => {
     const phone = () => document.querySelector('.phone') as HTMLElement | null;
@@ -111,6 +114,10 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
       const el = phone();
       el?.classList.remove('predictive', 'predictive-commit', 'predictive-cancel');
       el?.style.setProperty('--predictive', '0');
+      if (progressFrame.current) {
+        window.cancelAnimationFrame(progressFrame.current);
+        progressFrame.current = 0;
+      }
       predictiveRef.current = false;
       setPeeking(null);
     };
@@ -125,7 +132,17 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
       },
       progress: (value: number) => {
         const clamped = Math.min(1, Math.max(0, Number(value) || 0));
-        phone()?.style.setProperty('--predictive', clamped.toFixed(3));
+        /**
+         * 原生是按传感器频率回调的（这块 144Hz 屏上比帧还密），每次都写自定义属性
+         * 会触发一次样式重算；所以**每帧最多写一次**（rAF 合并）。真机实测 progress
+         * 回调本身只花 0.03ms/次，真正的开销在它引发的样式/绘制。
+         */
+        pendingRef.current = clamped;
+        if (progressFrame.current) return;
+        progressFrame.current = window.requestAnimationFrame(() => {
+          progressFrame.current = 0;
+          phone()?.style.setProperty('--predictive', pendingRef.current.toFixed(3));
+        });
       },
       cancel: () => {
         const el = phone();
@@ -363,25 +380,25 @@ export function NavHost({
 
   return (
     <>
-      {/* 可预测式返回的预览层：上一屏垫在当前屏下面，按手势进度从中间放大 */}
-      {peeking ? (
-        <div key={`peek-${peeking.key}`} className="screen peek" aria-hidden="true" style={{ pointerEvents: 'none' }}>
-          {background}
-          {(() => {
-            const Peek = screens[peeking.route];
-            return <Peek />;
-          })()}
-        </div>
-      ) : null}
+      {/*
+        可预测式返回的预览：**不渲染副本**。
+        之前额外渲染一份「上一屏」，提交那一帧真身与副本会同时在场 —— 实测就是作者看到的
+        "退出时新界面的残影"。现在改成：把栈里那一层（真正的上一屏）标成 `peek` 露出来，
+        同时把手势期间**其余层全部隐藏**（见 base.css 的 .phone.predictive 规则），
+        既保证露出来的就是上一屏，也没有任何重影。
+      */}
       {layers.map((entry) => {
         const Screen = screens[entry.route];
         const isTop = entry.key === stack[stack.length - 1].key;
         const isExiting = exiting?.key === entry.key;
         const isPredictiveOut = commitOut?.key === entry.key;
+        const isPeek = peeking?.key === entry.key;
         const classes = ['screen', `dir-${entry.direction ?? 'forward'}`];
         if (isExiting) classes.push(`exit-${entry.transition}`);
         else if (isPredictiveOut) classes.push('predictive-out');
         else if (entry.key === enteringKey) classes.push(`enter-${entry.transition}`);
+        if (isPeek) classes.push('peek');
+        if (peeking && isTop) classes.push('predictive-top');
         return (
           <div
             key={entry.key}

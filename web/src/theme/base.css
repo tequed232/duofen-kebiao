@@ -61,6 +61,11 @@ body {
   background: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
   overflow: hidden;
+  /* ⚠️ 这行是**承重**的，别为了省合成的开销删掉：
+     `will-change: transform` 会给每一屏建立**包含块**，主页那些 `position: fixed` 的
+     浮动按钮/回到今天才会被圈在本屏内（上一屏盖住它时就看不见）。
+     2026-09-29 实测：去掉它之后 fixed 元素改为相对整个 .phone 定位，
+     浮动按钮浮到所有屏之上，设置页/外观页底下还透出主页课表 —— 界面"叠在一起"。 */
   will-change: transform, opacity;
 }
 
@@ -168,21 +173,35 @@ body {
    **正在被退出的那一屏以顶边为锚点缩下去** —— 顶栏钉在最上面不动，内容往上收，
    底边抬起来并收下缘圆角；底下那一屏（上一屏）原地满屏露出来，松手直接落在它上面。 */
 
-/* 垫在底下的「上一屏」：原地满屏露出来（不缩放、不位移） */
+/* 垫在底下的「上一屏」：原地满屏露出来（不缩放、不位移）。
+   手势期间它要压在其它（已隐藏的）层之上，所以给一个自己人之间的 z-index。 */
 .screen.peek {
   transform-origin: 50% 50%;
   transform: none;
   opacity: 1;
+  z-index: 1;
 }
 
-/* 正在被退出的当前屏：顶边锚点 + 缩小 + 下缘圆角（几乎不淡出，Telegram 里那张卡一直很清楚） */
+/* 正在被退出的当前屏：顶边锚点 + 缩小（**只动 transform**） */
 .phone.predictive > .screen:not(.peek) {
   transform-origin: 50% 0%;
   transform: scale(calc(1 - 0.12 * var(--predictive, 0)));
-  opacity: calc(1 - 0.06 * var(--predictive, 0));
-  border-radius: 0 0 calc(28px * var(--predictive, 0)) calc(28px * var(--predictive, 0));
-  overflow: hidden;
-  will-change: transform, opacity;
+  will-change: transform;
+  /* 圆角必须是**常量**：跟着 --predictive 每帧改半径会让浏览器每帧重新裁切/栅格化整屏。
+     opacity 同理不做动画（整屏透明度动画同样要重新合成）。 */
+  border-radius: 0 0 28px 28px;
+}
+
+/* 手势进行中：只让「当前屏」和「上一屏（.peek）」画，其余层（含别的标签屏）全部隐藏。
+   否则栈下面某一层（实测是主页）会从缩下去的那块里透出来，看着像"背景冒出了主页"。 */
+.phone.predictive > .screen:not(.peek):not(.predictive-top) {
+  visibility: hidden;
+}
+
+/* 手势取消 / 提交的那一帧起，隐藏规则立刻失效；此时正在"沉走"的那张卡单独提层，
+   保证它不会和下面的新屏互相穿插。 */
+.screen.predictive-out {
+  z-index: 2;
 }
 
 /* 手势取消时平滑退回原状（手势进行中不加过渡，保证完全跟手） */
@@ -191,6 +210,27 @@ body {
     transform 180ms cubic-bezier(0.05, 0.7, 0.1, 1),
     opacity 180ms linear,
     border-radius 180ms linear;
+}
+
+/* ---- 手势期间关掉"看背景"的效果 -------------------------------------------
+   模糊（backdrop-filter）与 SVG 位移折射都必须在**每一帧**重新采样背景；
+   被缩放的那一屏里有底边栏那套玻璃，等于每帧重算三次模糊 + 一次折射。
+   真机实测（RMX6688 / 365×800 / dpr 3.5，2 次慢速手势返回）：
+     开：帧间隔中位 8.3ms、p95 41ms、>50ms 的长帧 31 个
+   所以手势这一两秒里把它们降级成半透明实心（这些元素本来就有底色），松手立刻恢复。
+   注意：不碰 html[data-perf]（那是用户的性能模式设置，手势不该改它）。 */
+.phone.predictive .m3e-dock,
+.phone.predictive .m3e-dock-scatter,
+.phone.predictive .liquid-glass,
+.phone.predictive .nav-bar.glass md-navigation-bar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 折射层/散射层：整个隐藏（SVG filter: url(#…) 作用在背景上，是这里最贵的一项） */
+.phone.predictive .m3e-dock-refraction,
+.phone.predictive .m3e-dock-scatter {
+  display: none !important;
 }
 /* ------------------------------------------------------------------ utils */
 .row {
