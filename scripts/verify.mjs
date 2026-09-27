@@ -282,7 +282,7 @@ try {
   });
   await step('the schedule is the home screen', async () => {
     // v2.1：应用启动在记录页，先切到「首页」标签再断言课表
-    await clickTop('md-navigation-tab', 0);
+    await page.locator('.m3e-dock-tab', { hasText: '首页' }).first().click({ force: true });
     await page.waitForTimeout(1200);
     await waitTop('.week-board');
     await page.waitForTimeout(600);
@@ -292,7 +292,7 @@ try {
   /* ------------------------------------------------------------- 课表 screen */
   await step('schedule tab shows the 4x4 paged board', async () => {
     await page.keyboard.press('Escape');
-    await clickTop('md-navigation-tab', 0);
+    await page.locator('.m3e-dock-tab', { hasText: '首页' }).first().click({ force: true });
     await waitTop('.week-grid');
     await page.waitForTimeout(900);
     extra.schedule = await page.evaluate(() => {
@@ -333,7 +333,9 @@ try {
     const input = top().locator('.week-date-input');
     if ((await input.count()) === 0) throw new Error('周次块里没有原生日期选择器');
     await input.evaluate((el) => {
-      el.value = '2026-10-08';
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(el, '2026-10-08');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await page.waitForTimeout(900);
@@ -360,7 +362,7 @@ try {
     // 确定性导航：先回课表首页、确保课表是展开的（v2 已取消自动收起，但手动收起状态会被保留），
     // 然后点页面上任意一张可见的课程卡片——不再假设"当前分页一定在 activePage 上"。
     if (!(await top().locator('.week-board').count())) {
-      await clickTop('md-navigation-tab', 0);
+      await page.locator('.m3e-dock-tab', { hasText: '首页' }).first().click({ force: true });
       await page.waitForTimeout(1100);
     }
     if (await top().locator('.week-board.collapsed').count()) {
@@ -473,7 +475,7 @@ try {
   });
 
   await step('schedule filter screen', async () => {
-    await clickTop('md-navigation-tab', 1);
+    await page.locator('.m3e-dock-tab', { hasText: '搜索' }).first().click({ force: true });
     // 分类标签 + 搜索栏已合并成一个按钮，点开是老师/课程/地点/时间面板
     await waitTop('.filter-button');
     extra.filterButton = (await top().locator('.filter-button').innerText()).replace(/\s+/g, ' ');

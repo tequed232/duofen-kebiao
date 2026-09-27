@@ -45,7 +45,7 @@ import {
 import { looksLikeJson, parseScheduleJson } from '../lib/scheduleJson';
 import { IMPORT_FILE_HINT } from '../lib/importPrompts';
 import { useAppState } from '../state/AppState';
-import { pickFile, prepareImageFile } from '../lib/imaging';
+import { captureImageFile, pickFile, prepareImageFile } from '../lib/imaging';
 
 /* --------------------------------------------------------------- helpers --- */
 
@@ -698,9 +698,12 @@ export function TextbookSection({ courseName }: { courseName: string }) {
    * 读封面又准又省事，而本地那套要给每个包塞 40+ MB 的 wasm 与中文模型（APK 从 26 MB 掉到
    * 4 MB 就是这一刀）。现在只有一条识别路：设置里配好「多模态接口」→ 交给它读；
    * 没配就只保存封面，让用户在对话框里手填或粘贴封面文字。
+   *
+   * 2026-09-29 作者要求封面支持**系统原生相机拍照**：默认走 `capture="environment"`
+   * 直接唤起相机；想从相册挑旧图时才用 mode='library'。
    */
-  const captureCover = async () => {
-    const file = await pickFile('教材封面', 'image/*');
+  const captureCover = async (mode: 'camera' | 'library' = 'camera') => {
+    const file = mode === 'camera' ? await captureImageFile() : await pickFile('教材封面', 'image/*');
     if (!file) return;
     setBusy(true);
     try {
@@ -812,10 +815,14 @@ export function TextbookSection({ courseName }: { courseName: string }) {
       {hasBook ? null : (
         <>
           <div className="button-group" style={{ justifyContent: 'flex-start' }}>
-            <md-filled-tonal-button className="btn-s" onClick={() => void captureCover()} disabled={busy ? '' : undefined}>
+            <md-filled-tonal-button className="btn-s" onClick={() => void captureCover('camera')} disabled={busy ? '' : undefined}>
               <MdIcon slot="icon" name="photo_camera" />
-              选图识别封面
+              拍照识别封面
             </md-filled-tonal-button>
+            <md-outlined-button className="btn-s" onClick={() => void captureCover('library')} disabled={busy ? '' : undefined}>
+              <MdIcon slot="icon" name="photo_library" />
+              从相册选图
+            </md-outlined-button>
             <md-outlined-button className="btn-s" onClick={() => openDialog()}>
               <MdIcon slot="icon" name="edit_note" />
               手动填写

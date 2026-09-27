@@ -7,11 +7,18 @@
  * accept 里声明的类型把不匹配的文件置灰，导致"选不了文件"。课表这类来源多样的
  * 文件一律先让用户在系统文件浏览器里自由选择，选完再按内容识别格式。
  */
-export function pickFile(_label: string, accept?: string): Promise<File | null> {
+export function pickFile(
+  _label: string,
+  accept?: string,
+  options?: { capture?: 'environment' | 'user' | boolean },
+): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     if (accept) input.accept = accept;
+    // capture 让安卓/iOS **直接打开系统相机**（不再弹"文件/相册"选择器）——
+    // 作者 2026-09-29 要求「课本封面可以通过调用系统原生相机拍照导入」。
+    if (options?.capture) input.capture = options.capture === true ? 'environment' : String(options.capture);
     input.multiple = false;
     // 保留在布局里（部分浏览器会忽略 display:none 的输入框）
     input.style.position = 'fixed';
@@ -44,6 +51,11 @@ export function pickFile(_label: string, accept?: string): Promise<File | null> 
 /** Natural image picker: one image at a time, via the platform file chooser. */
 export function pickImageFile(): Promise<File | null> {
   return pickFile('图片', 'image/*');
+}
+
+/** 直接调起系统相机拍一张（安卓/iOS 原生相机，用来拍课本封面）。 */
+export function captureImageFile(): Promise<File | null> {
+  return pickFile('拍照', 'image/*', { capture: 'environment' });
 }
 
 export function fileToDataUrl(file: Blob): Promise<string> {
