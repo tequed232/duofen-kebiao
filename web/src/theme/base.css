@@ -365,16 +365,6 @@ body {
 }
 
 /* 开屏与关于页的美术资源 */
-.splash-art {
-  width: 168px;
-  height: 224px;
-  object-fit: cover;
-  border-radius: 24px;
-  margin-bottom: 14px;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--md-sys-color-shadow) 24%, transparent);
-  animation: splash-pop var(--md-sys-motion-spring-bounce-duration, 700ms)
-    var(--md-sys-motion-spring-bounce, ease-out) both;
-}
 
 .about-art {
   width: 100%;
@@ -476,7 +466,6 @@ html[data-perf='low'] .screen.exit-slide {
 html[data-perf='low'] .glass-nav-slider {
   transition: none !important;
 }
-
 
 /* 非活动屏幕（栈中其余页面）绝不能接收点击：避免两个底边栏叠加造成双击跳转 */
 .screen[aria-hidden='true'] {

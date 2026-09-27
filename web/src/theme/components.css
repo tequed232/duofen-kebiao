@@ -1390,11 +1390,6 @@ button.credit-license:focus-visible {
   border-radius: 16px;
 }
 
-.wechat .splash-art {
-  width: 132px;
-  height: 176px;
-}
-
 /* 微信里关闭 backdrop-filter：X5 内核表现不稳定，玻璃层自动退回半透明底 */
 .wechat .nav-bar.glass md-navigation-bar {
   backdrop-filter: none;
@@ -1435,9 +1430,6 @@ button.credit-license:focus-visible {
 /* ============================================ Liquid Glass 底边栏 ========= */
 /* 悬浮玻璃药丸：模糊 + 冰彩高光 + 顶部反光条，选中项是玻璃胶囊指示器 */
 
-
-
-
 .glass-tab-indicator {
   inset: auto !important;
   left: 50% !important;
@@ -1453,9 +1445,6 @@ button.credit-license:focus-visible {
 .glass-tab.active .glass-tab-indicator {
   transform: translate(-50%, -50%) scale(1) !important;
 }
-
-
-
 
 /* 开源相关列表（对齐酷安《开源相关》条目样式） */
 .license-row {
@@ -1500,7 +1489,6 @@ button.credit-license:focus-visible {
 }
 
 /* 底边栏里的装饰层：没有视觉效果时也不应占位 */
-
 
 /* ==================== 教材窗口：多选 / 删除 / 快捷添加 ==================== */
 .textbook-card.selectable { cursor: pointer; }
