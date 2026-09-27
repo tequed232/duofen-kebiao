@@ -104,9 +104,6 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
   const [peeking, setPeeking] = useState<RouteEntry | null>(null);
   /** 手势是否正处于预测式返回预览中（start 置 true；提交 / 取消后置 false） */
   const predictiveRef = useRef(false);
-  /** 每帧最多写一次 --predictive（见 progress） */
-  const pendingRef = useRef(0);
-  const progressFrame = useRef(0);
 
   useEffect(() => {
     const phone = () => document.querySelector('.phone') as HTMLElement | null;
@@ -114,10 +111,6 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
       const el = phone();
       el?.classList.remove('predictive', 'predictive-commit', 'predictive-cancel');
       el?.style.setProperty('--predictive', '0');
-      if (progressFrame.current) {
-        window.cancelAnimationFrame(progressFrame.current);
-        progressFrame.current = 0;
-      }
       predictiveRef.current = false;
       setPeeking(null);
     };
@@ -133,16 +126,13 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
       progress: (value: number) => {
         const clamped = Math.min(1, Math.max(0, Number(value) || 0));
         /**
-         * 原生是按传感器频率回调的（这块 144Hz 屏上比帧还密），每次都写自定义属性
-         * 会触发一次样式重算；所以**每帧最多写一次**（rAF 合并）。真机实测 progress
-         * 回调本身只花 0.03ms/次，真正的开销在它引发的样式/绘制。
+         * ⚠️ 必须**同步**写，不能 rAF 合并。
+         * 试过 rAF 合并（"每帧最多写一次"）：系统做返回手势时，被拖动的那一帧里
+         * WebView 的 rAF 会被节流/暂停，`--predictive` 于是写不进去 —— 实测表现就是
+         * 「跟手预览没了 / 卡住不动」。而当初卡顿的元凶并不是这次赋值（0.03ms/次），
+         * 是它引发的模糊/折射重采样 —— 那部分已经在 CSS 里于手势期间关掉了。
          */
-        pendingRef.current = clamped;
-        if (progressFrame.current) return;
-        progressFrame.current = window.requestAnimationFrame(() => {
-          progressFrame.current = 0;
-          phone()?.style.setProperty('--predictive', pendingRef.current.toFixed(3));
-        });
+        phone()?.style.setProperty('--predictive', clamped.toFixed(3));
       },
       cancel: () => {
         const el = phone();
