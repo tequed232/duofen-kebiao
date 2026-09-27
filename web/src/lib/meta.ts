@@ -13,7 +13,7 @@ export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
 /** 版本号唯一来源：APK 的 versionName / versionCode 由 app/build.gradle.kts 从这里解析。
  *  改这里之后，package.json 与 RELEASE_NOTES.md 最新一条要同步（npm run check:version 会挡）。 */
-export const APP_VERSION = 'v3.5.5';
+export const APP_VERSION = 'v3.6';
 /** 作者那张插画（2026-09-25 交给我们的 DLSS 超分原图 2048×2048）——启动页大图、主页左上角、
  *  关于页 hero 与「视觉与图标」四处共用这一份，**不许**各自再引一份图。
  *  同样必须走打包器导入：写 `/illustration.jpg` 这种绝对路径在 APK 里会 404

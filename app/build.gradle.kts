@@ -18,14 +18,18 @@ plugins {
 val webDistDir = rootProject.layout.projectDirectory.dir("dist").asFile
 val webAssetsDir = layout.projectDirectory.dir("src/main/assets/www").asFile
 
-/** 从 web/src/lib/meta.ts 读取 APP_VERSION（如 v1.0.5 → 1.0.5 / versionCode 用 major*10000+minor*100+patch） */
+/** 从 web/src/lib/meta.ts 读取 APP_VERSION（如 v1.0.5 → 1.0.5；v3.6 → 3.6 / versionCode 用 major*10000+minor*100+patch） */
 fun webVersion(): Pair<Int, String> {
     val meta = rootProject.file("web/src/lib/meta.ts")
-    val match = Regex("APP_VERSION\\s*=\\s*'v?([0-9]+)\\.([0-9]+)\\.([0-9]+)'").find(meta.readText())
+    // 版本号允许两位（如 v3.6）：缺 patch 视为 0
+    val match = Regex("APP_VERSION\\s*=\\s*'v?([0-9]+)\\.([0-9]+)(?:\\.([0-9]+))?'").find(meta.readText())
         ?: return 6 to "1.0.5"
-    val (major, minor, patch) = match.destructured
+    val major = match.groupValues[1]
+    val minor = match.groupValues[2]
+    val patch = match.groupValues[3].ifEmpty { "0" }
     val code = major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt()
-    return code to "$major.$minor.$patch"
+    val name = if (match.groupValues[3].isEmpty()) "$major.$minor" else "$major.$minor.$patch"
+    return code to name
 }
 
 val (webVersionCode, webVersionName) = webVersion()

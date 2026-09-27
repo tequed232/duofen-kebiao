@@ -1,3 +1,18 @@
+## 多分课表 v3.6 —— 可预测式返回（跟手 · 无重影 · 不卡）
+
+### 本次更新
+- 课本封面支持**系统原生相机拍照**导入（WebView 文件选择器按 `capture` 走 `ACTION_IMAGE_CAPTURE` + FileProvider）
+- 设置页分组重排：主页 → 课表编辑 → 外观 → 实时通知 → 屏幕安全区 → 导航与学校 → 关于（移除「图像识别与资源」）
+- 可预测式返回按 Telegram 形态重做：被退出的那一屏以**顶边为锚点**缩下去，上一屏原地露出来
+- 修掉「点击控件弹两次 / 冲击感」与「退出时新界面重影」；手势期间关掉玻璃模糊与 SVG 折射，帧间隔 p95 41ms → 11ms
+
+### 下载
+- 安装包：`duofen-kebiao-3.6.apk`（覆盖安装保留数据）
+- 发布页（始终最新）：https://github.com/tequed232/duofen-kebiao/releases/latest
+- 网页版：https://tequed232.github.io/duofen-kebiao/
+
+---
+
 ## 多分课表 v3.5.5 —— 设置页分组 · 通知栏桌宠 · 底栏散射可选
 
 ### 下载

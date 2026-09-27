@@ -1,9 +1,8 @@
-/** Application shell: the 412x892 phone stage, the screen stack, splash and snackbar. */
+/** Application shell: the 412x892 phone stage, the screen stack and snackbar. */
 import { useEffect, useState } from 'react';
 import { NavHost, useNav, type RouteName } from './nav/navigation';
 import { SnackbarLayer } from './components/overlays';
 import { AppNavBar } from './components/layout';
-import { SplashScreen } from './components/splash';
 import { ContourBackground } from './components/contour';
 import { useAppState } from './state/AppState';
 import { startClassReminderLoop } from './lib/classReminder';
@@ -56,9 +55,9 @@ export default function App() {
   const { ready, settings, schedule, textbooks } = useAppState();
   const bottom = SNACKBAR_BOTTOM;
 
-  // 开屏：数据就绪后自动进入；进入时主页组件从下向上依次弹出
-  const [splash, setSplash] = useState(true);
-  const [entering, setEntering] = useState(false);
+  // 开屏动画已按作者要求删除（2026-09-29）：启动直接进主页，不再有"轻点进入"那一步。
+  // 保留 entering 的依次弹出，只作用于首次挂载。
+  const [entering, setEntering] = useState(true);
 
   // 性能模式：high 全特效 / low 关特效 / auto 交给自动检测（perf.ts 按掉帧情况降级）
   useEffect(() => {
@@ -144,12 +143,11 @@ export default function App() {
     document.documentElement.dataset.transition = settings.transition;
   }, [settings.transition]);
 
+  // 首屏的"依次弹出"只跑一次（原来是等开屏退场后触发）
   useEffect(() => {
-    if (splash) return undefined;
-    setEntering(true);
     const timer = window.setTimeout(() => setEntering(false), 900);
     return () => window.clearTimeout(timer);
-  }, [splash]);
+  }, []);
 
   return (
     <div className="stage">
@@ -162,7 +160,6 @@ export default function App() {
           从根本上避免"切页导致底栏卸载/捕获残留/动画位移"造成的点击失效与重复跳转 */}
       <PersistentDock />
         <SnackbarLayer bottom={bottom} />
-        {splash ? <SplashScreen ready={ready} onDone={() => setSplash(false)} /> : null}
 
         {/* 液态玻璃底边栏的折射滤镜（无外部依赖） */}
         <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>

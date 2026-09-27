@@ -16,9 +16,9 @@
  *      且 `web/public/illustration.jpg` 不许再存在（多一份就多一个 404 的引子）；
  *   ② 分辨率：原图长边 ≥ 1800（DLSS 超分版的口径；换回 1280 那种非超分版就红）；
  *   ③ 出口唯一：meta.ts 导入它并导出 `APP_ART`，全 web/src 里没有第二处图片导入；
- *   ④ 引用点：splash / ScheduleScreen / AboutScreen 都引用 `APP_ART`，
+ *   ④ 引用点：ScheduleScreen / AboutScreen 都引用 `APP_ART`，
  *      且**任何源码里都不许出现 `/illustration.jpg` 这类绝对路径**（APK 里必 404）；
- *   ⑤ 不变形：`.splash-mark` `.appbar-avatar img` `.about-mark` `.about-mark-lg`
+ *   ⑤ 不变形：`.appbar-avatar img` `.about-mark` `.about-mark-lg`
  *      的 width 与 height 必须相等（方形原图等比），且 object-fit 为 cover（不是 fill/stretch）。
  *
  * 用法：node scripts/check-artwork-source.mjs
@@ -41,8 +41,7 @@ const stripComments = (t) =>
 
 /** 四个引用点：文件 → 至少引用几次 `APP_ART` 与说明。 */
 const PLACEMENTS = [
-  ['web/src/components/splash.tsx', 1, '启动页大图'],
-  ['web/src/screens/ScheduleScreen.tsx', 1, '主页左上角头像'],
+    ['web/src/screens/ScheduleScreen.tsx', 1, '主页左上角头像'],
   ['web/src/screens/AboutScreen.tsx', 2, '关于页 hero + 「视觉与图标」'],
 ];
 
@@ -163,7 +162,7 @@ const css = (
       .map((f) => readFile(`${themeDir}/${f}`, 'utf8')),
   )
 ).join('\n');
-for (const sel of ['.splash-mark', '.appbar-avatar img', '.about-mark', '.about-mark-lg']) {
+for (const sel of ['.appbar-avatar img', '.about-mark', '.about-mark-lg']) {
   const body = ruleBody(css, sel);
   if (!body) {
     bad(`${sel} 的样式没了`);

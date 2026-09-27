@@ -312,104 +312,6 @@ body {
   }
 }
 
-/* ------------------------------------------------------------ splash ------- */
-.splash {
-  position: absolute;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: var(--md-sys-color-surface);
-  color: var(--md-sys-color-on-surface);
-  cursor: pointer;
-  transition:
-    opacity 300ms linear,
-    transform var(--md-sys-motion-spring-spatial-default-duration, 500ms)
-      var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1));
-}
-
-.splash.leaving {
-  opacity: 0;
-  transform: translate3d(0, -18px, 0) scale(0.98);
-  pointer-events: none;
-}
-
-/* 启动页的应用图标：作者提供的插画（整幅等比显示，不裁切；圆角只是视觉处理，
-   与安卓自适应图标的圆角观感一致）。尺寸比原来的占位图标大一些，看得清画。 */
-.splash-mark {
-  width: 112px;
-  height: 112px;
-  border-radius: 26px;
-  object-fit: cover;
-  display: block;
-  margin-bottom: 12px;
-  box-shadow: 0 10px 28px color-mix(in srgb, #000 26%, transparent);
-  animation: splash-pop var(--md-sys-motion-spring-bounce-duration, 700ms)
-    var(--md-sys-motion-spring-bounce, ease-out) both;
-}
-
-@keyframes splash-pop {
-  from {
-    transform: scale(0.7) translateY(24px);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-}
-
-.splash-title {
-  color: var(--md-sys-color-on-surface);
-}
-
-.splash-sub,
-.splash-hint {
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-.splash-loading {
-  margin-top: 18px;
-}
-
-.splash-loading md-circular-progress {
-  --md-circular-progress-size: 36px;
-  --md-circular-progress-active-indicator-color: var(--md-sys-color-primary);
-}
-
-/* 进入应用时：主页组件从下向上依次弹出，与开屏动画自然衔接 */
-.phone.entering .screen .screen-content > *,
-.phone.entering .screen .app-bar {
-  animation: rise-in var(--md-sys-motion-spring-spatial-default-duration, 500ms)
-    var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)) both;
-}
-
-.phone.entering .screen .screen-content > *:nth-child(1) { animation-delay: 20ms; }
-.phone.entering .screen .screen-content > *:nth-child(2) { animation-delay: 70ms; }
-.phone.entering .screen .screen-content > *:nth-child(3) { animation-delay: 120ms; }
-.phone.entering .screen .screen-content > *:nth-child(4) { animation-delay: 170ms; }
-.phone.entering .screen .screen-content > *:nth-child(5) { animation-delay: 220ms; }
-.phone.entering .screen .screen-content > *:nth-child(6) { animation-delay: 270ms; }
-.phone.entering .screen .app-bar { animation-delay: 0ms; }
-.phone.entering .screen .nav-bar {
-  animation: rise-in var(--md-sys-motion-spring-spatial-default-duration, 500ms)
-    var(--md-sys-motion-spring-spatial-default, cubic-bezier(0.2, 0, 0, 1)) 260ms both;
-}
-
-@keyframes rise-in {
-  from {
-    transform: translate3d(0, 28px, 0);
-    opacity: 0;
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-    opacity: 1;
-  }
-}
-
 /* ------------------------------------------------ liquid glass nav bar ----- */
 /* 液态玻璃：模糊 + 饱和度提升 + 边缘高光，颜色仍来自 surfaceContainer 角色 */
 .nav-bar.glass md-navigation-bar {
@@ -604,17 +506,19 @@ html[data-contour='bold'] .screen > .screen-inner {
   position: relative;
   z-index: 1;
 }
-/* 可预测式返回「提交」之后：那张卡**继续往上缩走**（不是标准弹出动画）。
-   手势进行中不能有过渡（要完全跟手），所以过渡只挂在这一刻的类上。 */
+/* 可预测式返回「提交」之后：那张卡**继续缩着沉走**（不是标准弹出动画）。
+   作者 2026-09-29：要的就是这种"退场后还在、再收掉"的层叠感（松手瞬间不是硬切）。
+   注意时长要与 navigation.tsx 里 setCommitOut(null) 的延时对齐（下面 320/260ms ↔ 360ms），
+   而且是**单实例**——不再渲染第二份副本，所以不会出现文字重影。 */
 .screen.predictive-out {
   transition:
-    transform 180ms cubic-bezier(0.05, 0.7, 0.1, 1),
-    opacity 180ms linear,
-    border-radius 180ms linear;
+    transform 320ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 260ms linear,
+    border-radius 260ms linear;
   transform-origin: 50% 0%;
-  transform: scale(0.88);
+  transform: scale(0.82) translateY(-1.5%);
   opacity: 0;
-  border-radius: 0 0 28px 28px;
+  border-radius: 0 0 32px 32px;
   overflow: hidden;
   pointer-events: none;
 }

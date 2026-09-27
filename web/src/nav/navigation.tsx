@@ -171,19 +171,21 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
         const phone = document.querySelector('.phone') as HTMLElement | null;
         /**
          * 可预测式返回**提交**（作者 2026-09-29 对照 Telegram 定的口径）：
-         * 手势期间「正在被退出的那一屏」已经跟着手指**下沉**（缩小 + 下移 + 变暗 + 收圆角），
-         * 底下那一屏原地露出来。松手就让它**继续沉下去退场**，然后落在底下那一屏上 ——
-         * 不再叠一次标准弹出动画（那会让同一段过场播两遍，就是"弹出两次 + 冲击"）。
+         * 手势期间「正在被退出的那一屏」跟着手指缩下去，底下那一屏原地露出来；
+         * 松手让那张卡**继续缩着沉走**（`.predictive-out`，320ms）再落定 —— 有一种
+         * "层叠退场"的观感，而不是硬切；同时**不叠**标准弹出动画（叠了就是"弹两次 + 冲击"）。
+         * 这里只用**一个实例**（不复制第二份渲染），所以不会有文字重影。
          */
         if (predictiveRef.current && phone?.classList.contains('predictive')) {
           predictiveRef.current = false;
           setEnteringKey(null);
-          setCommitOut(removed); // 让它继续下沉着退场（类名是 predictive-out，不是 exit-*）
+          setCommitOut(removed); // 继续沉走退场（类名 predictive-out，不是 exit-*）
           setStack(next); // 预览层里那一屏成为新的一屏
           setPeeking(null);
           phone.classList.remove('predictive', 'predictive-cancel');
           phone.style.setProperty('--predictive', '0');
-          schedule(() => setCommitOut(null), 200);
+          // 延时要 ≥ .predictive-out 的过渡时长（320/260ms），否则动画会被中途卸载
+          schedule(() => setCommitOut(null), 380);
           return;
         }
         setEnteringKey(null);
