@@ -11,8 +11,8 @@
  *       APP_URL=http://127.0.0.1:5173/ node scripts/check-about-credits.mjs
  *
  * 为什么特别写明：本仓库的脚本自述普遍没写前置，结果**有几个守卫长期没人跑**
- * （这条与 check-imports 此前没有任何 workflow 引用）。现在它已接进 auto-review，
- * CI 里对着 preview（4173）跑。
+ * （这条与 check-imports 此前没有被任何脚本引用）。现在它已接进本地守卫脚本，
+ * 对着 preview（4173）跑。
  */
 import { chromium } from 'playwright';
 

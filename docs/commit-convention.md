@@ -27,7 +27,7 @@ chore(release): 版本号升至 0.92.1
 | `docs` | 文档：README、`docs/`、注释 |
 | `style` | 格式、空格、排版，不影响行为 |
 | `chore` | 杂活：版本号、依赖、构建脚本 |
-| `ci` | GitHub Actions、发布流水线 |
+| `ci` | 构建脚本、打包与发布流水线 |
 | `revert` | 回滚某次提交 |
 
 ## 范围

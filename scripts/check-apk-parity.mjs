@@ -32,9 +32,9 @@ async function walk(dir, base = '') {
 
 /** 直接读 APK（zip）里 `assets/www/` 下的文件哈希 —— **纯 Node，不依赖 PowerShell**。
  *
- * 为什么不能用 PowerShell：这条守卫现在跑在 CI 的 **ubuntu** runner 上，
+ * 为什么不能用 PowerShell：这条守卫要能在非 Windows 环境（例如以后接回来的自动构建）里跑，
  * 而它原先 `execFileSync('powershell', …)` —— 那里根本没有 `powershell`，
- * 于是接进 CI 的第一次运行就 ENOENT 失败（Android build #200 的第 10 步）。
+ * 于是第一次运行就 ENOENT 失败（Android build #200 的第 10 步）。
  * 自己解析 zip 的中央目录即可跨平台，也不需要把整天几十 MB 的内嵌资源解压到磁盘。
  *
  * 只支持 ZIP64 以外的常规条目 —— 本仓库的 APK 约 25 MB / 180 余条目，远在限制之内；

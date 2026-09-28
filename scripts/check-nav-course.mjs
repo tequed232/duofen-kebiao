@@ -9,7 +9,7 @@
  * 所以这里三件事一起钉：
  *   ① 纯逻辑（esbuild 直接跑 `web/src/lib/schedule.ts`）：正在上 > 今天下一节 > 顺延到后面有课的那天；空课表返回 null；
  *   ② 接线与文案：按钮在同一行、位置在「回到今天」左边，「没得导航」也有提示，确认按钮写「导航至 <地点>」；
- *   ③ 真实渲染（给了 APP_URL 才跑，CI 的 dev server 阶段）：两个按钮同底边、间距对称，点开是那个弹层。
+ *   ③ 真实渲染（给了 APP_URL 才跑，dev server 阶段）：两个按钮同底边、间距对称，点开是那个弹层。
  *
  * 用法：node scripts/check-nav-course.mjs
  *       APP_URL=http://127.0.0.1:5173/ node scripts/check-nav-course.mjs

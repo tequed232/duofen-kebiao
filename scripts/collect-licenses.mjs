@@ -8,7 +8,7 @@
  *
  * Usage:
  *   node scripts/collect-licenses.mjs            # 生成并写回两个文件
- *   node scripts/collect-licenses.mjs --check    # 只校验：署名清单与依赖不一致就非零退出（CI 用）
+ *   node scripts/collect-licenses.mjs --check    # 只校验：署名清单与依赖不一致就非零退出（校验用）
  *
  * 为什么要 --check：曾经引入本地识别依赖（`@techstark/opencv-js` 与 `tesseract.js`，都是 Apache-2.0）时，
  * 功能上了但**署名清单没同步** —— README 与设置页「开源相关」都缺这两条署名，
@@ -20,7 +20,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-/** --check：只比对不写盘，用于 CI */
+/** --check：只比对不写盘，用于校验 */
 const CHECK = process.argv.includes('--check');
 /** 收集到的「已过期」目标，最后统一报出来 */
 const stale = [];

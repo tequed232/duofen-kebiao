@@ -64,7 +64,7 @@ sqlite | PRAGMA | execSQL | rawQuery | Room\Database
 | `analyzeImage` 同时发 `image`(base64) 与 `image_url`(同一张图的 data URL) | 请求体约为图片的两倍 | data URL 对远端毫无用处（对方无法拉取），属于冗余；但接口是用户自建的自定义契约，删字段会破坏已跑通的配置 → 保持，仅记录 |
 | 密钥同时放进 `Authorization` 与 `x-api-key` | 两个请求头 | 兼容不同网关；都只发往用户自己填的端点，风险可接受 |
 | `authHeaders` 不区分大小写/空白 | 已 `trim()` | 无需改动 |
-| npm 依赖审计（`npm audit`） | 未纳入本次 | 建议下一步接入 CI（需要联网拉 registry） |
+| npm 依赖审计（`npm audit`） | 未纳入本次 | 建议下一步接入 npm 脚本（需要联网拉 registry） |
 
 ## 六、守卫与运行方式
 
@@ -74,10 +74,10 @@ sqlite | PRAGMA | execSQL | rawQuery | Room\Database
 | `npm run check:web-security` | `web/src` 的注入面 / 密钥进 URL / 明文 http |
 | `npm run check:hygiene` | 安装包与压缩包不进仓库 |
 
-三者都已接入 `.github/workflows/repo-hygiene.yml`（push / PR / 手动触发），命中即失败。
+三者都已作为本地守卫脚本（`npm run check:hygiene` / `check:secrets` / `check:web-security`），命中即失败。
 
 ## 七、残余风险与建议
 
 1. 用户若把公网端点写成明文 http，会被入口拦下（提示改用 https）——这是**有意的硬闸**，不做"仍然发送"的绕过开关。
 2. 密钥保护依赖设备本身：应用不加密 IndexedDB 中的密钥（本地单用户场景，加密的密钥仍需可解，收益有限）；如需更强保护，可考虑接入 Android Keystore 由宿主代持。
-3. 建议后续把 `npm audit` 与依赖版本锁定检查纳入 CI。
+3. 建议后续在联网环境跑 `npm audit` 与依赖版本锁定检查。

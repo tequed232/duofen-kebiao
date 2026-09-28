@@ -63,7 +63,7 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 
 ## 目录结构
 
-仓库只做四件事：**网页应用**（`web/`）、**Android 宿主**（`app/`）、**自动化与发布**（`scripts/` + `.github/`）、**文档与合规**（`docs/` + 根目录的几份 Markdown）。
+仓库只做四件事：**网页应用**（`web/`）、**Android 宿主**（`app/`）、**脚本与发布**（`scripts/`）、**文档与合规**（`docs/` + 根目录的几份 Markdown）。
 构建产物（`dist/`、`build/`）与签名文件一律不入库。
 
 ### 顶层
@@ -75,7 +75,6 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | `scripts/` | 构建、校验、发布、数据导入脚本 | 一个脚本只做一件事，名字以 `check-` / `verify-` 开头的是验收类 |
 | `docs/` | 文档与授权凭据 | 说明、台账、评估、规范都放这里 |
 | `deploy/` | 部署配置（反爬 / CDN） | 只放配置与对应说明，不放构建产物 |
-| `.github/` | CI 与仓库自动化 | 工作流按用途一个文件一件事 |
 | `legacy/` | 上一版单文件页面，仅供备查 | 不再改动 |
 | `preview/` | 宽屏设计稿（非应用运行时资源） | 只放设计稿，不参与构建 |
 | `artwork/` | 早期矢量图标的渲染稿（`app-icon.png`，1024×1024，**不是**当前图标原图） | 设计留档，不参与运行时；当前图标原图见 `docs/icon-source.jpg` |
@@ -197,7 +196,7 @@ Material 3 Expressive 风格的课表应用 —— **四日课表 + 教材识别
 | 需要被打包的图片 | `web/src/assets/` |
 | 需要原样发布到站点的文件 | `web/public/` |
 | 颜色 / 动效 / 样式 | `web/src/theme/` |
-| 校验脚本 | `scripts/`，命名 `check-*.mjs` 并接入 `package.json` 与 CI |
+| 校验脚本 | `scripts/`，命名 `check-*.mjs` 并接入 `package.json` |
 | 说明文档 | `docs/` |
 | 第三方素材 | **先**在 `docs/asset-permissions.md` 登记授权，再放进 `web/public/` 或 `app/src/main/res/` |
 
@@ -230,7 +229,7 @@ dist/
 
 ### 网页（GitHub Pages）
 
-源码留在 `main`，**构建产物不入库**。推送到 `main` 后由 `.github/workflows/pages.yml` 重新构建，并把 `dist/` 推送到 `gh-pages` 分支发布（`gh-pages` 上放 `.nojekyll` 关闭 Jekyll 处理）；PR 只跑构建校验，不发布。上一版单文件页面保留在仓库的 `legacy/index.html`，仅供备查。
+源码留在 `main`，**构建产物不入库**。发布方式：本地构建后把 `dist/` 发到 `gh-pages` 分支（`gh-pages` 上放 `.nojekyll` 关闭 Jekyll 处理）。自动化工作流已整体移除，作者会重新配置。上一版单文件页面保留在仓库的 `legacy/index.html`，仅供备查。
 
 首次启用需要把 Pages 的发布源指向 `gh-pages` 分支（仓库管理员执行一次）：
 
@@ -280,7 +279,7 @@ release 构建默认**回退 debug 签名**，只够自用。要换成正式签�
 **安装包与压缩包不进仓库**（APK / web zip 只是 Release 附件，Pages 上不再托管 APK）：
 
 - `.gitignore` 忽略 `*.apk` / `*.aab` / `*.zip` 等；
-- `npm run check:hygiene`（`scripts/check-repo-hygiene.mjs`）与 `.github/workflows/repo-hygiene.yml` 在每次推送与 PR 上检查，被跟踪的安装包/压缩包会让 CI 变红（防 `git add -f` 与 PR 里塞二进制）；
+- `npm run check:hygiene`（`scripts/check-repo-hygiene.mjs`）在本地提交前检查，被跟踪的安装包/压缩包会让守卫变红（防 `git add -f` 与 PR 里塞二进制）；
 - 最新版直链：`https://github.com/tequed232/duofen-kebiao/releases/latest`（历史版本见私有归档仓库；旧链接 `tequed232.github.io/duofen-kebiao/enhance.apk` 已失效）。
 
 线上部署同样用 `scripts/verify.mjs` 回归：
@@ -320,7 +319,7 @@ $env:OUT_DIR='screenshots-live'; node scripts/verify.mjs https://tequed232.githu
 - `deploy/anubis/botPolicies.yaml` — 放行搜索引擎、拒绝 AI 抓取器与常见脚本 UA、按权重分档挑战
 - `deploy/anubis/Caddyfile` — 域名 TLS、限速、安全响应头，`reverse_proxy` 到 Anubis
 - `deploy/anubis/VERSION` — 锁定的上游版本
-- `.github/workflows/anubis-watch.yml` — **持续监控**：每天比对上游 release（有新版本自动开 issue）、校验策略文件、并在配置了 `ANUBIS_BASE_URL` secret 时探活线上实例
+- Anubis 上游监控（原为随仓库附带的每日巡检工作流，已随 Actions 一并移除，待重新配置）：比对上游 release、校验策略文件、并在配置了 `ANUBIS_BASE_URL` secret 时探活线上实例
 
 > GitHub Pages 不能直接跑 Anubis（它需要自己的服务器作为反向代理）。做法是：域名解析到 VPS，Caddy 终止 TLS 后交给 Anubis，Anubis 回源到 `https://tequed232.github.io/duofen-kebiao`。详细的部署步骤、Prometheus 抓取配置与告警建议见 [`deploy/anubis/README.md`](./deploy/anubis/README.md)。
 
@@ -357,7 +356,7 @@ node scripts/visual-parity.mjs   # 同一虚拟设备分别截 APK 内嵌资源�
 
 ## 素材授权
 
-任何第三方素材进入本仓库之前，都必须先在 [`docs/asset-permissions.md`](./docs/asset-permissions.md) 留下**书面授权记录**；没有记录的素材一律不得进入代码或构建产物。当前插画作者 **miratsu**（Bilibili 空间 18112887）已通过审核，但尚未明确 CC 授权框架，暂不引入，状态与私信模板见该文档；`.github/workflows/permission-reminder.yml` 会每周提醒跟进，状态更新后自动停止。
+任何第三方素材进入本仓库之前，都必须先在 [`docs/asset-permissions.md`](./docs/asset-permissions.md) 留下**书面授权记录**；没有记录的素材一律不得进入代码或构建产物。当前插画作者 **miratsu**（Bilibili 空间 18112887）已通过审核，但尚未明确 CC 授权框架，暂不引入，状态与私信模板见该文档；原有一个每周提醒的工作流随 Actions 一并移除，状态更新请手动跟进。
 
 构建产物里的图片只有一类：「致谢 · 名片墙」上各人的**公开头像**（GitHub / B 站，已登记在 `docs/asset-permissions.md`）。课表页头图暂缺（主美会另出，到位后按台账流程登记再启用）。早期版本用过的插画已于 **v1.0.9** 全部下架，安装图标与界面装饰改由 **Material Symbols Rounded** 字形 + **Material 3 Expressive** 形状语汇自行绘制，配色一律取 `--md-sys-color-*` 角色。
 
