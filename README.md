@@ -371,7 +371,9 @@ npm run apk:parity           # APK 内嵌资源与 dist/ 逐文件哈希比对
 
 > 逐步结果（含逐屏截图路径）都会写进 `screenshots/report.json`，0 报错才算通过。
 
-结果：全部步骤通过、**0 个 console 错误、0 个 page error**（逐步结果见 `screenshots/report.json`）；截图见 `screenshots/`。线上部署（GitHub Pages）用同一套脚本跑过一遍，截图与报告在 `screenshots-live/`。
+结果：**无 console 错误、无 page error**；逐步结果见 `screenshots/report.json`，截图见 `screenshots/`。
+
+> 如实说明现状：`verify.mjs` 里**课程详情 / 筛选 / 课表导入**这三段（5 步）目前会失败，原因是脚本自身的等待时序与种子数据假设没跟上这一版 UI —— 同一条链路在专用守卫里是通过的（`check-sheet-motion.mjs` 能点开课程详情、`check-viewport.mjs` 能打开导入面板、`check-import-e2e.mjs` 能真导入一份课表）。前 15 步（教材窗口、4×4 分页看板、原生日期选择器跳周、回到今天、看板拖拽翻页、下滑收起与展开）已全绿。这 5 步待修。
 
 ## 反爬防火墙（Anubis）
 
