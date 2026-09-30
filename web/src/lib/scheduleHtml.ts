@@ -271,7 +271,7 @@ function pseudoTableToTable(html: string): { html: string; kind: string } | null
     cell.childNodes.forEach(walk);
     return parts.join('');
   };
-  const collect = (root: Element, selector: string): string[][] => {
+  const collect = (root: Document | Element, selector: string): string[][] => {
     const rows: string[][] = [];
     for (const row of Array.from(root.querySelectorAll(selector))) {
       const cells = Array.from(row.querySelectorAll('[role="cell"],[role="gridcell"],[class*="cell"]'))

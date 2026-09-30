@@ -215,9 +215,11 @@ export default function PhraseManagerScreen() {
                   max={PHRASE_LIMITS.fluctuationPct[1]}
                   step={5}
                   ariaLabel="波动幅度"
-                  onInput={(event: Event) => {
-                    const next = clampFluctuation(Number((event.target as HTMLInputElement).value));
-                    apply({ ...config, fluctuationPct: next });
+                  onInput={(value: number) => {
+                    // MdSlider 的 onInput 传的是**数值**（见 components/md.tsx：
+                    // inputHandler.current?.(Number(element.value))）。这里以前按 Event 用，
+                    // 于是 event.target 是 undefined → 波动幅度恒为 NaN。
+                    apply({ ...config, fluctuationPct: clampFluctuation(value) });
                   }}
                 />
               </div>

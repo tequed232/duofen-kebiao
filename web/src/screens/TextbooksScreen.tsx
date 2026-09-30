@@ -13,6 +13,8 @@ import { MdDialog, MdIcon, MdIconButton, MdTextField } from '../components/md';
 import { useAppState } from '../state/AppState';
 import { useNav } from '../nav/navigation';
 import { highlightKeyFor } from '../components/schedule';
+// haptic() 之前漏了 import：点「导入教程」会 ReferenceError（真机上点得出来）
+import { haptic } from '../lib/native';
 import { targetWeekFor, weekNumberFor } from '../lib/schedule';
 import ImportTutorial from './ImportTutorial';
 

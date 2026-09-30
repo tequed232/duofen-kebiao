@@ -149,12 +149,15 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // 先收敛成局部常量：这样 TS 能在三元里把 'off' 排除掉，也不依赖 ?? 的二次求值
+  const contourIntensity = settings.contour ?? 'subtle';
+
   return (
     <div className="stage">
       <div className={['phone', entering ? 'entering' : ''].join(' ').trim()}>
         <NavHost
           screens={SCREENS}
-          background={(settings.contour ?? 'subtle') !== 'off' ? <ContourBackground intensity={settings.contour ?? 'subtle'} /> : null}
+          background={contourIntensity === 'off' ? null : <ContourBackground intensity={contourIntensity} />}
         />
       {/* 常驻底栏：整个应用只渲染一份，位于屏幕栈之外 ——
           从根本上避免"切页导致底栏卸载/捕获残留/动画位移"造成的点击失效与重复跳转 */}
