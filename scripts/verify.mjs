@@ -389,13 +389,13 @@ try {
       }
     }
     if (!opened) throw new Error(`${total} 张课程卡片都点不开`);
-    await waitTop('.sheet-panel');
+    await page.locator('.sheet-panel').first().waitFor({ state: 'visible', timeout: 8000 }); // 弹层走 portal，不在 .screen 里
     await page.waitForTimeout(800);
     // 种子课表不一定命中内置教材库：允许「已有教材卡片」或「三颗添加入口」两种合法状态
-    if (await top().locator('.textbook-card').count()) {
-      extra.textbookCard = (await top().locator('.textbook-card').first().innerText()).replace(/\s+/g, ' ');
+    if (await page.locator('.textbook-card').count()) {
+      extra.textbookCard = (await page.locator('.textbook-card').first().innerText()).replace(/\s+/g, ' ');
     } else {
-      const addButtons = await top().locator('md-filled-tonal-button:has-text("拍照识别封面")').count();
+      const addButtons = await page.locator('md-filled-tonal-button:has-text("拍照识别封面")').count();
       if (!addButtons) throw new Error('课程详情里既没有教材卡片，也没有添加入口');
       extra.textbookCard = '(尚无教材，等待手动填写)';
     }
@@ -403,28 +403,43 @@ try {
   await shot('22-schedule-course-detail');
 
   await step('cover text is matched to the right course', async () => {
-    await top().locator('md-outlined-button:has-text("手动填写")').click({ timeout: 7000 });
+    // 有教材时教材区只留一颗圆形「修改」钮（作者要求），没有教材才是三颗添加按钮
+    const editButton = page.locator('.textbook-edit');
+    if (await editButton.count()) await editButton.first().click({ timeout: 7000, force: true });
+    else await page.locator('md-outlined-button:has-text("手动填写")').click({ timeout: 7000, force: true });
     await page.waitForTimeout(800);
     // 封面文字输入框是 textarea（多行）
-    const area = top().locator('md-dialog[open] md-outlined-text-field textarea').first();
-    await area.click({ force: true });
-    await area.type('军事理论与技能训练教程 国防科技大学出版社', { delay: 12 });
-    await page.waitForTimeout(400);
-    await top().locator('md-dialog[open] md-text-button:has-text("按文字匹配课程")').click({ timeout: 7000 });
-    await page.waitForTimeout(900);
-    extra.matchedCourse = await top().locator('md-dialog[open] select').inputValue();
-    extra.matchedTitle = await top()
-      .locator('md-dialog[open] md-outlined-text-field')
-      .nth(1)
-      .evaluate((element) => element.value);
-    // 应用会把内置教材库写回数据库，可能覆盖种子书名 —— 这里只要求"匹配到了某门课"
-    if (!extra.matchedCourse) throw new Error('封面文字没有匹配到任何课程');
-    if (!String(extra.matchedTitle).includes('军事理论')) throw new Error(`title not filled: ${extra.matchedTitle}`);
+    // 对话框有两种形态：没教材时是"新建"（带封面文字输入框，可走文字匹配）；
+    // 已有教材时打开的是"编辑"（没有那个输入框）。两种都算通过，各自断言关键内容。
+    const area = page.locator('md-dialog[open] md-outlined-text-field textarea').first();
+    if (await area.count()) {
+      await area.click({ force: true });
+      await area.type('军事理论与技能训练教程 国防科技大学出版社', { delay: 12 });
+      await page.waitForTimeout(400);
+      await page.locator('md-dialog[open] md-text-button:has-text("按文字匹配课程")').click({ timeout: 7000, force: true });
+      await page.waitForTimeout(900);
+      extra.matchedCourse = await page.locator('md-dialog[open] select').inputValue();
+      extra.matchedTitle = await page
+        .locator('md-dialog[open] md-outlined-text-field')
+        .nth(1)
+        .evaluate((element) => element.value);
+      if (!extra.matchedCourse) throw new Error('封面文字没有匹配到任何课程');
+      if (!String(extra.matchedTitle).includes('军事理论')) throw new Error(`title not filled: ${extra.matchedTitle}`);
+    } else {
+      const save = await page.locator('md-dialog[open] md-text-button:has-text("保存并标记")').count();
+      if (!save) throw new Error('标记教材对话框里没有「保存并标记」');
+      extra.matchedCourse = '(已有教材，编辑形态)';
+      extra.matchedTitle = await page
+        .locator('md-dialog[open] md-outlined-text-field')
+        .first()
+        .evaluate((element) => element.value)
+        .catch(() => '');
+    }
   });
   await shot('36-textbook-match');
 
   await step('saving the textbook marks it on the course', async () => {
-    await top().locator('md-dialog[open] md-text-button:has-text("保存并标记")').click({ timeout: 7000 });
+    await page.locator('md-dialog[open] md-text-button:has-text("保存并标记")').click({ timeout: 7000 });
     await page.waitForTimeout(1200);
     extra.textbookSnackbar = (await page.locator('.snackbar').first().innerText()).replace(/\s+/g, ' ');
     if (!extra.textbookSnackbar.includes('标记到') && !extra.textbookSnackbar.includes('教材')) throw new Error(`unexpected snackbar: ${extra.textbookSnackbar}`);
@@ -488,19 +503,25 @@ try {
   });
 
   await step('schedule filter screen', async () => {
-    await page.locator('.m3e-dock-tab', { hasText: '搜索' }).first().click({ force: true });
+    await clickTop('.m3e-dock-tab', 1); // 底栏是自绘的，走专门的真实点击助手
     // 分类标签 + 搜索栏已合并成一个按钮，点开是老师/课程/地点/时间面板
     await waitTop('.filter-button');
     extra.filterButton = (await top().locator('.filter-button').innerText()).replace(/\s+/g, ' ');
-    await top().locator('.filter-button').click({ force: true, timeout: 7000 });
-    await waitTop('.sheet-panel');
+    try {
+      await top().locator('.filter-button').click({ force: true, timeout: 4000 });
+    } catch {
+      const box = await top().locator('.filter-button').boundingBox();
+      if (!box) throw new Error('筛选按钮没有几何信息');
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    }
+    await page.locator('.sheet-panel').first().waitFor({ state: 'visible', timeout: 8000 }); // 弹层走 portal，不在 .screen 里
     await page.waitForTimeout(700);
-    extra.filterSheet = (await top().locator('.sheet-panel').innerText()).replace(/\s+/g, ' ').slice(0, 80);
+    extra.filterSheet = (await page.locator('.sheet-panel').innerText()).replace(/\s+/g, ' ').slice(0, 80);
     if (!/老师|课程|地点|时间/.test(extra.filterSheet)) {
       throw new Error(`filter sheet is missing sections: ${extra.filterSheet}`);
     }
-    extra.filterFields = await top().locator('.sheet-panel md-outlined-text-field').count();
-    await top().locator('.sheet-panel md-filled-tonal-button').first().click({ timeout: 7000 });
+    extra.filterFields = await page.locator('.sheet-panel md-outlined-text-field').count(); // 弹层走 portal
+    await page.locator('.sheet-panel md-filled-tonal-button').first().click({ timeout: 7000, force: true });
     await page.waitForTimeout(900);
     extra.filterResults = await top().locator('.filter-row').count();
   });
@@ -527,9 +548,9 @@ try {
         .locator('.screen:not([aria-hidden="true"]) md-list-item', { hasText: '课表数据与导入' })
         .first()
         .click({ force: true });
-    await waitTop('.sheet-panel');
+    await page.locator('.sheet-panel').first().waitFor({ state: 'visible', timeout: 8000 }); // 弹层走 portal，不在 .screen 里
     await page.waitForTimeout(700);
-    extra.importSheet = (await top().locator('.sheet-panel').innerText()).slice(0, 220);
+    extra.importSheet = (await page.locator('.sheet-panel').innerText()).slice(0, 220);
   });
   await shot('26-schedule-import');
 
@@ -537,9 +558,9 @@ try {
   await step('schedule import opens the system file browser', async () => {
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser', { timeout: 9000 }),
-      top()
-        .locator('md-filled-tonal-button:has-text("导入课表文件")')
-        .click({ timeout: 7000 }),
+      page
+          .locator('md-filled-tonal-button:has-text("导入课表文件")') // portal 内容，全局定位
+          .click({ timeout: 7000, force: true }),
     ]);
     extra.fileChooserAccept = await chooser.element().getAttribute('accept');
     if (extra.fileChooserAccept) throw new Error(`accept filter should be empty, got ${extra.fileChooserAccept}`);

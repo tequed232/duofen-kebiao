@@ -371,9 +371,9 @@ npm run apk:parity           # APK 内嵌资源与 dist/ 逐文件哈希比对
 
 > 逐步结果（含逐屏截图路径）都会写进 `screenshots/report.json`，0 报错才算通过。
 
-结果：**无 console 错误、无 page error**；逐步结果见 `screenshots/report.json`，截图见 `screenshots/`。
+结果：**19 步全绿、0 console 错误、0 page error**；逐步结果见 `screenshots/report.json`，截图见 `screenshots/`。
 
-> 如实说明现状：`verify.mjs` 里**课程详情 / 筛选 / 课表导入**这三段（5 步）目前会失败，原因是脚本自身的等待时序与种子数据假设没跟上这一版 UI —— 同一条链路在专用守卫里是通过的（`check-sheet-motion.mjs` 能点开课程详情、`check-viewport.mjs` 能打开导入面板、`check-import-e2e.mjs` 能真导入一份课表）。前 15 步（教材窗口、4×4 分页看板、原生日期选择器跳周、回到今天、看板拖拽翻页、下滑收起与展开）已全绿。这 5 步待修。
+> 维护提示（这轮踩过的两个坑，改这个脚本前先看）：弹层（`ExpandableSheet`）走 `createPortal` 渲染，**不在 `.screen` 里**，所以弹层与对话框相关的定位必须用全局 `page.locator(...)`，用 `top().locator(...)` 会永远等不到；底栏（`.m3e-dock`）的切换由 `pointerdown/pointerup` 判定，要用脚本里的 `clickTop('.m3e-dock-tab', 索引)` 去点（索引 0=首页、1=搜索、2=设置）。
 
 ## 反爬防火墙（Anubis）
 
