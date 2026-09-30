@@ -11,8 +11,8 @@
  *       APP_URL=http://127.0.0.1:5173/ node scripts/check-about-credits.mjs
  *
  * 为什么特别写明：本仓库的脚本自述普遍没写前置，结果**有几个守卫长期没人跑**
- * （这条与 check-imports 此前没有任何 workflow 引用）。现在它已接进 auto-review，
- * CI 里对着 preview（4173）跑。
+ * （这条与 check-imports 此前没有被任何脚本引用）。现在它已接进本地守卫脚本，
+ * 对着 preview（4173）跑。
  */
 import { chromium } from 'playwright';
 
@@ -83,7 +83,7 @@ console.log(JSON.stringify(report, null, 2));
 
 // 断言
 const fails = [];
-if (report.cardCount !== 6) fails.push(`名片数应为 6，实为 ${report.cardCount}`);
+if (report.cardCount !== 5) fails.push(`名片数应为 5，实为 ${report.cardCount}`);
 if (report.hasInlineSpan) fails.push('仍存在 grid-column 内联跨列样式');
 if (report.rows.some((r) => r.perRow !== 1)) fails.push('存在一行多张名片，不是 1×3 列表');
 if (report.overflowX) fails.push('出现横向溢出');

@@ -617,12 +617,15 @@ md-primary-tab {
   padding: 10px;
   border-radius: 20px;
   background: var(--md-sys-color-surface-container-low);
+  /* 课本容器的高度**只有一个来源**：封面与那颗圆形修改按钮都读它，
+     这样"圆钮直径 = 课本容器高"是构造上成立的，而不是靠两处写同一个数。 */
+  --textbook-cover-h: 64px;
 }
 
 .textbook-cover {
   flex: 0 0 auto;
   width: 46px;
-  height: 64px;
+  height: var(--textbook-cover-h, 64px);
   border-radius: 8px;
   object-fit: cover;
   background: var(--md-sys-color-surface-container-highest);
@@ -634,9 +637,30 @@ md-primary-tab {
   color: var(--md-sys-color-on-surface-variant);
 }
 
+/* 已有教材时唯一的操作：一颗**圆形修改按钮**。
+   作者要求「直径和课本容器相等」—— 封面与它都读同一个 `--textbook-cover-h`，
+   于是直径 = 课本容器高是**构造上成立**的（不是两处各写一个 64）。
+   不用 MdIconButton 是因为它带 40px 固定触摸盒，做不出"等直径"。 */
+.textbook-edit {
+  flex: 0 0 auto;
+  width: var(--textbook-cover-h, 64px);
+  height: var(--textbook-cover-h, 64px);
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.textbook-edit:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 24%, var(--md-sys-color-primary-container));
+}
+
 .textbook-select {
-  display: block;
-  width: 100%;
+  display: block;  width: 100%;
   margin-top: 6px;
   height: 56px;
   padding: 0 12px;
@@ -962,18 +986,24 @@ html[data-perf='low'] .screen {
    压在底栏上会让内容看起来蒙了一层纱 —— 作者要求「能直接透过底栏看列表」，
    玻璃质感改由透镜折射（rim）+ 描边 + 滑块表达。） */
 
-/* ===== 设置 → 底栏散射「强」：把 v3.0.1（09-23 04:11 那个 release）的散射口径投射回来 =====
-   当年那一版是：**本体 blur(18px) saturate(1.6) + 底色 surface-container 58%**，散射层 11px。
-   现在这一版为了"看得见折射/能透出列表"，本体只留图内 ~2.4px 轻磨砂 + 底色 alpha 0%，
-   散射层的 11px 也一起降过 8px。
-   实测（build/check-dock-scatter.cjs，灰阶棋盘量高频能量）：散射层 8↔11px **几乎量不出差别**
-   （边缘 0.2%~0.6%，而且 8px 已经把细棋盘糊平了）——也就是说"看着更毛"的功劳基本在本体那 18px 上。
-   所以「强」档投的是本体，而不是只把 11px 写回去。
-   默认档（不加这个属性）一个字不改，折射观感与现在完全一致。 */
+/* ===== 设置 → 底栏散射「强」：加重磨砂，但**不许把色散盖掉** =====
+   当年 v3.0.1 那一版是：本体 blur(18px) saturate(1.6) + 底色 surface-container 58%。
+   作者 2026-09-25 的反馈：「dock 栏毛玻璃效果太重了，没有展示出色散效果」——
+   实测（build/check-dock-scatter-dispersion.cjs，灰阶棋盘，色散=极致档）：
+
+     散射=轻（底色 alpha 0%）：上边缘带 |R−B| **23.06**、下边缘带 9.54
+     散射=强（底色 alpha 58%）：上边缘带 **6.55**、下边缘带 3.54   ← 色散被那层 58% 底色盖掉了
+
+   所以这一档改成「比轻档更毛、但色散照样看得见」：只把底色提到 **30%**，
+   **不再叠尾部模糊** —— 色散是"三通道位移之差"，滤链尾巴上再加模糊会把刚分开的
+   R/B 又糊回去（这也是当初把 2px 磨砂挪进滤镜图内部的原因）。
+   参考实现（Gemini 那份）的玻璃底色是 rgba(255,255,255,0.08) + blur(20px) saturate(180%)，
+   本项目的「轻」档本来就更透（alpha 0%），真正过头的只有这一档。
+   默认档（不加这个属性）一个字不改。 */
 html[data-dock-scatter='strong'] .m3e-dock {
-  background: color-mix(in srgb, var(--md-sys-color-surface-container) 58%, transparent);
-  backdrop-filter: blur(18px) saturate(1.6);
-  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container) 30%, transparent);
+  backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
+  -webkit-backdrop-filter: var(--lg-backdrop, blur(3px) saturate(1.55));
 }
 
 /* 选中滑块：一格的宽度，按选中序号平移。
@@ -1450,3 +1480,68 @@ html[data-perf='high'] .m3e-dock {
    那个 '·' 就孤零零挂在换行后的行尾 ——「资源就绪：图像处理库 / 识别引擎 / 中文模型 ·」。
    修复裁字之前它被一起裁掉了，所以看不见；修复之后才暴露出来。
    两行本就是各自独立的句子，改用间距（gap 的列间距）区分即可。 */
+
+/* 导入面板里「让 AI 把课表照片变成文件」的引导块 ——
+   作者 2026-09-26 把「本地导入 HTML / JSON 文件」定为主路径，所以它要显眼、可点进去看教程。 */
+.import-guide {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--md-sys-color-primary-container) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 24%, transparent);
+}
+
+.import-guide code {
+  font-family: var(--md-ref-typeface-mono, ui-monospace, monospace);
+  font-size: 0.92em;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-highest) 72%, transparent);
+}
+
+.import-guide .import-guide-open {
+  --md-text-button-label-text-color: var(--md-sys-color-primary);
+}
+
+/* 「解析并导入文本」：原来是纯文字按钮，和下一节标题糊在一起（作者 2026-09-27 反馈看不到），
+   现在给它实心底色 + 与上下内容拉开距离。 */
+.paste-import-row {
+  margin: 4px 0 16px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.paste-import-row md-filled-tonal-button {
+  --md-filled-tonal-button-container-height: 44px;
+  --md-filled-tonal-button-label-text-weight: 600;
+}
+
+/* 周次块中间那颗按钮：点它唤起系统原生日期选择器（原来那颗与它重复的日期按钮已删）。 */
+.week-label-button {
+  position: relative;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.week-label-button:active { opacity: 0.7; }
+
+/* 隐藏的原生日期输入：只借用系统的选择器 UI，不占版面 */
+.week-date-input {
+  position: absolute;
+  inset: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: none;
+}

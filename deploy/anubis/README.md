@@ -36,7 +36,7 @@ curl -I https://你的域名/          # 未通过挑战时会返回 Anubis 的�
 
 监控分两条线，仓库里已经准备好了：
 
-1. **上游版本监控（GitHub Actions）**：`.github/workflows/anubis-watch.yml`
+1. **上游版本监控**：原为随仓库附带的每日巡检工作流（已随 Actions 一并移除，待重新配置）
    - 每天定时抓取 TecharoHQ/anubis 的最新 release 与 tags；
    - 与 `deploy/anubis/VERSION` 比对，有新版本就自动开一个 issue（同标题的 issue 不会重复开，追加评论）；
    - 同时校验本目录的 `botPolicies.yaml` 是否能被解析（YAML 语法 + 必需字段）。

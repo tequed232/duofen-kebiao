@@ -10,7 +10,7 @@
  * 编译也不会报错，只能靠守卫长期兜住。
  *
  * 用法：node scripts/check-decommissioned.mjs
- *   命中已下线子系统的文件 / 符号 → exit 1（CI 会红）
+ *   命中已下线子系统的文件 / 符号 → exit 1（守卫会红）
  *
  * 新增下线子系统时，在下方 REMOVED 清单里加一条声明即可。
  */
@@ -36,6 +36,35 @@ const REMOVED = [
       /dockactive/i, // dockActive 桥、nativeDockActive() 同步（含各种大小写）
       /DuofenDock/, // 网页暴露给原生底栏的回调接口
       /--native-dock/, // 给原生底栏预留高度的 CSS 变量（含注入与读取）
+    ],
+  },
+  {
+    name: 'local-ocr（本地识别：OpenCV + Tesseract，2026-09-27 下线）',
+    scanRoots: ['app/', 'web/'],
+    forbidPaths: [
+      /web\/src\/lib\/(localOcr|localOcrTypes|ocrStatus|localRecognize|opencvLoader|opencvPreprocess)\.ts$/,
+      /scripts\/setup-ocr\.mjs$/,
+    ],
+    forbidTokens: [
+      /localRecognize/,
+      /recognizeCover/,
+      /opencvLoader/,
+      /opencvPreprocess/,
+      /localOcrCdn/,
+      /syncOcrAssets/,
+      /chi_sim/,
+    ],
+  },
+  {
+    // 外围入口（包清单 / 构建脚本）单列一条：它们不在 app、web 下。
+    // token 一律拼接写，否则本文件自己就会被自己的规则命中（守卫必须扫不到自己）。
+    name: 'local-ocr 的外围入口（包清单 / 构建脚本）',
+    scanRoots: ['package.json', 'vite.config.ts', 'scripts/check-apk-parity.mjs'],
+    forbidTokens: [
+      new RegExp('setup' + ':ocr'),
+      new RegExp('sync' + 'OcrAssets'),
+      new RegExp('opencv' + '-js'),
+      new RegExp('tesseract' + '\\.js'),
     ],
   },
 ];

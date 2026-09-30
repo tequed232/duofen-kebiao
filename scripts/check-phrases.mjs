@@ -201,5 +201,12 @@ for (const action of actions) {
 check('6 步动作序列里 base 只被 base 动作改过', !baseChangedByPhrase);
 eq('末态 = 最后一次 base 的文案', P.notificationText(walk), '导航到X');
 
+
+// 通知栏大视图的换行：Kotlin 里必须是真换行 `\n`，不能写成反引号 + n ——
+// 那是两个字面字符，通知栏里会原样显示成 "`n"（作者真机上看到的就是这个）。
+const { readFileSync: readService } = await import('node:fs');
+const phraseService = readService('app/src/main/java/com/app/m3expressive/PhraseService.kt', 'utf8');
+check('通知栏换行是真的 \n', phraseService.includes('currentText() + "\\n"'));
+check('通知栏里没有字面 `n', !phraseService.includes('currentText() + "`n"'));
 console.log(`\n结果：${pass} 通过 / ${fail} 失败`);
 process.exit(fail ? 1 : 0);

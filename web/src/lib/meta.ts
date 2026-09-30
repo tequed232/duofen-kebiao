@@ -6,19 +6,20 @@ import avatarBinggan from '../assets/avatars/binggan-bskeke.jpg';
 import avatarChunqiu from '../assets/avatars/chunqiu-fxxggllj.jpg';
 import avatarHanbing from '../assets/avatars/hanbing-bili.webp';
 import avatarLuo from '../assets/avatars/luo-tequed232.jpg';
-import avatarMidada from '../assets/avatars/midada-bili.webp';
 import avatarWeizhou from '../assets/avatars/weizhou-whitemoon319.jpg';
-import appIcon192 from '../assets/app-icon-192.png';
+import appArt from '../assets/illustration.jpg';
 
 export const APP_NAME = '多分课表';
 export const APP_SHORT_NAME = '多分';
 /** 版本号唯一来源：APK 的 versionName / versionCode 由 app/build.gradle.kts 从这里解析。
  *  改这里之后，package.json 与 RELEASE_NOTES.md 最新一条要同步（npm run check:version 会挡）。 */
-export const APP_VERSION = 'v3.5.4';
-/** 应用图标（作者提供的插画，整幅等比、不裁切）。
- *  必须走打包器导入而不是写 `/icon-192.png`：APK 里页面是从 `/assets/www/` 提供的，
- *  绝对路径会 404（启动页与关于页曾经因此「没改」）。 */
-export const APP_ICON = appIcon192;
+export const APP_VERSION = 'v3.6';
+/** 作者那张插画（2026-09-25 交给我们的 DLSS 超分原图 2048×2048）——启动页大图、主页左上角、
+ *  关于页 hero 与「视觉与图标」四处共用这一份，**不许**各自再引一份图。
+ *  同样必须走打包器导入：写 `/illustration.jpg` 这种绝对路径在 APK 里会 404
+ *  （页面是从 `/assets/www/` 提供的），网页版却看不出毛病 —— 上面 APP_ICON 的注释记的就是这个坑，
+ *  2026-09-25 换插画时又踩了一次，所以现在是守卫 scripts/check-artwork-source.mjs 在挡。 */
+export const APP_ART = appArt;
 export const GITHUB_URL = 'https://github.com/tequed232/duofen-kebiao';
 export const COPYRIGHT = 'Tequed232 拥有本项目的最终解释权';
 
@@ -124,21 +125,6 @@ export const CREDITS: CreditPerson[] = [
     avatar: avatarWeizhou,
     badge: '该项目顾问',
     links: [{ platform: 'github', label: 'GitHub', url: 'https://github.com/WhiteMoon319' }],
-  },
-  {
-    displayName: '米达达',
-    role: '表情包引用',
-    mark: '米',
-    avatar: avatarMidada,
-    tone: 'tertiary',
-    license: {
-      label: 'CC BY-NC',
-      note: '权利人授权：署名 + 禁止商用',
-    },
-    links: [
-      { platform: 'bilibili', label: 'Bilibili', url: 'https://space.bilibili.com/3546769371695776' },
-      { platform: 'x', label: 'X', url: 'https://x.com/miratsu169' },
-    ],
   },
   {
     displayName: '椿湫',

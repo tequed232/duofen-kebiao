@@ -54,7 +54,7 @@ miratsu 老师您好，
 
 | 素材 | 来源 | 授权 | 用途 | 状态 |
 | --- | --- | --- | --- | --- |
-| `app/src/main/res/mipmap-*/ic_launcher*.png`、`web/public/icon-*.png`、`web/public/apple-touch-icon.png`、`web/src/assets/app-icon-192.png` | 项目作者在会话内提供原图（2026-09-23 首次提供；**2026-09-24 提供 DLSS 超分后的 2048×2048 版本**，留档 `docs/icon-source.jpg`，全套图标已按新图重新生成）。超分由**作者本人**完成，仓库侧只做等比降采样 | 权利人（项目作者本人）提供，作应用图标用 | 安卓自适应图标：前景 = 整幅画等比缩到 72/108 安全区、**不裁切**；圆形版只做圆形遮罩（系统圆形图标本就要求圆形）；底色 `#13161F` 取自画面左上角。生成口径在 `scripts/icon-targets.mjs`，命令 `npm run icons:app`，守卫 `npm run check:app-icons` | 已批准（approved） |
+| `app/src/main/res/mipmap-*/ic_launcher*.png`、`web/public/icon-*.png`、`web/public/apple-touch-icon.png` | 项目作者在会话内提供原图（2026-09-23 首次提供；**2026-09-24 提供 DLSS 超分后的 2048×2048 版本**，留档 `docs/icon-source.jpg`，全套图标已按新图重新生成）。超分由**作者本人**完成，仓库侧只做等比降采样 | 权利人（项目作者本人）提供，作应用图标用 | 安卓自适应图标：前景 = 整幅画等比缩到 72/108 安全区、**不裁切**；圆形版只做圆形遮罩（系统圆形图标本就要求圆形）；底色 `#13161F` 取自画面左上角。生成口径在 `scripts/icon-targets.mjs`，命令 `npm run icons:app`，守卫 `npm run check:app-icons` | 已批准（approved） |
 | `web/public/art/schedule-hero.jpg` | 项目作者 2026-09-23 在会话内提供 | 已按作者要求**先行下架**（主美会另出更好的图，尚未提供） | 曾用于课表页头图；文件已从仓库与构建产物移除 | 已撤下（withdrawn） |
 | `web/src/assets/avatars/*.jpg`、`*.webp`（4 张 GitHub + 2 张 B 站 + 2 张备用） | 各贡献者本人的平台公开头像：GitHub `github.com/<user>.png?size=240`；B 站 `api.bilibili.com/x/web-interface/card` 的 `face` + `@240w_240h_1c.webp` | 各人本人的公开头像，非商业致谢用途；项目作者（tequed232）确认可抓取 | 「关于 → 致谢 · 名片墙」的圆形头像（40dp / 52dp），加载失败自动退回姓名首字 | 已批准（approved） |
 | `web/src/assets/avatars/luo-bili.webp`、`binggan-bili.webp` | 同上（B 站头像） | 备用文件：把作者本人 / 饼干的名片头像从 GitHub 换回 B 站时使用 | 同上 | 备用，当前未被引用 |
@@ -66,16 +66,14 @@ miratsu 老师您好，
 | 权利人 | 许可 | 附加条款 | 凭据 | 应用内显示 |
 | --- | --- | --- | --- | --- |
 | **寒冰（Hanbing）** — B 站 `523955619`、抖音 | **CC BY** | **不允许任何形式的 AI 修改**；权利人原话为「以 GNU V3 开源协议使用 CCBY 权利使用我的作品」 | `docs/permissions/hanbing-cc-by.jpg`（聊天原文截图，同时打包进应用 `web/public/permissions/`） | 名片上的 `CC BY` 标记，**点击打开授权原文** |
-| **米达达（miratsu）** — B 站 `3546769371695776`、X `@miratsu169` | **CC BY-NC** | 署名 + **禁止商用** | 截图待补（权利人已在会话中确认，与寒冰保持一致的处理方式） | 名片上的 `CC BY-NC` 标记（暂无凭据，不可点） |
 
 权利人原话（寒冰，2026-09 会话）：
 
 > 就写我作为权利人，授权 Tequed232 以 GNU V3 开源协议使用 CCBY 权利使用我的作品，不允许使用任何形式的 ai 修改
 
-两点提醒：
+提醒：
 
 1. **仓库目前没有 LICENSE 文件**。授权原话提到「GNU V3 开源协议」，若要与之对齐，需要在仓库根目录补一个 `LICENSE`（GPL-3.0）。
-2. **CC BY-NC 与 GPLv3 不兼容**：GPLv3 要求允许商业使用，NC 条款禁止商用。因此米达达的作品**不要打包进构建产物**（当前只署名 + 链接，未打包任何作品本身，是安全的）；真要引入其作品，需要单独确认许可范围。
 
 > 「关于 → 致谢 · 名片墙」中同样列出。课表页头图**当前为空**：主美的新图到位后，放回 `web/public/art/`、在本表登记，并恢复 `schedule.css` 里 `.schedule-hero` 的 `--schedule-hero-image` 与 `ScheduleScreen` 中的占位元素即可；约定是**整张显示、不裁切、不压缩重编码**。
 

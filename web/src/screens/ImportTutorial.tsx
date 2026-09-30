@@ -1,45 +1,26 @@
 /**
- * 导入教程：本地封面识别，以及用多模态大模型把课表截图转成 HTML。
+ * 导入教程：本地封面识别，以及用多模态大模型把课表截图转成 **HTML / JSON 文件**。
  *
  * 为什么要有这个组件：这两条路都不直观 ——
  *   ① 本地识别要先把模型放到本机（npm run setup:ocr），用户得知道去哪看状态；
- *   ② 「图片转 HTML 课表」需要把课表截图交给 DeepSeek / Gemini / ChatGPT 这类多模态工具，
- *      再把它吐出来的 HTML 粘回本应用。没有提示词模板，用户很难一次问对。
- * 所以这里既讲步骤，也给**可直接复制**的提示词。
+ *   ② 「图片 → 可导入的文件」需要把课表截图交给 DeepSeek / Gemini / ChatGPT 这类多模态工具，
+ *      让它按固定格式吐 HTML 或 JSON，再把结果**存成文件**用「导入课表文件」选中。
+ *      没有提示词模板，用户很难一次问对。
+ * 所以这里既讲步骤，也给**可直接复制**的提示词；提示词本体在 `web/src/lib/importPrompts.ts`，
+ * 那份示例由 `scripts/check-import-guide.mjs` 喂给真实解析器验证过（示例必须真能导入）。
  */
 import { useRef, useState } from 'react';
 import { ExpandableSheet } from '../components/overlays';
 import { SectionHeader } from '../components/layout';
 import { MdIcon } from '../components/md';
+import {
+  SCHEDULE_HTML_PROMPT,
+  SCHEDULE_IMPORT_STEPS,
+  SCHEDULE_JSON_PROMPT,
+  TEXTBOOK_PROMPT,
+} from '../lib/importPrompts';
 
-/** 「图片 → HTML 课表」的提示词模板：把格式约束写死，避免模型自由发挥 */
-export const SCHEDULE_HTML_PROMPT = `你是一个课表结构化助手。我会上传一张教务系统课表的截图。
-
-请只输出一个 HTML <table>，不要任何解释、不要 Markdown 代码块标记、不要 <style> 与 <script>。
-
-格式要求：
-1. 第一行是表头，7 个 <th> 依次为：节次、星期一、星期二、星期三、星期四、星期五、星期六、星期日
-2. 之后每个 <tr> 的第一个 <td> 写节次与时间，例如：第1-2节 08:30-09:55
-3. 其余 <td> 每格写一门课，用换行分隔这四项：
-   课程名称
-   教师：xxx
-   教室：xxx
-   周次：1-16周
-4. 没有课的格子写 <td></td>
-5. 单元格里不要合并（不用 rowspan / colspan），一门课一个格子
-
-严格按上面的结构输出，我会直接把结果粘进课表应用。`;
-
-/** 「图片 → 教材信息」的提示词模板：本地识别认不准时用 */
-export const TEXTBOOK_PROMPT = `请识别这张教材封面上的信息，并按下面的格式逐行输出，不要输出多余内容：
-
-书名：
-出版社：
-作者：
-版次：
-ISBN：
-
-要求：只填封面上确实印着的内容；看不清的字段留空，不要猜测。`;
+export { SCHEDULE_HTML_PROMPT, SCHEDULE_JSON_PROMPT, TEXTBOOK_PROMPT };
 
 interface Props {
   open: boolean;
@@ -105,7 +86,7 @@ export default function ImportTutorial({ open, onClose, initialTab = 'textbook' 
           className={tab === 'schedule' ? 'credit-link' : 'credit-link ghost'}
           onClick={() => setTab('schedule')}
         >
-          课表：图片转 HTML
+          课表：图片转 HTML / JSON
         </button>
       </div>
 
@@ -114,29 +95,22 @@ export default function ImportTutorial({ open, onClose, initialTab = 'textbook' 
           <SectionHeader icon="photo_camera" title="第 1 步 · 拍照或选封面" />
           <p className="md-body-small muted">
             在「课程详情 → 教材」里点选图，把教材封面拍清楚即可。
-            <strong>图片只在本机处理，不会上传到任何服务器。</strong>
           </p>
 
-          <SectionHeader icon="bolt" title="第 2 步 · 本地自动识别" />
+          <SectionHeader icon="auto_awesome" title="第 2 步 · 交给多模态接口识别" />
           <p className="md-body-small muted">
-            识别分两步走，全部跑在你的设备上：
+            识别走你在 <strong>设置 → 图像识别与资源 → 接口配置</strong> 里填的多模态模型
+            （DeepSeek / Gemini / ChatGPT 这类都行）：把封面图交给它，读出书名、出版社与 ISBN，
+            再自动匹配到课表里的课程。
+            <strong>没配接口就只能手动填写</strong> —— 应用里已经不再内置本地识别了。
           </p>
-          <ol className="md-body-small muted tutorial-list">
-            <li>
-              <strong>OpenCV 预处理</strong>：自动裁出封面、聚出文字区、二值化抗反光 ——
-              手机随手拍的照片也能读。
-            </li>
-            <li>
-              <strong>Tesseract 中文 OCR</strong>：把封面上的字读出来，再和内置教材库匹配，
-              给出<strong>书名、出版社</strong>；封面印了 ISBN 的话还会做国际标准校验位验证。
-            </li>
-          </ol>
           <p className="md-body-small muted">
-            首次使用需要本机有识别模型（约 40 MB，放在 <code>web/public/ocr/</code>）。
-            开发者执行一次 <code>npm run setup:ocr</code> 即可；设置 → 接口配置里能看到是否就绪。
+            为什么去掉本地识别（2026-09-27）：OpenCV + Tesseract 那套要给每个安装包塞
+            40+ MB 的引擎与中文模型，识别率却不如免费多模态模型；下线之后 APK 从 26 MB
+            降到 4 MB 左右，识别效果反而更好。
           </p>
 
-          <SectionHeader icon="storage" title="可选 · 认不准时用多模态模型" />
+          <SectionHeader icon="storage" title="可选 · 认不准时自己问一遍" />
           <p className="md-body-small muted">
             封面太糊、艺术字太多时，可以把封面图交给 DeepSeek / Gemini / ChatGPT，
             用下面的提示词让它读成文字，再把结果粘回应用的输入框：
@@ -151,16 +125,13 @@ export default function ImportTutorial({ open, onClose, initialTab = 'textbook' 
         </div>
       ) : (
         <div className="mt-12">
-          <SectionHeader icon="image" title="第 1 步 · 截一张完整课表" />
-          <p className="md-body-small muted">
-            在教务系统里把课表截全（含表头与节次列）。分屏截图也行，但要保证
-            <strong>星期表头</strong>和<strong>节次/时间</strong>都在图里。
-          </p>
+          {SCHEDULE_IMPORT_STEPS.map((step) => (
+            <div key={step.title}>
+              <SectionHeader icon={step.icon} title={step.title} />
+              <p className="md-body-small muted">{step.body}</p>
+            </div>
+          ))}
 
-          <SectionHeader icon="article" title="第 2 步 · 交给多模态模型转 HTML" />
-          <p className="md-body-small muted">
-            把截图发给下面任一工具，连提示词一起发过去：
-          </p>
           <div className="row gap-8 wrap tutorial-tools">
             {TOOLS.map((tool) => (
               <span key={tool.name} className="credit-license">
@@ -168,24 +139,37 @@ export default function ImportTutorial({ open, onClose, initialTab = 'textbook' 
               </span>
             ))}
           </div>
+
+          <SectionHeader icon="data_object" title="提示词 A · 让 AI 输出 JSON（推荐）" />
+          <p className="md-body-small muted">
+            JSON 比 HTML 更不容易被模型写歪：字段名写死了，导入时不用猜。
+            把截图 + 下面这段一起发给 AI，然后把回复**存成 <code>.json</code> 文件**。
+          </p>
+          <CopyablePrompt text={SCHEDULE_JSON_PROMPT} />
+
+          <SectionHeader icon="article" title="提示词 B · 让 AI 输出 HTML 表格" />
+          <p className="md-body-small muted">
+            有些 AI 对表格更熟，那就用这条；回复**存成 <code>.html</code> 文件**即可。
+          </p>
           <CopyablePrompt text={SCHEDULE_HTML_PROMPT} />
 
-          <SectionHeader icon="upload" title="第 3 步 · 粘回应用" />
+          <SectionHeader icon="upload" title="第 3 步 · 用「导入课表文件」选中它" />
           <p className="md-body-small muted">
-            把模型输出的 HTML 整段复制，回到「课表 → 导入」，粘贴即可。
-            解析器兼容这些情况，不用手工修：
+            回到「课表 → 导入 → 导入课表文件」，选中刚存下的 .html / .json。
+            没有存成文件也不要紧，把 AI 的整段回复粘进「粘贴课表文本」一样能导入；解析器自动兼容：
           </p>
           <ul className="md-body-small muted tutorial-list">
-            <li>带 <code>```html</code> 围栏或前后带说明文字的回复</li>
-            <li>表头写「星期一 / 周一 / 一 / Mon」等不同写法</li>
+            <li>带 <code>```html</code> / <code>```json</code> 围栏或前后带说明文字的回复</li>
+            <li>表头写「星期一 / 周一 / 一 / Mon」等不同写法；JSON 里 day 写 <code>3</code> 或 <code>Wednesday</code> 也认</li>
             <li>一门课一格，或一格多门课（换行分隔）</li>
-            <li>节次写成「第1-2节」「1-2」「08:30-09:55」</li>
+            <li>节次写成「第1-2节」「1-2」「08:30-09:55」都行；周次可以写 <code>[1,2,3,5]</code> 数组</li>
+            <li>JSON 少了学期开始日期也没关系，应用会沿用当前课表的设置</li>
           </ul>
 
           <SectionHeader icon="check_circle" title="小提示" />
           <ul className="md-body-small muted tutorial-list">
             <li>模型可能把「周三」认成「周二」，导入后请扫一眼课程名与星期。</li>
-            <li>本地解析在校验不过时会给出诊断信息（识别到几门课、哪张表被跳过）。</li>
+            <li>读不到可用内容时应用会弹出警告窗口并说明原因，当前课表不会被改动。</li>
             <li>课表数据只存本机；导出的 HTML 里如果带教师姓名，可在设置里一键清理。</li>
           </ul>
         </div>

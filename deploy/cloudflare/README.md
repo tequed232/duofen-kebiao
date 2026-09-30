@@ -1,6 +1,6 @@
 # Cloudflare CDN 挂载说明
 
-站点是纯静态产物（`dist/`；GitHub Pages 由 CI 构建并发布到 `gh-pages` 分支）。挂 Cloudflare 的官方 CDN 有两种做法，**推荐 A**：保留 GitHub Pages 作为源站，Cloudflare 负责 DNS、缓存、压缩与防护。
+站点是纯静态产物（`dist/`；GitHub Pages 原本由 CI 构建并发布到 `gh-pages` 分支，CI 已移除）。挂 Cloudflare 的官方 CDN 有两种做法，**推荐 A**：保留 GitHub Pages 作为源站，Cloudflare 负责 DNS、缓存、压缩与防护。
 
 ## A. 给现有站点套 Cloudflare（保留 GitHub Pages 源站）
 
@@ -31,7 +31,7 @@ wrangler pages deploy dist --project-name duofen-kebiao
 
 - Cloudflare Pages 会分配 `https://duofen-kebiao.pages.dev`，可再绑自定义域名；
 - 仓库里的 `web/public/_headers` 会随构建进入 `dist/`，被 Cloudflare Pages 读取，用来给 `assets/*` 设置长缓存、给 HTML 设置 `no-cache`；
-- 想走 CI：在 Cloudflare Pages 里连这个 GitHub 仓库，构建命令 `npm run build`，输出目录 `dist`。
+- 想在云端构建：在 Cloudflare Pages 里连这个 GitHub 仓库，构建命令 `npm run build`，输出目录 `dist`。
 
 ## 前端一致性
 

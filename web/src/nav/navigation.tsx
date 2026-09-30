@@ -23,6 +23,7 @@ export type RouteName =
   | 'schedule'
   | 'scheduleFilter'
   | 'settings'
+  | 'settingsSection'
   | 'about'
   | 'apiEdit'
   | 'textbookList'
@@ -91,51 +92,8 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
 
-  /**
-   * 可预测式返回（Android 14+ / 手势返回）：
-   * 原生把 开始 / 进度 / 取消 三相转成 JS 调用，网页据此把**上一屏**按手势进度
-   * 从画面中间放大弹出（与统一转场同一套缩放），松手前的预览完全跟手；
-   * 手势取消退回原状，真正触发时交给 `history.back()` → popstate 走正常弹出。
-   * 浏览器里这套 API 不存在，整段逻辑不参与。
-   */
-  const [peeking, setPeeking] = useState<RouteEntry | null>(null);
-
-  useEffect(() => {
-    const phone = () => document.querySelector('.phone') as HTMLElement | null;
-    const clear = () => {
-      const el = phone();
-      el?.classList.remove('predictive', 'predictive-cancel');
-      el?.style.setProperty('--predictive', '0');
-      setPeeking(null);
-    };
-    const api = {
-      start: () => {
-        const current = stackRef.current;
-        if (current.length < 2) return;
-        phone()?.classList.add('predictive');
-        phone()?.style.setProperty('--predictive', '0');
-        setPeeking(current[current.length - 2]);
-      },
-      progress: (value: number) => {
-        const clamped = Math.min(1, Math.max(0, Number(value) || 0));
-        phone()?.style.setProperty('--predictive', clamped.toFixed(3));
-      },
-      cancel: () => {
-        const el = phone();
-        el?.classList.add('predictive-cancel');
-        el?.style.setProperty('--predictive', '0');
-        window.setTimeout(clear, 200);
-      },
-      commit: () => {
-        /* 真正的前进由原生调用 webView.goBack() → popstate 完成，这里只留预览 */
-      },
-    };
-    (window as unknown as { DuofenBack?: unknown }).DuofenBack = api;
-    return () => {
-      delete (window as unknown as { DuofenBack?: unknown }).DuofenBack;
-      clear();
-    };
-  }, []);
+  /* 可预测式返回（预览 / 拖拽 / 相变）已按作者要求整段移除：留白给他自己实现。
+     这里保留下来的只有"普通返回"：原生 performBack() → history.back() → popstate 正常出栈。 */
 
   useEffect(() => {
     // 自己管理滚动位置：返回时不要浏览器强行恢复，避免动画中跳位（可预测式返回更顺滑）
@@ -157,11 +115,6 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
         setEnteringKey(null);
         setExiting(removed);
         setStack(next);
-        // 预测式返回的预览到此结束：清掉手势态，交给正常弹出动画收尾
-        const phone = document.querySelector('.phone') as HTMLElement | null;
-        phone?.classList.remove('predictive', 'predictive-cancel');
-        phone?.style.setProperty('--predictive', '0');
-        setPeeking(null);
         schedule(() => setExiting(null), DURATION[removed.transition] + 100);
         return;
       }
@@ -178,9 +131,11 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   const push = useCallback<NavValue['push']>(
     (route, params = {}, transition = 'slide', direction: 'forward' | 'back' = 'forward') => {
-      // 同路由去重：重复点击底边栏标签不再重复入栈（此前"点两下跳到不知道哪里"）
+      /* 同路由去重：重复点底边栏标签不再重复入栈。
+         **但参数不同的同名路由要放行** —— 设置页的「分类屏 → 选项屏」都叫
+         `settingsSection`，只比 route 的话第二层永远推不动（实测：点「上端安全区」没反应）。 */
       const top = stackRef.current[stackRef.current.length - 1];
-      if (top && top.route === route) return;
+      if (top && top.route === route && JSON.stringify(top.params ?? {}) === JSON.stringify(params ?? {})) return;
       const entry: RouteEntry = { key: uid('scr'), route, params, transition, direction };
       const next = [...stackRef.current, entry];
       window.history.pushState({ m3Stack: next }, '');
@@ -295,7 +250,7 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 
   return (
     <NavContext.Provider value={value}>
-      <NavRenderContext.Provider value={{ enteringKey, exiting, peeking }}>{children}</NavRenderContext.Provider>
+      <NavRenderContext.Provider value={{ enteringKey, exiting }}>{children}</NavRenderContext.Provider>
     </NavContext.Provider>
   );
 }
@@ -303,32 +258,35 @@ export function NavProvider({ initial = 'schedule', children }: { initial?: Rout
 const NavRenderContext = createContext<{
   enteringKey: string | null;
   exiting: RouteEntry | null;
-  peeking: RouteEntry | null;
 }>({
   enteringKey: null,
   exiting: null,
-  peeking: null,
 });
 
-/** Renders every screen of the stack as a layer inside the phone frame. */
-export function NavHost({ screens }: { screens: Record<RouteName, ComponentType> }) {
+/**
+ * Renders every screen of the stack as a layer inside the phone frame.
+ *
+ * `background` 是可选的**每屏底纹**（等高线那类装饰）：作为每一屏的第一个孩子渲染，
+ * 于是它在本屏自己的底色之上、内容之下。
+ * 为什么不放在 `.phone` 里当全局层：那样必须把 `.screen` 的底色设成透明，
+ * 而导航栈会把上一屏**留在 DOM 里**（保状态），透明之后上一屏的内容就透出来了 ——
+ * 实测「从主页切到搜索/设置会残留主页内容」就是这个原因。
+ */
+export function NavHost({
+  screens,
+  background,
+}: {
+  screens: Record<RouteName, ComponentType>;
+  background?: ReactNode;
+}) {
   const { stack } = useNav();
-  const { enteringKey, exiting, peeking } = useContext(NavRenderContext);
+  const { enteringKey, exiting } = useContext(NavRenderContext);
   // The exiting entry keeps its React key so the component instance (scroll
   // position, ...) is preserved while it animates away.
   const layers = exiting ? [...stack, exiting] : stack;
 
   return (
     <>
-      {/* 可预测式返回的预览层：上一屏垫在当前屏下面，按手势进度从中间放大 */}
-      {peeking ? (
-        <div key={`peek-${peeking.key}`} className="screen peek" aria-hidden="true" style={{ pointerEvents: 'none' }}>
-          {(() => {
-            const Peek = screens[peeking.route];
-            return <Peek />;
-          })()}
-        </div>
-      ) : null}
       {layers.map((entry) => {
         const Screen = screens[entry.route];
         const isTop = entry.key === stack[stack.length - 1].key;
@@ -343,6 +301,7 @@ export function NavHost({ screens }: { screens: Record<RouteName, ComponentType>
             aria-hidden={!isTop}
             style={{ pointerEvents: isTop && !isExiting ? 'auto' : 'none' }}
           >
+            {background}
             <Screen />
           </div>
         );

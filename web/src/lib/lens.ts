@@ -59,88 +59,71 @@ export interface LensParams {
 export const LENS_PLAYER: LensParams = { bezel: 0.58, strength: 1.2, zoom: 0.02, edge: 0.2 };
 export const LENS_PANEL: LensParams = { bezel: 0.72, strength: 2.0, zoom: 0.02, edge: 0.24 };
 /**
- * 底栏专用 —— **极致液态玻璃版**。
+ * 底栏参数不再写成两个"整包常量"，而是拆成**两条正交的轴**（见下方的
+ * `DOCK_WARP_CONCISE` / `DOCK_WARP_THICK` 与 `dockLensParams`）：
  *
- * 调参依据（作者对真机观感的反馈）：
- *   「边缘扭曲区域太大，显得夸张；苹果的扭曲是收窄 + 聚焦在选中胶囊周围的一小块，
- *     衰减很快，不是整个 dock 都在扭」
+ *   · **扭曲档**（几何）—— 掰弯多少、分布多宽。历史沿革就在这一轴上：
+ *     `6aeae6d` 厚透镜（bezel 0.85 / strength 1.6 / backdrop 封顶 26px，真机看得见）
+ *     → `507e204` 减配（0.46 / 1.0 / 10px）→ `7973ced` 六项整改（0.30 / 0.9 / 7px，看不见了）
+ *     → 现在「厚透镜 / 收窄 / 关」三档由作者自己选。
+ *   · **色散档**（颜色）—— 只在边缘带分离多少色（fringe），以及拆 3 段还是 6 段光谱。
  *
- * 所以不再靠"把强度调小"来收敛（那样只是变淡，分布还是铺满整块），而是改**衰减形状**：
- *   · falloff **3**（三次方，原来是平方）：位移集中到边缘一条窄带，往中心掉得更快
- *   · bezel 0.85 → **0.30**：透镜带厚度只剩原来的三分之一强
- *   · strength **0.9**：幅度收一档，避免「果冻糊掉」
- *   · zoom **0.004**（原 0.012）：背景放大感再减，也让色散不至于顺着整面铺开
- *   · backdropMax 10 → **7px**、backdropFactor 0.22 → **0.16**：真实背景只被掰弯一点点
- *
- * 色散（后来又加回来一次，见 docs/liquidglass-ultimate.md）：当初为了消掉
- * 「上下色散太多太突兀」把三通道位移整条删了，结果作者反过来问「色散怎么没了」。
- * 删错的不是色散本身，是**它的分布**：原实现是给整个贴图配三个固定的位移量，
- * 于是整块玻璃都在分离色彩。现在改成 fringe（位移量之差，px）——
- * 色差与位移成正比，中间自动为零，只在边缘那条被掰弯的窄带上出现。
+ * 之所以拆开：当初"色散没了"那次判断失手，根因就是把**几何**和**颜色**揉在同一个常量里 ——
+ * 为了压掉色散把位移也删了。拆开之后再也不会互相误伤。
  */
-export const LENS_DOCK: LensParams = {
+
+/** 底栏色散档位（设置项） */
+export type DockDispersion = 'off' | 'concise' | 'ultimate';
+
+/** 底栏扭曲档位（设置项）—— 管几何，与色散档正交 */
+export type DockWarp = 'off' | 'concise' | 'thick';
+
+/**
+ * 扭曲几何之一：**收窄**（`7973ced` 六项整改后的口径）。
+ *
+ * 出处是 stray 洋葱 那条 issue 的第 3 条「边缘扭曲区域太大，显得夸张」——
+ * 当时的改法不是调小强度（那样只是变淡、分布照样铺满整块），而是改**衰减形状**：
+ * falloff 提到 3、bezel 砍到 0.30、backdrop 封顶压到 7px，扭曲只留在边缘一线。
+ */
+export const DOCK_WARP_CONCISE = {
   bezel: 0.3,
   strength: 0.9,
-  /* zoom 从 0.012 降到 0.004：这一项是**整块线性放大**，它带来的位移在左右两端最大，
-     于是色散会顺着整个面铺开 —— 正好是作者最初嫌的那种「色散太多」的分布。
-     折射的「掰弯」观感来自 bezel 那一项（边缘法线方向），zoom 只是附带的放大感，
-     1.2% → 0.4% 肉眼几乎无差别，但中间那片的彩边掉了三倍。 */
   zoom: 0.004,
   edge: 0.2,
   falloff: 3,
   backdropMax: 7,
   backdropFactor: 0.16,
-  /* 边缘处 R/B 通道的位移量与 G 相差 3.2px（换算成实际的横向彩色分离约 1.6px）。
-     调参台 build/tune-dock-dispersion.cjs 扫过 0/2.4/3.2：
-     上边缘带的 |R−B| 依次 0.98 → 4.07 → 5.37（无色的噪声底 0.98），
-     下边缘带 1.00 → 5.04 → 6.85，而中间带在三个取值下都停在 0.42（= 噪声底）——
-     也就是说彩边只出现在边缘那圈弧面上，玻璃中间是干净的。
-     想更明显就调大，想彻底关掉写 0。 */
-  fringe: 3.2,
-};
+} as const;
 
 /**
- * 底栏「极致」色散档 —— 把作者记得的那版彩虹按档恢复。
+ * 扭曲几何之二：**厚透镜**（commit `6aeae6d`「底栏换厚透镜 + 治撞墙误报」那版口径）。
  *
- * 出处：commit **0801cb9**（`fix(glass): 色散改为「三通道用不同位移量采样同一张透镜贴图」，治掉整屏发紫`）
- * 当时的落差口径是 backdrop 位移**封顶 14px、系数 0.3**，配合 `zoom 0.012`；
- * 后来的 `a61a7df`（按反馈减配）把 bezel 0.46→0.30、strength 1.0→0.9，
- * `7973ced`（六项整改）又把三通道位移整条删掉 —— 于是"彩虹"就没了，只剩 1px 冷暖描边（还写在死代码里）。
+ * 为什么这版值得单开一档：底栏很扁（68 高），按播放条那套参数（bezel 0.58）根本看不出掰弯，
+ * 那一版把 bezel 拉到 **0.85**、strength **1.6**、backdrop 位移封顶 **26px**，
+ * 作者当时的验收是"能明显看到文字被横向拉开 + 蓝橙色边，关掉 --lg-backdrop 的对照图几乎无变化"。
+ * 后来 `507e204`（按反馈减配）与 `7973ced`（六项整改）把它一路收窄到 0.30，
+ * 于是"扭曲"这件事在真机上就看不见了 —— 这一档就是把它原样找回来。
  *
- * 这一档 = **恢复 0801cb9 的落差口径**（bezel/strength/zoom/backdrop 全按当年）
- * + **通道从 3 段扩到 6 段光谱** —— 3 段最多只能给出互补的两三条边，数不出七色。
- *
- * 范围仍然只有底栏这一处（作者定的规矩：极致液态玻璃只在这一个 dock 里做）。
- * 代价是滤镜链节点更多（6 位移 + 6 矩阵 + 5 叠加），所以它**不是默认档**：
- * 默认「简洁」，要彩虹得自己在 设置 → 底栏材质 → 液态玻璃 → 色散 里选。
+ * 唯一与当年不同的一处：`falloff` 仍取 **3**（当年是默认的平方）。
+ * 因为"分布别铺满整块"这条反馈是对的，与"幅度要看得出来"并不冲突：
+ * 厚透镜 + 三次方衰减 = 幅度够大、但只集中在边缘那条窄带上。
  */
-export const LENS_DOCK_ULTIMATE: LensParams = {
-  /* 透镜带比简洁档厚一档（0.30 → 0.46，即减配前那版），彩虹才有地方铺开 */
-  bezel: 0.46,
-  strength: 1.0,
-  /* 但 **zoom 与 falloff 保持收窄口径**：实测把 zoom 拉回当年的 0.012、falloff 拉回 2，
-     中间带的 |R−B| 会从 0.46 涨到 **3.56**（噪声底是 0.42）——
-     那就是作者当初否掉的「整面出彩边」。所以极致档只放大"边缘的彩虹"，
-     不放大"整面的偏色"。（想要当年那种整面泛色：把这两行改成 zoom 0.012 / falloff 2 即可。） */
-  zoom: 0.004,
-  edge: 0.2,
+export const DOCK_WARP_THICK = {
+  bezel: 0.85,
+  strength: 1.6,
+  zoom: 0.025,
+  edge: 0.26,
   falloff: 3,
-  backdropMax: 14,
-  backdropFactor: 0.3,
-  /* 六段光谱的总分离量：边缘处 6px（= 简洁档 3.2px 的将近两倍） */
-  fringe: 6,
-  bands: 6,
-};
-
-/** 底栏色散档位（设置项） */
-export type DockDispersion = 'off' | 'concise' | 'ultimate';
+  backdropMax: 26,
+  backdropFactor: 0.4,
+} as const;
 
 /**
- * 生效的色散档位：设置项 + 允许用 `?dispersion=` **覆盖一次**。
+ * 生效的色散档位：设置项 + 允许用 `?dispersion=` **覆盖一次**（取值是白名单里的字面量，
+ * 所以不构成注入面：`?dispersion=xxx` 只会落回设置值）。
  *
- * 为什么要这个覆盖：守卫 `build/check-dock-dispersion.cjs` 要把两档各量一遍，
- * 但它没法去点设置页的弹层；真机核对时也一样（想临时看看极致档什么效果）。
- * 取值是白名单里的三个字面量，所以不构成注入面（`?dispersion=xxx` 只会落回设置值）。
+ * 为什么要有这个覆盖：量测脚本 `build/check-dock-dispersion.cjs` 要把两档各量一遍，
+ * 但它点不了设置页的弹层；真机核对时同理（想临时看看极致档什么效果）。
  */
 export function effectiveDispersion(setting: DockDispersion | undefined): DockDispersion {
   if (typeof window !== 'undefined') {
@@ -150,11 +133,37 @@ export function effectiveDispersion(setting: DockDispersion | undefined): DockDi
   return setting ?? 'concise';
 }
 
-/** 档位 → 透镜参数。默认「简洁」，与作者此刻看到的观感完全一致。 */
-export function dockLensParams(mode: DockDispersion = 'concise'): LensParams {
-  if (mode === 'ultimate') return LENS_DOCK_ULTIMATE;
-  if (mode === 'off') return { ...LENS_DOCK, fringe: 0 };
-  return LENS_DOCK;
+/** 生效的扭曲档位：设置项 + `?warp=` 覆盖一次（同上，给量测脚本与真机核对用） */
+export function effectiveWarp(setting: DockWarp | undefined): DockWarp {
+  if (typeof window !== 'undefined') {
+    const override = new URLSearchParams(window.location.search).get('warp');
+    if (override === 'off' || override === 'concise' || override === 'thick') return override;
+  }
+  return setting ?? 'thick';
+}
+
+/**
+ * 档位 → 透镜参数。几何来自**扭曲档**，颜色分离来自**色散档**，两者互不干扰。
+ *
+ * 默认「厚透镜 + 简洁色散」：这就是作者要的"有扭曲效果"那一版，
+ * 而色散仍停在收窄口径（彩边只在边缘那圈弧面上，不是整块泛色）。
+ */
+export function dockLensParams(mode: DockDispersion = 'concise', warp: DockWarp = 'thick'): LensParams {
+  const geometry = warp === 'thick' ? DOCK_WARP_THICK : DOCK_WARP_CONCISE;
+  const color: Pick<LensParams, 'fringe' | 'bands'> =
+    /* 「极致」档的分离量：作者 2026-09-25 的要求是「要极限就要用最极限的」——
+       从 6px 提到 **20px**（简洁档 3.2px 的 6.25 倍）。滤镜链节点数一个没变
+       （仍是 6 位移 + 6 矩阵 + 5 叠加），只是每段的位移量拉大，虹带明显更宽更艳。
+       实测（灰阶棋盘，底栏上边缘带 |R−B|，中间带 = 噪声底）：
+         fringe 6  → 轻档 23.06 / 强档 13.47
+         fringe 20 → 轻档 **65.57** / 强档 **37.64**（中间带 3.42 / 2.92，仍是 19× / 13× 的落差） */
+    mode === 'ultimate' ? { fringe: 20, bands: 6 } : mode === 'off' ? { fringe: 0 } : { fringe: 3.2 };
+  if (warp === 'off') {
+    /* 「关」= 不做折射位移：强度与 zoom 归零，只留 edge rim（CSS 拿它画高光）。
+       注意色散仍然需要位移才有意义 —— 位移为 0 时色差自动为 0，所以这里直接把 fringe 也归零。 */
+    return { ...DOCK_WARP_CONCISE, ...color, strength: 0, zoom: 0, backdropFactor: 0, fringe: 0, bands: 3 };
+  }
+  return { ...geometry, ...color };
 }
 
 export interface LensMap {

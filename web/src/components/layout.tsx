@@ -1,10 +1,10 @@
-﻿/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
+/** Layout primitives: app bar, navigation bar, section header, empty state, chips, images. */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MdIcon, MdIconButton } from './md';
 import { useNav } from '../nav/navigation';
 import { useAppState } from '../state/AppState';
 import { isNativeShell, haptic } from '../lib/native';
-import { dockLensParams, effectiveDispersion } from '../lib/lens';
+import { dockLensParams, effectiveDispersion, effectiveWarp } from '../lib/lens';
 import { useLens } from '../lib/useLens';
 
 /* ------------------------------------------------------------- app bar --- */
@@ -81,12 +81,54 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
   const activeIndex = Math.max(0, TABS.findIndex((tab) => tab.id === active));
   const dockRef = useRef<HTMLElement>(null);
   /* 液态玻璃透镜：按 dock 实际尺寸生成位移贴图（BEZEL / STRENGTH / ZOOM 见 lens.ts）。
-     色散档位（设置 → 底栏材质 → 液态玻璃 → 色散）决定用哪套参数：
-     「简洁」= 现在的收窄口径 + 三通道；「极致」= 0801cb9 那套落差口径 + 六段光谱。
+     两条正交的设置轴：
+       · 扭曲档（dockWarp：厚透镜 / 收窄 / 关）决定**几何** —— 掰弯多少、铺多宽；
+       · 色散档（dispersion：关 / 简洁 / 极致）决定**颜色分离**在哪一档。
+     厚透镜就是 `6aeae6d` 那版口径（bezel 0.85 / strength 1.6 / backdrop 封顶 26px），
+     真机上能明显看到被掰弯；收窄是 `7973ced` 六项整改后的口径（只留在边缘一线）。
      真机核对手续：先关掉开发者选项里的「指针位置」「显示布局边界」再截图，
      否则那些调试叠层会被误认成应用的渲染问题。 */
-  const dockParams = useMemo(() => dockLensParams(effectiveDispersion(settings.dispersion)), [settings.dispersion]);
+  const dockParams = useMemo(
+    () => dockLensParams(effectiveDispersion(settings.dispersion), effectiveWarp(settings.dockWarp)),
+    [settings.dispersion, settings.dockWarp],
+  );
   useLens(dockRef, dockParams);
+
+  /**
+   * 「不许和底栏重叠」的**算法**：底栏把自己占的那条带子发布成 `--dock-band`，
+   * 之后任何浮层（抽屉 / 悬浮按钮 / 提示条）只要写 `bottom: var(--dock-band)` 就天然避开它。
+   *
+   * 为什么由底栏**自己测**而不是写常量：底栏高度受「屏幕安全区」设置、字体缩放、设备手势条影响，
+   * 写死的数字总会在某台机器上错位 —— 错位的表现就是真机事故那种「抽屉压住底栏按钮，点不到」。
+   * 基准取手机框（.phone）：底栏顶边到框底的距离。
+   */
+  useEffect(() => {
+    const element = dockRef.current;
+    if (!element) return undefined;
+    const frame = element.closest('.phone') ?? element.parentElement;
+    let last = '';
+    const publish = () => {
+      const frameRect = frame?.getBoundingClientRect();
+      const dockRect = element.getBoundingClientRect();
+      if (!frameRect || dockRect.height === 0) return;
+      const value = `${Math.max(0, Math.round(frameRect.bottom - dockRect.top))}px`;
+      /* **值没变就不写**：切屏/动画期间 RO 会反复触发，每次都 setProperty 会让整棵树重算样式 ——
+         表现就是"切屏抽搐闪烁"（作者 2026-09-25 反馈）。 */
+      if (value === last) return;
+      last = value;
+      document.documentElement.style.setProperty('--dock-band', value);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(element);
+    if (frame) observer.observe(frame);
+    window.addEventListener('resize', publish);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', publish);
+      document.documentElement.style.removeProperty('--dock-band');
+    };
+  }, []);
   const draggingRef = useRef(false);
   const [dragging, setDragging] = useState(false);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -139,7 +181,16 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
     }
   };
 
-  /** 让跟手弹簧逐帧逼近 pendingX，直到足够接近（或不再拖动）就收工 */
+  /**
+   * 让跟手弹簧逐帧逼近 pendingX，直到足够接近（或不再拖动）就收工。
+   *
+   * **坐标系必须是「页面坐标」**（和 `pendingXRef`、`applyFrame(jx)` 一致）。
+   * 这里踩过一次：弹簧算的是**底栏内坐标**（`pendingXRef - geo.left`），
+   * 而 `applyFrame(jx)` 内部又减了一次 `geo.left` —— 于是拖动时色块被整体左移了一个
+   * 左边距的量（实测 460px 视口下 `geo.left=36`：手指在 dock 内 180px 处，`--pill-x`
+   * 应是 115 却只有 79，差值正好 36）。真机左边距约 12dp（≈42 设备像素），
+   * 表现就是"拖动时色块一直吊在手指左边、松手才弹回正确位置"。
+   */
   const runSpring = () => {
     if (springRafRef.current !== undefined) return;
     const step = () => {
@@ -148,7 +199,7 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
         springRafRef.current = undefined;
         return;
       }
-      const target = clamp(pendingXRef.current - geo.left, 0, geo.width);
+      const target = clamp(pendingXRef.current, geo.left + 18, geo.left + geo.width - 18);
       const dtClamp = 1;
       const dx = target - springXRef.current;
       springVelRef.current += (SPRING_K * dx - SPRING_C * springVelRef.current) * dtClamp;
@@ -289,7 +340,11 @@ export function AppNavBar({ active, onSelect }: { active: NavTabId; onSelect: (t
        才有一点点滞后与回弹 —— 作者要的「液态跟手」正是这一段。 */
     {
       const geo0 = geoRef.current;
-      springXRef.current = geo0 ? geo0.centers[activeIndex] ?? geo0.width / 2 : 0;
+      /* 种子 = 色块**当前所在格的中心**（页面坐标，与 pendingXRef / applyFrame 同一套），
+         不是手指位置：取手指位置的话，按下那一帧色块就被拽到指尖了（瞬移）。 */
+      springXRef.current = geo0
+        ? (geo0.centers[activeIndex] ?? geo0.width / 2) + geo0.left
+        : 0;
       springVelRef.current = 0;
     }
     /* 先不进拖动态：位移超过 DRAG_SLOP 才进。轻点若在这里就进，色块会因

@@ -395,8 +395,28 @@ md-list-item.rounded-only {
   border-radius: 28px;
 }
 
-.list-icon-badge {
-  width: 40px;
+/* 控件行：挂在某一条设置项下面的滑块 / 按钮（自己不带卡片底，靠上下留白和那一组连在一起）。
+   必须显式给布局 —— 这条 div 曾经完全没有样式，于是按钮后面的说明文字在真机上
+   直接排到屏幕外被裁掉（窄屏 366dp 放不下「仅 Android 16 / ColorOS 生效」这种长度）。 */
+.list-control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 2px 0 4px;
+}
+.list-control-row > .md-body-small {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 选项屏（设置里的「点一个选项进它自己一屏」）顶部的说明段 */
+.settings-note {
+  padding: 4px 8px 12px;
+  line-height: 1.5;
+}
+
+.list-icon-badge {  width: 40px;
   height: 40px;
   border-radius: 999px;
   display: grid;
@@ -527,6 +547,38 @@ md-switch {
 }
 
 /* ------------------------------------------------------ expandable sheet -- */
+
+/* 弹层与底栏的层叠关系：**靠 portal 解决，不用 :has()**。
+   早先写的 `.screen:has(.sheet-layer.open) { z-index: 50 }` 每次切屏/开关弹层都要重算
+   `:has()`，正是"切屏抽搐闪烁"的嫌疑来源之一 —— 现在 ExpandableSheet 把层直接 portal 到
+   `.phone`（与底栏同级、z-index 60 > 40），一层 `:has()` 都不需要。 */
+
+/* 抽屉抓手：抖音那种一眼认得出的横杠，**可上下拖**（半屏 ↔ 全屏，往下拖够多即关闭）。
+   做成真实元素（不是 ::before）才能接指针事件；热区比横杠本身高，手指好抓。 */
+.sheet-grabber {
+  flex: 0 0 auto;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheet-grabber::before {
+  content: '';
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 45%, transparent);
+}
+
+.sheet-panel[data-dragging='1'] {
+  transition: none;
+}
+
+.sheet-panel.half {
+  transition: height 220ms cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
 .sheet-layer {
   position: absolute;
   inset: 0;
@@ -565,6 +617,33 @@ md-switch {
   align-items: center;
   gap: 8px;
   padding: 8px 8px 8px 20px;
+}
+
+/* ---------------------------------------------------------- half sheet -- */
+/* 抖音评论区那种**半遮蔽**底部弹层：贴底、只占屏幕下半部分，上半屏还能看见（并压着 scrim）。
+   与整屏的 .sheet-panel 区别只有三行：改成 bottom 定位、限高、顶角圆角。
+   底部再让开设备安全区（--inset-bottom 由「屏幕安全区」设置写入）。 */
+.sheet-panel.half {
+  inset: auto 0 var(--dock-band, 0px) 0;
+  max-height: min(62%, calc(100% - var(--dock-band, 0px) - 12px));
+  height: auto;
+  border-radius: 28px 28px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 半屏弹层的主操作（例如「导航至 16-203」）：贴底一条，跟着弹层走 */
+.sheet-action {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px calc(12px + var(--inset-bottom, 0px));
+  border-top: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 45%, transparent);
+}
+
+.sheet-action .md-body-small {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .sheet-header .sheet-title {
@@ -885,6 +964,20 @@ md-dialog {
 
 md-dialog::part(container) {
   border-radius: 28px;
+  /* 弹层必须落在**设备预留的安全区**内（设置 → 屏幕安全区 的上下端，写进 --inset-top/--inset-bottom）。
+     作者要求：「弹出来的导航课程必须符合设备预留的安全区的大小，哪怕上下扩展都没事」——
+     所以这里不裁内容，而是把可用高度按安全区收缩、内容多了自己滚：
+     顶到状态栏/刘海或压住手势条，比"弹层变高"糟得多。
+     `md-dialog` 自身是 position:fixed 的整屏容器，用 padding 把它的居中区压进安全区。 */
+  max-height: calc(100dvh - var(--inset-top, 0px) - var(--inset-bottom, 0px) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+md-dialog {
+  padding-top: var(--inset-top, 0px);
+  padding-bottom: var(--inset-bottom, 0px);
+  box-sizing: border-box;
 }
 
 /* --------------------------------------------------------------- misc ---- */
@@ -1297,11 +1390,6 @@ button.credit-license:focus-visible {
   border-radius: 16px;
 }
 
-.wechat .splash-art {
-  width: 132px;
-  height: 176px;
-}
-
 /* 微信里关闭 backdrop-filter：X5 内核表现不稳定，玻璃层自动退回半透明底 */
 .wechat .nav-bar.glass md-navigation-bar {
   backdrop-filter: none;
@@ -1342,9 +1430,6 @@ button.credit-license:focus-visible {
 /* ============================================ Liquid Glass 底边栏 ========= */
 /* 悬浮玻璃药丸：模糊 + 冰彩高光 + 顶部反光条，选中项是玻璃胶囊指示器 */
 
-
-
-
 .glass-tab-indicator {
   inset: auto !important;
   left: 50% !important;
@@ -1360,9 +1445,6 @@ button.credit-license:focus-visible {
 .glass-tab.active .glass-tab-indicator {
   transform: translate(-50%, -50%) scale(1) !important;
 }
-
-
-
 
 /* 开源相关列表（对齐酷安《开源相关》条目样式） */
 .license-row {
@@ -1408,7 +1490,6 @@ button.credit-license:focus-visible {
 
 /* 底边栏里的装饰层：没有视觉效果时也不应占位 */
 
-
 /* ==================== 教材窗口：多选 / 删除 / 快捷添加 ==================== */
 .textbook-card.selectable { cursor: pointer; }
 
@@ -1427,12 +1508,55 @@ button.credit-license:focus-visible {
   z-index: 20;
 }
 
-/* 主课表右下角的「回到今天」：拇指够得到的位置（顶栏最右边够不着） */
-.schedule-today-fab {
+/* 主课表右下角常驻按钮组：「导航课程」+「回到今天」，并排对称、间距 12px。
+   原来只有一个绝对定位的「回到今天」；两个按钮的文字长度不同，硬算 right 偏移迟早错位，
+   所以改成同一行 flex：间距与底对齐都由布局保证。 */
+/* 顶栏左上角的插画头像（作者 2026-09-25）：等比裁成圆，别拉伸。
+   与启动页、关于页共用同一份 web/public/illustration.jpg。 */
+.appbar-avatar {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  margin-right: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container-high);
+  cursor: pointer;
+}
+
+.appbar-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.schedule-fab-row {
   position: absolute;
+  left: 16px;
   right: 16px;
-  bottom: calc(80px + 12px);
+  /* 与底栏保持距离：底栏自己发布 --dock-band，这里再留 12px（不再写死 80px） */
+  bottom: calc(var(--dock-band, 92px) + 12px);
   z-index: 20;
+  display: flex;
+  align-items: center;
+  /* 导航课程停靠左侧、回到今天靠右；只剩一个时它自然留在左边 */
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.schedule-fab-row > * {
+  pointer-events: auto;
+}
+
+.schedule-today-fab,
+.schedule-nav-fab {
+  position: static;
+  right: auto;
+  bottom: auto;
 }
 
 .textbook-action-bar {
@@ -1508,4 +1632,33 @@ button.credit-license:focus-visible {
 
 .tutorial-prompt .credit-link {
   margin: 0 12px 12px;
+}
+
+/* 胶囊按钮组：作者 2026-09-29「把按钮风格统一成椭圆」——
+   组内每一颗都是完整胶囊（覆盖 .button-group 的 expressive 拼接形状），间距也相应拉开。 */
+.button-group.pill {
+  gap: 8px;
+}
+
+.button-group.pill > * {
+  --md-filled-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-filled-button-container-shape-start-start: 999px;
+  --md-filled-button-container-shape-start-end: 999px;
+  --md-filled-button-container-shape-end-start: 999px;
+  --md-filled-button-container-shape-end-end: 999px;
+  --md-filled-tonal-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-filled-tonal-button-container-shape-start-start: 999px;
+  --md-filled-tonal-button-container-shape-start-end: 999px;
+  --md-filled-tonal-button-container-shape-end-start: 999px;
+  --md-filled-tonal-button-container-shape-end-end: 999px;
+  --md-outlined-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-outlined-button-container-shape-start-start: 999px;
+  --md-outlined-button-container-shape-start-end: 999px;
+  --md-outlined-button-container-shape-end-start: 999px;
+  --md-outlined-button-container-shape-end-end: 999px;
+  --md-text-button-container-shape: var(--md-sys-shape-corner-full);
+  --md-text-button-container-shape-start-start: 999px;
+  --md-text-button-container-shape-start-end: 999px;
+  --md-text-button-container-shape-end-start: 999px;
+  --md-text-button-container-shape-end-end: 999px;
 }

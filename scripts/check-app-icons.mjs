@@ -10,7 +10,7 @@
  *   ① 尺寸与几何：前景必须是整幅缩到 2/3、居中、四周透明；方形/圆形必须满幅不透明，圆形四角为底色；
  *   ② 内容：每张图标与「用 docs/icon-source.jpg 现算一遍」的结果逐像素比对（容差 6/255，
  *      只吸收不同 Chromium 版本的采样差异，吸收不了"换了张图"）；
- *   ③ 一致性：同样尺寸、同样模式的三张（mipmap-xxxhdpi / web/public/icon-192 / web/src/assets）
+ *   ③ 一致性：同样尺寸、同样模式的两张（mipmap-xxxhdpi / web/public/icon-192）
  *      必须**逐字节相同**。
  *
  * 用法：node scripts/check-app-icons.mjs
@@ -27,7 +27,7 @@ const TOLERANCE = 6;
  *
  * 为什么除了均值还要看占比：图标换了原图时，**均值会骗人** —— 画面大半是平坦的深色底，
  * 均值被摊薄到 2~6，而真正不同的是角色那块。实测把 git 里的旧图标放回去，
- * 19 张的占比是 **15.9%~47.9%**，而现算的一份是 0%（见下方注释里的对照数据）。
+ * 18 张的占比是 **15.9%~47.9%**，而现算的一份是 0%（见下方注释里的对照数据）。
  * 取 8% 作阈值：既离旧图有 2 倍余量，也远高于"换个 Chromium 版本、采样核略有出入"的量级。
  */
 const MAX_SHARE = 0.08;
@@ -139,7 +139,6 @@ const results = await page.evaluate(
     // ③ 同尺寸同模式的三张必须逐字节相同
     const identical = [
       ['app/src/main/res/mipmap-xxxhdpi/ic_launcher.png', 'web/public/icon-192.png'],
-      ['web/public/icon-192.png', 'web/src/assets/app-icon-192.png'],
     ];
     const dup = [];
     for (const [a, b] of identical) {

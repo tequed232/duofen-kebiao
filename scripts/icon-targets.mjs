@@ -36,7 +36,6 @@ export const TARGETS = [
   { file: 'web/public/icon-192.png', size: 192, mode: 'square' },
   { file: 'web/public/icon-512.png', size: 512, mode: 'square' },
   { file: 'web/public/apple-touch-icon.png', size: 180, mode: 'square' },
-  { file: 'web/src/assets/app-icon-192.png', size: 192, mode: 'square' },
 ];
 
 /**

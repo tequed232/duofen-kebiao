@@ -70,24 +70,20 @@ APK 直链（按版本）：
 | 对象 | 链接 |
 | --- | --- |
 | 项目作者（Tequed232）B 站空间 | https://space.bilibili.com/407275151 |
-| 特别感谢：米达达 B 站空间 | https://space.bilibili.com/3546769371695776 |
 
 ## 部署与自动化（仓库内）
 
 | 内容 | 说明 |
 | --- | --- |
-| `.github/workflows/anubis-watch.yml` | Anubis 反爬监控工作流 |
-| `.github/workflows/secret-scan.yml` | 密钥扫描（每次推送） |
-| `.github/workflows/permission-reminder.yml` | 素材授权提醒（每周） |
 | `deploy/anubis/` | Anubis 反爬配置（https://github.com/TecharoHQ/anubis） |
 | `deploy/cloudflare/` | Cloudflare 边缘配置说明 |
-| `scripts/verify.mjs` | 逐屏验收（19 步全绿，逐屏截图 + `screenshots/report.json`）。需先 `npm run build && npm run preview`；已进 auto-review 守卫清单（`verify`） |
+| `scripts/verify.mjs` | 逐屏验收（19 步全绿，逐屏截图 + `screenshots/report.json`）。需先 `npm run build && npm run preview`；已进本地守卫清单（`verify`） |
 | `scripts/check-secrets.mjs` | 本地密钥扫描 |
 | `scripts/check-imports.mjs` | 导入自检（防「用了没导入」导致白屏） |
-| `scripts/check-import-e2e.mjs` | **真实导入界面**端到端：把「模型回复」整段粘进去，验课表是否真进来、坏输入是否被拒（需 dev server，已进 auto-review 守卫清单） |
-| `scripts/check-backdrop-refraction.mjs` | 实测引擎是否认 `backdrop-filter: url(#svg)` 与 `feImage` 位移图（带 `blur` 对照，防假阴性；已进 CI） |
+| `scripts/check-import-e2e.mjs` | **真实导入界面**端到端：把「模型回复」整段粘进去，验课表是否真进来、坏输入是否被拒（需 dev server，已进本地守卫清单） |
+| `scripts/check-backdrop-refraction.mjs` | 实测引擎是否认 `backdrop-filter: url(#svg)` 与 `feImage` 位移图（带 `blur` 对照，防假阴性；已由本地守卫覆盖） |
 | `scripts/check-apk-parity.mjs` | APK 内嵌资源与 `dist/` 逐文件哈希比对（纯 Node 自己解 zip，**不依赖 PowerShell**，2026-09-24 起在 Android 构建里跑） |
-| `scripts/make-icons.mjs` `scripts/icon-targets.mjs` `scripts/check-app-icons.mjs` | 从 `docs/icon-source.jpg` 生成全套应用图标；守卫逐像素核对"仓库里的图标 == 现按原图生成的"（已进 CI） |
+| `scripts/make-icons.mjs` `scripts/icon-targets.mjs` `scripts/check-app-icons.mjs` | 从 `docs/icon-source.jpg` 生成全套应用图标；守卫逐像素核对"仓库里的图标 == 现按原图生成的" |
 | `scripts/collect-licenses.mjs` | 生成分类开源清单（README + 设置页数据） |
 
 ## 当前状态与已知问题（给审阅者的上下文）
@@ -95,11 +91,11 @@ APK 直链（按版本）：
 - **版本**：v3.5.4（`versionCode 30504` / `versionName 3.5.4`）
 - **APK 与网页同源**：APK 内嵌的 Web 构建与网页版共用同一份 `dist/`（bundle 哈希一致，`npm run apk:parity` 逐文件核对）
 - **已实现**：自绘 M3E 底栏（位置即结果 + 拖拽跟手 + 液态玻璃折射）、纯左右平移过渡、`resetTo` 无竞态标签切换、HTML 课表导入算法、本地缓存课表、教材多选删除、班级隐私清理、关于页致谢、**本地封面识别**（OpenCV 预处理 → Tesseract 中文 OCR → ISBN 校验 → 内置库匹配，识别资源打进 APK）
-- **真机复验（已完成）**：realme GT7 / Android 16 / arm64-v8a 上覆盖安装 v3.0.2 → v3.5.2 数据保留；设置页「本地识别」报告 `资源就绪：图像处理库 / 识别引擎 / 中文模型`；合成封面走完「选图识别封面」链路，识别出 `ISBN 9787040396638`
+- **真机复验（已完成）**：realme GT7 / Android 16 / arm64-v8a 上覆盖安装 v3.0.2 → v3.5.2 数据保留；（当年的「本地识别」资源检查项已于 2026-09-27 随该子系统一起下线）绪：图像处理库 / 识别引擎 / 中文模型`；合成封面走完「选图识别封面」链路，识别出 `ISBN 9787040396638`
 - **仍未确认**：流体云实况（`promotedOngoing=true`）、界面缩放三档
 - **关于 `backdrop-filter` 与 `url(#svg)`（2026-09 更正）**：此前这里记着「Chromium/WebView 会丢弃 `backdrop-filter` 里的 `url(#svg)`，网页端无法对背景做真实折射」，并据此把折射做成「SVG 位移层叠在玻璃自身光带上」的近似。**该结论不成立**，已由 `scripts/check-backdrop-refraction.mjs` 实测推翻：在 Chromium 153 上，`url()` 通道与 `feImage` 位移图**都生效**，背景确实被掰弯（同区域开/关的平均逐像素差 68.47 / 88.38，对照 `blur` 62.28）。
   复盘：原判定来自一次本地试验，它的位移图用 `feImage` 指向纯色 data URL，开/关截图完全一致 —— 但「一致」既可能是 `url()` 被丢弃，也可能是 **`feImage` 取不到图导致位移恒为 0**。两者修法完全不同，当时没有分开测，于是假阴性写进文档又被四处引用。
-  现状：桌面 Chromium 已证伪；**安卓 WebView 侧待真机回归时用同一守卫补测**（测量脚本不依赖项目代码，可直接在设备浏览器打开同一张测试页）。该守卫已进 CI，引擎行为若变化会直接反映在 PR 的 review 里，不再靠假设。
+  现状：桌面 Chromium 已证伪；**安卓 WebView 侧待真机回归时用同一守卫补测**（测量脚本不依赖项目代码，可直接在设备浏览器打开同一张测试页）。该守卫已由本地守卫覆盖，引擎行为若变化会直接反映在 PR 的 review 里，不再靠假设。
 - **隐私**：内置课表已清空过一次（含教师姓名、教室、班级人数），后按作者要求恢复课程数据但**署名统一为「Tequed232 拥有本项目的最终解释权」**；仓库不收录构建产物与截图；工作区密钥扫描通过
 
 ### 文档核对状态（2026-09-24）

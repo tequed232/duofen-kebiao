@@ -1,5 +1,6 @@
 /** Overlays: snackbar, confirm dialog, the expandable fullscreen panel and the image viewer. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { MdDialog, MdIcon, MdIconButton } from './md';
 import { useAppState } from '../state/AppState';
 import { MOTION } from '../theme/motion';
@@ -27,6 +28,43 @@ export function SnackbarLayer({ bottom = 16 }: { bottom?: number }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------ alert dialog */
+
+/**
+ * 只告知、不做选择（一个「知道了」收尾）。
+ *
+ * 为什么不能只用 snackbar：作者 2026-09-26 要求「没有读取到可用内容的警告窗口」——
+ * 导入失败这种事必须是**挡住视线的对话框**：snackbar 三秒就走，用户很可能正盯着别处，
+ * 回头只看到"课表没变"，根本不知道导入失败了。
+ */
+export function AlertDialog({
+  open,
+  headline,
+  body,
+  children,
+  closeLabel = '知道了',
+  onClose,
+}: {
+  open: boolean;
+  headline: string;
+  /** 内容用 body 传或直接当 children 写都行（两种写法混用过一次，正文整块不见了） */
+  body?: ReactNode;
+  children?: ReactNode;
+  closeLabel?: string;
+  onClose: () => void;
+}) {
+  return (
+    <MdDialog
+      open={open}
+      headline={headline}
+      onClosed={onClose}
+      actions={<md-text-button onClick={onClose}>{closeLabel}</md-text-button>}
+    >
+      {body ?? children}
+    </MdDialog>
   );
 }
 
@@ -93,6 +131,8 @@ export function ExpandableSheet({
   children,
   headerActions,
   scrollable = true,
+  variant = 'full',
+  actions,
 }: {
   open: boolean;
   onClose: () => void;
@@ -102,10 +142,19 @@ export function ExpandableSheet({
   children: ReactNode;
   headerActions?: ReactNode;
   scrollable?: boolean;
+  /**
+   * `half` = 抖音评论区那种**半遮蔽**底部弹层：贴底、只占屏幕下半部分，上方留半屏可见。
+   * 课程详情与"导航到某地"用这一档；导入课表那种长表单仍走默认的 `full`（整屏）。
+   */
+  variant?: 'full' | 'half';
+  /** 贴底主操作条（半屏弹层常用：课程详情那里放「导航至 <地点>」） */
+  actions?: ReactNode;
 }) {
   const [rendered, setRendered] = useState(open);
   const [phase, setPhase] = useState<'closed' | 'opening' | 'open' | 'closing'>(open ? 'open' : 'closed');
   const panelRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startH: number; maxH: number; dy: number } | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (open && phase === 'closed') {
@@ -124,8 +173,16 @@ export function ExpandableSheet({
       const target = panel.getBoundingClientRect();
       const source = sourceRef.current?.getBoundingClientRect();
       const from = source && source.width > 0 ? source : target;
-      const scaleX = Math.max(0.02, from.width / target.width);
-      const scaleY = Math.max(0.02, from.height / target.height);
+      /**
+       * 起始缩放要有下限（作者 2026-09-29 反馈的「冲击感」）：
+       * 素材卡/按钮往往只有几十像素高，除以弹层高度会算出 0.02 —— 面板从**一根头发丝**里
+       * 窜出来，真机上（365×800、dpr 3.5）逐帧采样实测起点就是 scaleY=0.02。
+       * 现在把起点压到不超过「一半大小」，既保留"从点的地方长出来"的 M3 空间感，
+       * 又不会像被弹了一下。 */
+      const MIN_SCALE_X = 0.6;
+      const MIN_SCALE_Y = 0.35;
+      const scaleX = Math.min(1, Math.max(MIN_SCALE_X, from.width / target.width));
+      const scaleY = Math.min(1, Math.max(MIN_SCALE_Y, from.height / target.height));
       const dx = from.left - target.left;
       const dy = from.top - target.top;
       panel.style.transition = 'none';
@@ -144,8 +201,9 @@ export function ExpandableSheet({
     if (phase === 'closing') {
       const target = panel.getBoundingClientRect();
       const source = sourceRef.current?.getBoundingClientRect();
-      const scaleX = source && source.width > 0 ? Math.max(0.02, source.width / target.width) : 0.9;
-      const scaleY = source && source.height > 0 ? Math.max(0.02, source.height / target.height) : 0.4;
+      // 关门也走同一套下限：不然"收回去"会缩成一根线，看起来像被抽走（与开门对称）
+      const scaleX = source && source.width > 0 ? Math.min(1, Math.max(0.6, source.width / target.width)) : 0.9;
+      const scaleY = source && source.height > 0 ? Math.min(1, Math.max(0.35, source.height / target.height)) : 0.4;
       const dx = source && source.width > 0 ? source.left - target.left : 0;
       const dy = source && source.height > 0 ? source.top - target.top : 40;
       panel.style.transition = `transform ${MOTION.spatial.fast.duration}s ${MOTION.spatial.fast.css}`;
@@ -170,10 +228,96 @@ export function ExpandableSheet({
 
   if (!rendered) return null;
 
-  return (
+  /**
+   * 抓手拖动：把抽屉从**半屏**拖成**全屏**（作者 2026-09-25 的点子），
+   * 往下拖则回到半屏，再往下拖超过一截直接关掉 —— 抖音那套手势。
+   *
+   * 只用 pointer 事件 + 内联 height：拖动期间禁掉过渡（`data-dragging`），
+   * 松手按"离哪边近"吸附。上限始终 = 屏幕高 − `--dock-band`（底栏那条带子），
+   * 所以"全屏"也不会盖住底栏按钮。
+   */
+
+  const availableHeight = () => {
+    const layer = panelRef.current?.parentElement;
+    const band = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock-band')) || 0;
+    return Math.max(200, (layer?.clientHeight ?? window.innerHeight) - band - 8);
+  };
+
+  const onGrabberDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const panel = panelRef.current;
+    if (!panel || variant !== 'half') return;
+    dragRef.current = { startY: event.clientY, startH: panel.getBoundingClientRect().height, maxH: availableHeight(), dy: 0 };
+    panel.dataset.dragging = '1';
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const onGrabberMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const panel = panelRef.current;
+    const drag = dragRef.current;
+    if (!panel || !drag) return;
+    drag.dy = event.clientY - drag.startY;
+    const half = Math.min(drag.startH, drag.maxH);
+    const next = Math.min(drag.maxH, Math.max(96, half - drag.dy));
+    /* 必须**同时**放开 max-height：半屏那条 `max-height: min(62%, …)` 会把内联 height 卡住，
+       只写 height 的话往上拖也长不高（实测：拖完仍是 496px = 62%）。 */
+    panel.style.maxHeight = `${Math.round(drag.maxH)}px`;
+    panel.style.height = `${Math.round(next)}px`;
+  };
+
+  const onGrabberUp = () => {
+    const panel = panelRef.current;
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!panel || !drag) return;
+    delete panel.dataset.dragging;
+    const half = Math.min(drag.startH, drag.maxH);
+    if (drag.dy < -60) {
+      /* 往上拖：吸到全屏（height 与 maxHeight 一起放开） */
+      panel.style.maxHeight = `${Math.round(drag.maxH)}px`;
+      panel.style.height = `${Math.round(drag.maxH)}px`;
+      setExpanded(true);
+      return;
+    }
+    if (drag.dy > 140) {
+      /* 往下拖够多：关掉抽屉 */
+      setExpanded(false);
+      panel.style.removeProperty('height');
+      panel.style.removeProperty('max-height');
+      onClose();
+      return;
+    }
+    setExpanded(false);
+    panel.style.removeProperty('height');
+    panel.style.removeProperty('max-height');
+    if (drag.dy > 0 && half - drag.dy > half - 40) onClose();
+  };
+
+  /* 把弹层 portal 到 `.phone`（与底栏同级）：这样它的 z-index 直接和底栏比，
+     不需要给所在屏加 `:has()` 提权 —— 那条规则每次切屏都要重算，正是切屏闪烁的嫌疑源。 */
+  const host = typeof document === 'undefined' ? null : document.querySelector('.phone') ?? document.body;
+  if (!host) return null;
+
+  return createPortal(
     <div className={['sheet-layer', open ? 'open' : ''].join(' ').trim()}>
       <div className="sheet-scrim" onClick={onClose} aria-hidden="true" />
-      <section className="sheet-panel" ref={panelRef} role="dialog" aria-modal="true">
+      <section
+        className={variant === 'half' ? 'sheet-panel half' : 'sheet-panel'}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        data-expanded={expanded ? '1' : undefined}
+      >
+        {variant === 'half' ? (
+          <div
+            className="sheet-grabber"
+            role="separator"
+            aria-label="上下拖动：展开到全屏 / 收回半屏"
+            onPointerDown={onGrabberDown}
+            onPointerMove={onGrabberMove}
+            onPointerUp={onGrabberUp}
+            onPointerCancel={onGrabberUp}
+          />
+        ) : null}
         <div className="sheet-header">
           {icon ? <MdIcon name={icon} size={24} /> : null}
           <div className="sheet-title md-title-large-emphasized">{title}</div>
@@ -181,8 +325,10 @@ export function ExpandableSheet({
           <MdIconButton icon="close" label="收起面板" onClick={onClose} />
         </div>
         <div className={['sheet-body', scrollable ? 'scroll-y' : ''].join(' ').trim()}>{children}</div>
+        {actions ? <div className="sheet-action">{actions}</div> : null}
       </section>
-    </div>
+    </div>,
+    host,
   );
 }
 

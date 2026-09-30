@@ -3,8 +3,8 @@
  *
  * 状态：**19 步全绿**（2026-09，v3.5.2 实测 ok 19 / FAIL 0）。
  * 它写于 v2 之前，UI 之后重写了两轮，一度烂到 **19 步里 11 步失败** —— 而且因为
- * 它当时**不在 CI 里跑**，坏了很久都没人发现。已修掉三处静默失效（见下），并接进
- * auto-review 的守卫清单，让它不能再悄悄烂掉：
+ * 它当时**没有任何自动检查在跑**，坏了很久都没人发现。已修掉三处静默失效（见下），并接进
+ * 本地守卫清单，让它不能再悄悄烂掉：
  *
  *   1. 底栏搬出屏幕栈后，`.screen … .m3e-dock-tab` 这个作用域**永远匹配不到**，
  *      而失败时不报错、只是静默回落到通用点击路径，最后以 `md-navigation-tab` 超时收场；
@@ -264,8 +264,12 @@ try {
   extra.theme = await readTheme();
 
   await step('textbook window opens', async () => {
-    // v2：教材窗口挂在首页（课表）工具栏上
-    await clickTop('.appbar-textbooks');
+    // 2026-09-29：教材入口从主页工具栏搬到了「设置 → 课表编辑 → 查看教材」
+    await page.locator('.m3e-dock-tab', { hasText: '设置' }).first().click();
+    await page.waitForTimeout(800);
+    await page.locator('.screen-content:visible').first().locator('md-list-item', { hasText: '课表编辑' }).first().click();
+    await page.waitForTimeout(700);
+    await page.locator('.screen-content:visible').first().locator('md-list-item', { hasText: '查看教材' }).first().click();
     await page.waitForTimeout(1200);
     extra.textbookWindowText = (await top().innerText()).replace(/\s+/g, ' ').slice(0, 90);
     if (!/教材/.test(extra.textbookWindowText)) throw new Error(`教材窗口未打开: ${extra.textbookWindowText}`);
@@ -278,7 +282,7 @@ try {
   });
   await step('the schedule is the home screen', async () => {
     // v2.1：应用启动在记录页，先切到「首页」标签再断言课表
-    await clickTop('md-navigation-tab', 0);
+    await page.locator('.m3e-dock-tab', { hasText: '首页' }).first().click({ force: true });
     await page.waitForTimeout(1200);
     await waitTop('.week-board');
     await page.waitForTimeout(600);
@@ -288,7 +292,7 @@ try {
   /* ------------------------------------------------------------- 课表 screen */
   await step('schedule tab shows the 4x4 paged board', async () => {
     await page.keyboard.press('Escape');
-    await clickTop('md-navigation-tab', 0);
+    await page.locator('.m3e-dock-tab', { hasText: '首页' }).first().click({ force: true });
     await waitTop('.week-grid');
     await page.waitForTimeout(900);
     extra.schedule = await page.evaluate(() => {
@@ -311,7 +315,7 @@ try {
           : [],
         chipCount: document.querySelectorAll('.course-chip').length,
         activePage: activeIndex,
-        monthLabel: document.querySelector('.schedule-datebutton')?.textContent?.trim() ?? '',
+        weekLabel: document.querySelector('.week-label-button')?.textContent?.trim() ?? '',
         timelineItems: document.querySelectorAll('.timeline-item').length,
       };
     });
@@ -322,16 +326,23 @@ try {
   });
   await shot('21-schedule');
 
-  await step('month / date picker recognises the schedule months', async () => {
-    await clickTop('.schedule-datebutton');
-    await page.waitForTimeout(700);
-    extra.monthDialog = await page.locator('md-dialog[open] .month-chips').innerText();
-    const months = await page.locator('md-dialog[open] .month-chips .chip').count();
-    if (months < 2) throw new Error(`expected several term months, got ${months}`);
-    await shot('27-schedule-months');
-    await page.locator('md-dialog[open] .month-chips .chip').nth(1).click();
+  await step('week block jumps by the native date picker', async () => {
+    // 2026-09-29：原来的「按月份 / 周次列表」弹层已删，改成点周次块中间唤起**系统原生**
+    // 日期选择器（隐藏的 <input type="date">）。这里直接驱动那个 input 验证跳转链路。
+    const before = await top().locator('.week-label-button').innerText();
+    const input = top().locator('.week-date-input');
+    if ((await input.count()) === 0) throw new Error('周次块里没有原生日期选择器');
+    await input.evaluate((el) => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(el, '2026-10-08');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     await page.waitForTimeout(900);
-    extra.monthAfterPick = await top().locator('.schedule-datebutton').innerText();
+    extra.weekAfterPick = await top().locator('.week-label-button').innerText();
+    if (!/第\s*\d+\s*周/.test(extra.weekAfterPick)) throw new Error(`跳转后周次块文案异常: ${extra.weekAfterPick}`);
+    if (extra.weekAfterPick === before) throw new Error(`选日期后周次没有变化: ${before}`);
+    await shot('27-schedule-months');
   });
 
   await step('back to today after the month jump', async () => {
@@ -339,7 +350,7 @@ try {
     //
     // 「回到今天」在 v3 起是**右下角常驻 FAB**（`ScheduleScreen.tsx`，类名 .schedule-today-fab），
     // 原来在顶栏最右边。这里以前点的是 `.app-bar md-icon-button` 的**索引 1** ——
-    // 而现行顶栏的按钮顺序是 `[筛选课程, 查看教材(.appbar-textbooks), 课表数据与导入(.appbar-import)]`，
+    // 而现在顶栏只剩「筛选课程」一个入口（查看教材 / 课表数据与导入 已搬到「设置 → 课表编辑」），
     // 索引 1 正好命中「查看教材」：一点就被推到教材页，于是后面十几项全在**错误页面上**连锁失败
     // （course detail / 看板拖拽 / 筛选 / 导入 全部超时）。这是本文件此前 11 步失联的起点。
     // 教训：按**索引**点的顶栏按钮，一旦插入新按钮就会静默指错目标 —— 改成语义化类名。
@@ -351,7 +362,7 @@ try {
     // 确定性导航：先回课表首页、确保课表是展开的（v2 已取消自动收起，但手动收起状态会被保留），
     // 然后点页面上任意一张可见的课程卡片——不再假设"当前分页一定在 activePage 上"。
     if (!(await top().locator('.week-board').count())) {
-      await clickTop('md-navigation-tab', 0);
+      await page.locator('.m3e-dock-tab', { hasText: '首页' }).first().click({ force: true });
       await page.waitForTimeout(1100);
     }
     if (await top().locator('.week-board.collapsed').count()) {
@@ -464,7 +475,7 @@ try {
   });
 
   await step('schedule filter screen', async () => {
-    await clickTop('md-navigation-tab', 1);
+    await page.locator('.m3e-dock-tab', { hasText: '搜索' }).first().click({ force: true });
     // 分类标签 + 搜索栏已合并成一个按钮，点开是老师/课程/地点/时间面板
     await waitTop('.filter-button');
     extra.filterButton = (await top().locator('.filter-button').innerText()).replace(/\s+/g, ' ');
@@ -491,7 +502,12 @@ try {
   await shot('25-schedule-highlight');
 
   await step('schedule import sheet', async () => {
-    await clickTop('.appbar-import');
+    // 2026-09-29：导入入口搬到「设置 → 课表编辑 → 课表数据与导入」
+    await page.locator('.m3e-dock-tab', { hasText: '设置' }).first().click();
+    await page.waitForTimeout(800);
+    await page.locator('.screen-content:visible').first().locator('md-list-item', { hasText: '课表编辑' }).first().click();
+    await page.waitForTimeout(700);
+    await page.locator('.screen-content:visible').first().locator('md-list-item', { hasText: '课表数据与导入' }).first().click();
     await waitTop('.sheet-panel');
     await page.waitForTimeout(700);
     extra.importSheet = (await top().locator('.sheet-panel').innerText()).slice(0, 220);

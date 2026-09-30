@@ -10,10 +10,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { MdIcon, MdIconButton, MdTextField, useMdDialog } from './md';
 import { analyzeImage } from '../lib/api';
-import { recognizeCover } from '../lib/localRecognize';
 import { listSnapshots, relativeTime, saveSnapshot, type ScheduleSnapshot } from '../lib/scheduleCache';
-import { guessPublisher, matchCourseByText, stripPriceLines } from '../lib/textbooks';
-import { ExpandableSheet } from './overlays';
+import { guessPublisher, matchCourseByText } from '../lib/textbooks';
+import { AlertDialog, ExpandableSheet } from './overlays';
 import {
   MAP_PROVIDERS,
   SCHEDULE_SECTIONS,
@@ -43,8 +42,10 @@ import {
   type SchedulePeriod,
   type ScheduleSection,
 } from '../lib/schedule';
+import { looksLikeJson, parseScheduleJson } from '../lib/scheduleJson';
+import { IMPORT_FILE_HINT } from '../lib/importPrompts';
 import { useAppState } from '../state/AppState';
-import { pickFile, prepareImageFile } from '../lib/imaging';
+import { captureImageFile, pickFile, prepareImageFile } from '../lib/imaging';
 
 /* --------------------------------------------------------------- helpers --- */
 
@@ -561,7 +562,28 @@ export function CourseDetailSheet({
   const upcoming = dates.filter((date) => date >= new Date());
   const shown = (upcoming.length ? upcoming : dates).slice(0, 5);
   return (
-    <ExpandableSheet open={open} onClose={onClose} sourceRef={sourceRef} icon="event" title={course?.name ?? '课程'}>
+    <ExpandableSheet
+      open={open}
+      onClose={onClose}
+      sourceRef={sourceRef}
+      icon="event"
+      title={course?.name ?? '课程'}
+      /* 抖音评论区那种半遮蔽弹层：顶部课程/时间等信息照旧，**只把下方主操作**
+         换成「导航至 <地点>」并贴在弹层底部。 */
+      variant="half"
+      actions={
+        course ? (
+          course.room ? (
+            <md-filled-button onClick={() => onNavigate(course.room, course)}>
+              <MdIcon slot="icon" name="navigation" />
+              导航至 {course.room}
+            </md-filled-button>
+          ) : (
+            <span className="md-body-small muted">课表里没写教室，先在「设置 → 导航与学校」里补上，或手动复制地址</span>
+          )
+        ) : null
+      }
+    >
       <div ref={sourceRef} />
       {course ? (
         <div className="col gap-12">
@@ -608,12 +630,6 @@ export function CourseDetailSheet({
           <div className="row gap-8" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
             <MdIcon name="place" size={18} />
             <span className="md-body-medium flex-1">{course.room || '未填写地点'}</span>
-            {course.room ? (
-              <md-filled-tonal-button onClick={() => onNavigate(course.room, course)}>
-                <MdIcon slot="icon" name="navigation" />
-                导航
-              </md-filled-tonal-button>
-            ) : null}
           </div>
 
           {/* 教材：内置教材库 + 封面识别结果 */}
@@ -637,7 +653,7 @@ export function TextbookSection({ courseName }: { courseName: string }) {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  /** 本地识别的进度文案（OpenCV 预处理 / OCR / 匹配），空串表示不在识别中 */
+  /** 识别进度文案（交给多模态接口那一步），空串表示不在识别中 */
   const [ocrProgress, setOcrProgress] = useState('');
   const [cover, setCover] = useState<string | null>(null);
   const [ocrText, setOcrText] = useState('');
@@ -645,7 +661,8 @@ export function TextbookSection({ courseName }: { courseName: string }) {
   const [publisher, setPublisher] = useState('');
   const [edition, setEdition] = useState('');
   const [target, setTarget] = useState(courseName);
-  const dialogRef = useMdDialog(dialogOpen);
+  // 用户点遮罩/Esc 关掉对话框时把状态同步成关（否则它会自己弹回来 —— 作者报的"弹两次"）
+  const dialogRef = useMdDialog(dialogOpen, () => setDialogOpen(false));
 
   const courseNames = useMemo(() => {
     const names = new Set<string>();
@@ -676,73 +693,51 @@ export function TextbookSection({ courseName }: { courseName: string }) {
   };
 
   /**
-   * 选择封面图片：从相册选图后先识别，再进对话框确认（相机功能已剔除）。
+   * 选择封面图片：从相册选图后交给**多模态模型**识别，再进对话框确认（相机功能已剔除）。
    *
-   * 识别顺序：**本地优先**（OpenCV 预处理 + Tesseract 中文 OCR，图片不出设备），
-   * 本地拿不到结果且用户配了图片转文字 API 时，才回落到外部多模态模型。
+   * 2026-09-27 下线了本地识别（OpenCV 预处理 + Tesseract 中文 OCR）：作者实测免费多模态模型
+   * 读封面又准又省事，而本地那套要给每个包塞 40+ MB 的 wasm 与中文模型（APK 从 26 MB 掉到
+   * 4 MB 就是这一刀）。现在只有一条识别路：设置里配好「多模态接口」→ 交给它读；
+   * 没配就只保存封面，让用户在对话框里手填或粘贴封面文字。
+   *
+   * 2026-09-29 作者要求封面支持**系统原生相机拍照**：默认走 `capture="environment"`
+   * 直接唤起相机；想从相册挑旧图时才用 mode='library'。
    */
-  const captureCover = async () => {
-    const file = await pickFile('教材封面', 'image/*');
+  const captureCover = async (mode: 'camera' | 'library' = 'camera') => {
+    const file = mode === 'camera' ? await captureImageFile() : await pickFile('教材封面', 'image/*');
     if (!file) return;
     setBusy(true);
-    let localNote = '';
     try {
       const dataUrl = await prepareImageFile(file, settings.cameraSharpness);
       setCover(dataUrl);
 
-      // ① 本地识别
-      try {
-        const result = await recognizeCover(dataUrl, {
-          allowCdn: settings.localOcrCdn,
-          courseNames,
-          onProgress: (progress) => setOcrProgress(progress.text),
-        });
-        if (result.best.trim()) {
-          // 「封面文字」里不预填定价行：它对匹配课程、判断是哪本书都没用，
-          // 但 OCR 一定会读到，留着只会让这栏看起来塞了无关信息。
-          const cover = stripPriceLines(result.best);
-          // 已经读出的 ISBN 若就在上述文字里，就不要再补一行 —— 否则同一个书号
-          // 会出现两次（原文的带连字符形式 + 归一化形式）。
-          const coverDigits = cover.replace(/[^0-9Xx]/g, '');
-          const needIsbnLine = Boolean(result.isbn) && !coverDigits.includes(result.isbn as string);
-          const text = [cover, needIsbnLine ? `ISBN ${result.isbn}` : ''].filter(Boolean).join('\n');
-          const matched = result.course ?? courseName;
-          openDialog({ ocr: text, cover: dataUrl, matched });
-          showSnackbar({
-            message: result.matchedBy === 'library'
-              ? `本地识别完成，匹配到《${matched}》${result.publisher ? ` · ${result.publisher}` : ''}`
-              : `本地识别出封面文字${result.publisher ? `，出版社：${result.publisher}` : ''}`,
-            duration: 4000,
-          });
-          return;
-        }
-        localNote = '本地没读出可用文字';
-      } catch (error) {
-        localNote = error instanceof Error ? error.message : '本地识别不可用';
-      } finally {
-        setOcrProgress('');
-      }
-
-      // ② 回落到外部多模态 API（可选，需用户自行配置）
       if (settings.visionApiUrl.trim()) {
         try {
+          setOcrProgress('正在交给多模态接口识别…');
           const result = await analyzeImage(dataUrl, settings);
           const text = [result.summary, ...result.keyPoints].join('\n');
           const matched = matchCourseByText(text, courseNames)?.course ?? courseName;
           openDialog({ ocr: text, cover: dataUrl, matched });
-          showSnackbar({ message: `已用外部 API 识别，匹配到《${matched}》`, duration: 4000 });
+          showSnackbar({ message: `已用多模态接口识别，匹配到《${matched}》`, duration: 4000 });
           return;
         } catch (error) {
-          localNote += `；外部 API 也失败：${error instanceof Error ? error.message : '未知错误'}`;
+          showSnackbar({
+            message: `识别失败：${error instanceof Error ? error.message : '未知错误'}。封面已保存，可以手填或粘贴文字。`,
+            duration: 8000,
+          });
+        } finally {
+          setOcrProgress('');
         }
       }
 
-      // ③ 都没成功：仍然保存封面，让用户手填或粘贴文字
+      // 没配接口（或接口失败）：仍然保存封面，让用户手填或粘贴
       openDialog({ cover: dataUrl, matched: courseName });
-      showSnackbar({
-        message: `${localNote}。可点「导入教程」看本地识别怎么准备，或直接粘贴封面文字。`,
-        duration: 8000,
-      });
+      if (!settings.visionApiUrl.trim()) {
+        showSnackbar({
+          message: '还没配置多模态接口：封面已保存，可在对话框里手填，或点「导入教程」看怎么配。',
+          duration: 8000,
+        });
+      }
     } finally {
       setOcrProgress('');
       setBusy(false);
@@ -806,32 +801,39 @@ export function TextbookSection({ courseName }: { courseName: string }) {
               {[book?.publisher, book?.edition, book?.series].filter(Boolean).join(' · ') || '未填写出版社'}
             </span>
           </div>
-          <div className="row" style={{ gap: 0 }}>
-            <MdIconButton icon="edit" label="修改教材" onClick={() => openDialog()} />
-            <MdIconButton
-              icon="delete"
-              label="移除教材"
-              onClick={() => {
-                setTextbook(courseName, null);
-                showSnackbar({ message: '已移除该课程的教材', duration: 3000 });
-              }}
-            />
-          </div>
+          {/* 作者要求：已有教材时**不留「添加」入口**，只在旁边放一颗圆形修改按钮，
+              直径与课本封面容器等高（见 .textbook-edit 的 align-self:stretch + aspect-ratio:1）。
+              移除动作移进「标记教材」对话框，避免再加第二颗圆钮。 */}
+          <button type="button" className="textbook-edit" aria-label="修改教材" onClick={() => openDialog()}>
+            <MdIcon name="edit" size={20} />
+          </button>
         </div>
       ) : (
         <div className="md-body-small muted">尚未识别教材，可拍一张封面或手动填写。</div>
       )}
 
-      <div className="button-group" style={{ justifyContent: 'flex-start' }}>
-        <md-filled-tonal-button className="btn-s" onClick={() => void captureCover()} disabled={busy ? '' : undefined}>
-          <MdIcon slot="icon" name="photo_camera" />
-          选图识别封面
-        </md-filled-tonal-button>
-        <md-outlined-button className="btn-s" onClick={() => openDialog()}>
-          <MdIcon slot="icon" name="edit_note" />
-          手动填写
-        </md-outlined-button>
-      </div>
+      {/* 「添加课程（选图识别 / 手动填写）」只在**还没有教材**时出现 */}
+      {hasBook ? null : (
+        <>
+          {/* 三颗按钮在 366dp 的真机上排不下：原来第三颗「手动填写」会被右边缘裁掉
+              （2026-09-29 真机截图实测）。这里允许换行 + 行间距，窄屏自动落到第二行。 */}
+          <div className="button-group pill" style={{ justifyContent: 'flex-start', flexWrap: 'wrap', rowGap: 8 }}>
+            <md-filled-tonal-button className="btn-s" onClick={() => void captureCover('camera')} disabled={busy ? '' : undefined}>
+              <MdIcon slot="icon" name="photo_camera" />
+              拍照识别封面
+            </md-filled-tonal-button>
+            <md-outlined-button className="btn-s" onClick={() => void captureCover('library')} disabled={busy ? '' : undefined}>
+              <MdIcon slot="icon" name="photo_library" />
+              从相册选图
+            </md-outlined-button>
+            <md-outlined-button className="btn-s" onClick={() => openDialog()}>
+              <MdIcon slot="icon" name="edit_note" />
+              手动填写
+            </md-outlined-button>
+          </div>
+          {ocrProgress ? <div className="md-body-small muted mt-8">{ocrProgress}</div> : null}
+        </>
+      )}
 
       <md-dialog ref={dialogRef} className="app-dialog">
         <div slot="headline">标记教材</div>
@@ -884,6 +886,17 @@ export function TextbookSection({ courseName }: { courseName: string }) {
           ) : null}
         </div>
         <div slot="actions">
+          {hasBook ? (
+            <md-text-button
+              onClick={() => {
+                setDialogOpen(false);
+                setTextbook(courseName, null);
+                showSnackbar({ message: '已移除该课程的教材', duration: 3000 });
+              }}
+            >
+              移除教材
+            </md-text-button>
+          ) : null}
           <md-text-button onClick={() => setDialogOpen(false)}>取消</md-text-button>
           <md-text-button onClick={saveBook}>保存并标记</md-text-button>
         </div>
@@ -907,7 +920,9 @@ export function MapChooserDialog({
 }) {
   const [selected, setSelected] = useState(MAP_PROVIDERS[0].id);
   const [remember, setRemember] = useState(false);
-  const dialogRef = useMdDialog(open);
+  /* 半屏弹层的展开动画需要一个"从哪儿长出来"的源矩形；这里没有具体来源元素，
+     传一个空 ref 即可（内部会退化成从弹层自身位置展开）。 */
+  const sourceRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (open) {
       setSelected(MAP_PROVIDERS[0].id);
@@ -916,10 +931,24 @@ export function MapChooserDialog({
   }, [open]);
 
   return (
-    <md-dialog ref={dialogRef} onCancel={onCancel} className="app-dialog">
-      <div slot="headline">选择地图应用</div>
-      <div slot="content" className="md-body-medium">
-        <div className="mb-8 muted">将为「{address}」启动导航</div>
+    /* 「导航到 XX 地点」这套也走抖音式半遮蔽弹层：与课程详情同一套手感（贴底、半屏、可点遮罩关） */
+    <ExpandableSheet
+      open={open}
+      onClose={onCancel}
+      sourceRef={sourceRef}
+      icon="place"
+      title="导航到"
+      variant="half"
+      actions={
+        <>
+          <md-text-button onClick={onCancel}>取消</md-text-button>
+          <span className="flex-1" />
+          <md-filled-button onClick={() => onConfirm(selected, remember)}>打开地图</md-filled-button>
+        </>
+      }
+    >
+      <div className="col gap-8">
+        <div className="muted">将为「{address}」启动导航</div>
         {MAP_PROVIDERS.map((provider) => (
           <div
             key={provider.id}
@@ -943,11 +972,7 @@ export function MapChooserDialog({
           <span className="md-body-medium">记住选择（写入设置，之后不再询问）</span>
         </label>
       </div>
-      <div slot="actions">
-        <md-text-button onClick={onCancel}>取消</md-text-button>
-        <md-text-button onClick={() => onConfirm(selected, remember)}>打开地图</md-text-button>
-      </div>
-    </md-dialog>
+    </ExpandableSheet>
   );
 }
 
@@ -957,10 +982,13 @@ export function ScheduleImportSheet({
   open,
   onClose,
   onImported,
+  onOpenTutorial,
 }: {
   open: boolean;
   onClose: () => void;
   onImported: (message: string) => void;
+  /** 打开「导入教程」（含可复制的提示词）：本面板会先关掉自己，避免两层弹层叠着 */
+  onOpenTutorial: () => void;
 }) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const { settings, updateSettings, setSchedule, schedule, scheduleImported, showSnackbar } = useAppState();
@@ -969,6 +997,12 @@ export function ScheduleImportSheet({
   const [termStart, setTermStart] = useState(settings.termStart || schedule.termStart);
   /** 本地缓存课表（快照）：导入时自动留档，可一键恢复 */
   const [snapshots, setSnapshots] = useState<ScheduleSnapshot[]>([]);
+  /** 「没有读取到可用内容」的警告窗口（作者要求：这种事必须挡住视线，不能只飘一条 snackbar） */
+  const [warning, setWarning] = useState<{ headline: string; detail: string } | null>(null);
+
+  /** 一份课表里到底有几门课：0 门就等于「什么都没读到」，不能当导入成功 */
+  const countCourses = (data: ScheduleData) =>
+    data.periods.reduce((total, period) => total + period.days.reduce((sum, day) => sum + day.length, 0), 0);
 
   const refreshSnapshots = () => {
     void listSnapshots().then(setSnapshots);
@@ -991,6 +1025,9 @@ export function ScheduleImportSheet({
     setBusy(true);
     try {
       const parsed = await parseScheduleFile(file);
+      // 「解析器没报错」不等于「读到了课」：一份只有节次、没有课程的课表导入进来，
+      // 主页会因为"没有课程就回落内置课表"继续显示旧表 —— 用户看到的就是"导入了但没变"。
+      if (!countCourses(parsed)) throw new Error('里面没有解析到任何课程');
       // 本地缓存：留一份快照，之后可一键恢复（最多 3 份）
       await saveSnapshot(parsed, file.name);
       refreshSnapshots();
@@ -999,9 +1036,10 @@ export function ScheduleImportSheet({
     } catch (error) {
       const reason = error instanceof Error ? error.message : '未知错误';
       showSnackbar({
-        message: `“${file.name}”解析失败：${reason}。支持教务系统导出的 .doc/.rtf、另存为的 .html，以及 .csv/.txt 文本。`,
+        message: `“${file.name}”解析失败：${reason}。支持教务系统导出的 .doc/.rtf、另存为的 .html、.json（应用形状或扁平 courses[]），以及 .csv/.txt 文本。`,
         duration: 8000,
       });
+      setWarning({ headline: '没有读取到可用的课表内容', detail: `“${file.name}”：${reason}` });
     } finally {
       setBusy(false);
     }
@@ -1015,12 +1053,20 @@ export function ScheduleImportSheet({
     try {
       // 粘贴内容里带 <table> 就按 HTML 课表解析（与「选文件」那条路的判定一致）——
       // 以前粘贴路径只会走纯文本解析器，于是从网页里复制的表格一直报「没有解析到课表节次」。
-      const parsed = /<table/i.test(pasted) ? parseHtmlSchedule(pasted) : parseTextSchedule(pasted);
+      // JSON 同理：模型给的常常就是一段 JSON（```json 围栏 + 前后说明文字也算）。
+      const parsed = /<table/i.test(pasted)
+        ? parseHtmlSchedule(pasted)
+        : looksLikeJson(pasted)
+          ? parseScheduleJson(pasted)
+          : parseTextSchedule(pasted);
+      if (!countCourses(parsed)) throw new Error('里面没有解析到任何课程');
       setSchedule(parsed);
       setPasted('');
       onImported(`已从文本导入：${parsed.periods.length} 个节次`);
     } catch (error) {
-      showSnackbar({ message: `文本解析失败：${error instanceof Error ? error.message : '未知错误'}`, duration: 6000 });
+      const reason = error instanceof Error ? error.message : '未知错误';
+      showSnackbar({ message: `文本解析失败：${reason}`, duration: 6000 });
+      setWarning({ headline: '没有读取到可用的课表内容', detail: `粘贴的内容：${reason}` });
     }
   };
 
@@ -1066,7 +1112,7 @@ export function ScheduleImportSheet({
         <div className="button-group" style={{ justifyContent: 'flex-start' }}>
           <md-filled-tonal-button onClick={() => void importFile()} disabled={busy ? '' : undefined}>
             <MdIcon slot="icon" name="folder_open" />
-            用系统文件管理器选择
+            导入课表文件
           </md-filled-tonal-button>
           <md-outlined-button onClick={() => { setSchedule(null); onImported('已恢复内置课表'); }}>
             <MdIcon slot="icon" name="settings_backup_restore" />
@@ -1074,8 +1120,34 @@ export function ScheduleImportSheet({
           </md-outlined-button>
         </div>
         <div className="md-body-small muted">
-          点击后会调起系统自带的文件浏览器（Android 文件管理器 / iOS 文件 / 桌面资源管理器），文件类型不限；
-          选中后按内容自动识别：教务系统导出的 .doc/.rtf、另存为的 .html 表格、.csv/.txt 文本。导入结果保存在本机。
+          点「导入课表文件」会调起系统自带的文件浏览器（Android 文件管理器 / iOS 文件 / 桌面资源管理器），
+          文件类型不限，选中后按内容自动识别：{IMPORT_FILE_HINT}。导入结果保存在本机。
+        </div>
+
+        {/* 作者 2026-09-26 的要求：主路径是「本地导入 HTML / JSON 文件」，
+            所以这里直接把「怎么用 AI 把课表照片变成文件」的教程挂在这一步旁边 */}
+        <div className="import-guide">
+          <div className="row gap-8" style={{ alignItems: 'center' }}>
+            <MdIcon name="auto_awesome" size={18} />
+            <span className="md-title-small-emphasized flex-1">没有现成的课表文件？让 AI 帮你转</span>
+          </div>
+          <div className="md-body-small muted mt-4">
+            把课表截图交给 DeepSeek / Gemini / ChatGPT，附上教程里的提示词，让它输出
+            <strong> HTML 或 JSON</strong>，存成 <code>.html</code> / <code>.json</code> 文件后用上面的按钮导入 ——
+            这是最省事、也最不容易出错的一条路。
+          </div>
+          <div className="row gap-8 mt-8 wrap">
+            <md-text-button
+              className="import-guide-open"
+              onClick={() => {
+                onClose();
+                onOpenTutorial();
+              }}
+            >
+              <MdIcon slot="icon" name="menu_book" />
+              看导入教程（含可复制的提示词）
+            </md-text-button>
+          </div>
         </div>
 
         <MdTextField
@@ -1084,10 +1156,15 @@ export function ScheduleImportSheet({
           onValueChange={setPasted}
           type="textarea"
           rows={4}
-          supportingText="首行为「节次/星期 星期一 …」，随后每个节次一行，制表符分隔各天"
+          supportingText="首行为「节次/星期 星期一 …」，随后每个节次一行，制表符分隔各天；也可以直接粘一段 JSON 课表"
         />
-        <div>
-          <md-text-button onClick={importText}>解析并导入文本</md-text-button>
+        {/* 作者 2026-09-27 反馈：这颗按钮原来是个纯文字按钮，和下面的「学期开始日期」标题糊在一起，
+            根本看不出是能点的动作。改成有底色、有图标的实心按钮，并和输入框/标题拉开距离。 */}
+        <div className="paste-import-row">
+          <md-filled-tonal-button onClick={importText}>
+            <MdIcon slot="icon" name="send" />
+            解析并导入文本
+          </md-filled-tonal-button>
         </div>
 
         <div className="col gap-8">
@@ -1120,6 +1197,23 @@ export function ScheduleImportSheet({
           </div>
         </div>
       </div>
+
+      {/* 没读到可用内容时的警告窗口（作者要求：这种事不能只飘一条会自己消失的 snackbar） */}
+      <AlertDialog
+        open={Boolean(warning)}
+        headline={warning?.headline ?? '没有读取到可用的课表内容'}
+        onClose={() => setWarning(null)}
+      >
+        <div className="col gap-12">
+          <span>{warning?.detail}</span>
+          <span className="muted">
+            当前课表没有被改动。可以试试：教务系统导出的 .doc/.rtf、网页另存的 .html 表格、.json
+            （应用形状 {'{ "periods": [{ "days": [[…]] }] }'} 或扁平
+            {' { "courses": [{ "name": …, "day": …, "period": … }] }'}），以及制表符分隔的 .csv/.txt；
+            也可以直接把内容贴进下面的「粘贴课表文本」。
+          </span>
+        </div>
+      </AlertDialog>
     </ExpandableSheet>
   );
 }

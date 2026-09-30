@@ -7,6 +7,7 @@
  * by the user is stored in IndexedDB and overrides the embedded one.
  */
 import { parseScheduleHtml } from './scheduleHtml';
+import { looksLikeJson, parseScheduleJson } from './scheduleJson';
 
 export type ScheduleSection = 'morning' | 'noon' | 'afternoon' | 'evening';
 
@@ -160,6 +161,81 @@ export function coursesOfDay(schedule: ScheduleData, dayIndex: number, week: num
 /** True when the weekday has any course at all (ignoring the week filter). */
 export function dayHasCourses(schedule: ScheduleData, dayIndex: number): boolean {
   return schedule.periods.some((period) => (period.days[dayIndex] ?? []).length > 0);
+}
+
+/** 'HH:MM' → 当天的分钟数；解析不出来返回 NaN */
+export function minutesOfClock(value: string): number {
+  const hit = /(\d{1,2})\s*[:：]\s*(\d{1,2})/.exec(value ?? '');
+  return hit ? Number(hit[1]) * 60 + Number(hit[2]) : NaN;
+}
+
+/** '08:30-09:55' → [开始分钟, 结束分钟] */
+export function courseClockRange(time: string): [number, number] {
+  const [from, to] = (time ?? '').split(/[-–—~～]/);
+  return [minutesOfClock(from ?? ''), minutesOfClock(to ?? '')];
+}
+
+export interface NearestCourse {
+  course: ScheduleCourse;
+  /** 距参考时刻的天数偏移：0 = 当天 */
+  dayOffset: number;
+  date: Date;
+  /** 教学周 */
+  week: number;
+  /** 第1-2节 */
+  period: string;
+  /** 08:30-09:55 */
+  time: string;
+  /** 正在上（开始 ≤ 现在 ≤ 结束） */
+  inSession: boolean;
+  /** 距开始还有几分钟；正在上时为 0 */
+  minutesUntil: number;
+}
+
+/**
+ * **时间上离「现在」最近的那节课** —— 主页「导航课程」按钮就靠它决定去哪。
+ *
+ * 口径（按贴近程度从高到低）：
+ *   1. 正在上的那一节（开始 ≤ 现在 ≤ 结束）—— 人往往已经在路上或刚到，这时"最近"就是它；
+ *   2. 当天还没开始的、最早的那一节；
+ *   3. 当天没有了，就往后 7 天里找第一节（跳过没课的星期与不上课的周次）。
+ * 找不到（课表为空 / 学期已结束 / 后面一周都没课）返回 null，由调用方决定怎么提示。
+ *
+ * 纯函数：不读时钟、不读时区、不碰 DOM —— 参考时刻由调用方传入，便于测试与守卫。
+ */
+export function nearestCourse(schedule: ScheduleData, from: Date, termStart: string): NearestCourse | null {
+  const nowMinutes = from.getHours() * 60 + from.getMinutes();
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
+    const date = addDays(from, dayOffset);
+    const dayIndex = weekdayIndex(date);
+    const week = weekNumberFor(date, termStart);
+    if (!Number.isFinite(week) || week < 1) continue;
+    const courses = coursesOfDay(schedule, dayIndex, week)
+      .map((entry) => ({ entry, range: courseClockRange(entry.time) }))
+      .sort((a, b) => a.range[0] - b.range[0]);
+    for (const { entry, range } of courses) {
+      const [start, end] = range;
+      if (!Number.isFinite(start)) continue;
+      if (dayOffset === 0) {
+        const inSession = Number.isFinite(end) && start <= nowMinutes && nowMinutes <= end;
+        if (inSession) {
+          return { course: entry.course, dayOffset, date, week, period: entry.period, time: entry.time, inSession: true, minutesUntil: 0 };
+        }
+        if (start <= nowMinutes) continue; // 今天已经上完的，跳过
+      }
+      return {
+        course: entry.course,
+        dayOffset,
+        date,
+        week,
+        period: entry.period,
+        time: entry.time,
+        inSession: false,
+        minutesUntil: Math.max(0, start - (dayOffset === 0 ? nowMinutes : 0)),
+      };
+    }
+  }
+  return null;
 }
 
 /** Weekdays that actually carry courses, used to pick the default four day window. */
@@ -658,6 +734,9 @@ export async function parseScheduleFile(file: File): Promise<ScheduleData> {
     return parseRtfSchedule(await file.arrayBuffer());
   }
   const text = await file.text();
+  // JSON 要在「纯文本兜底」之前认：模型/别的工具导出的课表常是一段 JSON，
+  // 掉进 parseTextSchedule 只会得到「没有解析到课表节次」（作者 2026-09-26 报的就是这条）
+  if (name.endsWith('.json') || looksLikeJson(text)) return parseScheduleJson(text);
   if (name.endsWith('.html') || name.endsWith('.htm') || /<table/i.test(text)) {
     return parseHtmlSchedule(text);
   }

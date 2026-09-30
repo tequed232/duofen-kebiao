@@ -7,25 +7,17 @@ export interface AppSettings {
   /** 教材封面识别用的视觉接口 */
   visionApiUrl: string;
   visionApiKey: string;
-  /**
-   * 本地识别缺资源时，是否允许从公网 CDN 取 **OCR 引擎核心**。
-   *
-   * 默认 true，原因是实测的兼容性缺陷：自托管核心（把 tesseract.js-core 放到
-   * web/public/ocr/ 并用 corePath 指过去）在 tesseract.js 6 与 7 上都在初始化后崩溃
-   * （`initialization failed: Cannot read properties of undefined (reading 'resolve')`），
-   * 且 Promise 不 reject。而「本地中文模型 + 官方 CDN 核心」在 0.2 秒内即成功。
-   *
-   * 注意隐私边界：**图片始终不出设备**，**中文模型也仍在本地**；
-   * 只有 OCR 引擎（不含任何用户数据）会从 CDN 取一次并被浏览器缓存。
-   * 想完全离线可关掉本项 —— 代价是自托管核心当前不可用，识别会失败。
-   */
-  localOcrCdn: boolean;
   /** default map provider id used when navigating to a course address ('' = ask every time) */
   mapProvider: string;
   /** teaching week 1 Monday, yyyy-mm-dd; '' = use the value embedded in the schedule */
   termStart: string;
   /** 地图导航时拼在教室前面的学校名称，例如「某某学院 16栋203」 */
   schoolName: string;
+  /**
+   * 主页浮动按钮区是否显示「导航课程」（2026-09-29 作者要求：给它一个开关）。
+   * 关掉之后浮动区只剩左侧的「筛选课程」相关的按钮，主页更干净。
+   */
+  navCourse: boolean;
   /** 底边栏使用液态玻璃（liquid glass）效果 */
   liquidGlass: boolean;
   /** 底边栏材质：液态玻璃 / Material 3 实心（默认）/ 半透明 */
@@ -35,9 +27,23 @@ export interface AppSettings {
    *   · 'off'      —— 不做色散，只留折射与高光；
    *   · 'concise'  —— 默认。三通道（R/G/B）只在边缘带分离出"一侧偏冷、一侧偏暖"的一丝彩边；
    *   · 'ultimate' —— 恢复 commit 0801cb9 那套落差口径 + **六段光谱**（紫蓝青绿黄红），数得出七色。
-   * 参数见 web/src/lib/lens.ts 的 LENS_DOCK / LENS_DOCK_ULTIMATE。
+   * 参数见 web/src/lib/lens.ts 的 dockLensParams（几何来自 dockWarp，颜色来自 dispersion）。
    */
   dispersion: 'off' | 'concise' | 'ultimate';
+  /**
+   * 底栏液态玻璃的**扭曲档位**（作者 2026-09-25 要求把"能看出掰弯"的那版找回来）：
+   *   · 'thick'   —— **默认**。commit `6aeae6d`「底栏换厚透镜」那版口径：
+   *                  bezel 0.85 / strength 1.6 / backdrop 位移封顶 26px。
+   *                  当时作者的验收话术是"能明显看到文字被横向拉开 + 蓝橙色边"。
+   *   · 'concise' —— 收窄（`7973ced` 六项整改后的口径）：bezel 0.30、封顶 7px，
+   *                  "只留在边缘一线"，即作者后来嫌"看不出来"的那一档。
+   *   · 'off'     —— 不做折射位移，只留边缘高光（与色散档无关）。
+   * 与色散档**正交**：扭曲管几何（掰弯多少、分布多宽），色散管颜色分离。
+   * 想要 `0801cb9` 那种"大落差 + 七彩虹"= 厚透镜 + 极致色散。
+   */
+  dockWarp: 'off' | 'concise' | 'thick';
+  /** 单色等高线背景（模仿《终末地》）：off 不画 / subtle 默认 / bold 更密 */
+  contour: 'off' | 'subtle' | 'bold';
   /**
    * 底栏**散射（磨砂）强度**档位：
    *   · 'concise' —— 默认。本体图内 ~2.4px 轻磨砂 + 底色 alpha 0%，看得见折射、透得出列表；
@@ -68,13 +74,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cameraSharpness: 1,
   visionApiUrl: '',
   visionApiKey: '',
-  localOcrCdn: true,
   mapProvider: '',
   termStart: '',
   schoolName: '',
+  navCourse: true,
   liquidGlass: true,
   barMaterial: 'solid',
   dispersion: 'concise',
+  dockWarp: 'thick',
+  contour: 'subtle',
   dockScatter: 'concise',
   classReminder: true,
   uiScale: 'normal',

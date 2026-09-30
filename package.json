@@ -1,13 +1,12 @@
 {
   "name": "duofen-kebiao",
   "private": true,
-  "version": "3.5.4",
+  "version": "3.6",
   "type": "module",
   "description": "多分课表：Material 3 Expressive 风格的课表应用（四日课表 / 教材识别 / 上课提醒）",
   "scripts": {
     "icons": "node scripts/subset-icons.mjs",
     "icons:app": "node scripts/make-icons.mjs",
-    "setup:ocr": "node scripts/setup-ocr.mjs",
     "dev": "vite",
     "build": "node scripts/subset-icons.mjs && node scripts/check-icons.mjs && vite build",
     "apk": "gradlew.bat assembleRelease",
@@ -17,24 +16,31 @@
     "check:calendar": "node scripts/check-calendar-export.mjs",
     "check:phrases": "node scripts/check-phrases.mjs",
     "check:settings": "node scripts/check-settings-groups.mjs",
+    "check:contour": "node scripts/check-contour.mjs",
     "check:schedule-html": "node scripts/check-schedule-html.mjs",
+    "check:schedule-json": "node scripts/check-schedule-json.mjs",
+    "check:import-guide": "node scripts/check-import-guide.mjs",
+    "check:viewport": "node scripts/check-viewport.mjs",
+    "check:home-nav": "node scripts/check-home-nav-toggle.mjs",
     "check:hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:web-security": "node scripts/check-web-security.mjs",
     "check:app-icons": "node scripts/check-app-icons.mjs",
+    "check:artwork": "node scripts/check-artwork-source.mjs",
     "apk:parity": "node scripts/check-apk-parity.mjs",
     "preview": "vite preview --port 4173",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "check:sheet-motion": "node scripts/check-sheet-motion.mjs",
+    "check:dialog-close": "node scripts/check-dialog-close.mjs",
+    "check:cover-import": "node scripts/check-cover-import.mjs"
   },
   "dependencies": {
     "@fontsource/roboto": "^5.3.0",
     "@material/material-color-utilities": "^0.4.0",
     "@material/web": "^2.5.0",
-    "@techstark/opencv-js": "^5.0.0-release.1",
     "material-symbols": "^0.47.4",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "tesseract.js": "^7.0.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",

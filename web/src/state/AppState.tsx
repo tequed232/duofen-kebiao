@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import * as db from '../lib/db';
+import { nativeStartPhraseService } from '../lib/native';
 import { DEFAULT_SETTINGS, type AppSettings } from '../lib/types';
 import { applyRoles, buildThemes, detectSeed, type SeedSource } from '../theme/palette';
 import { EMBEDDED_SCHEDULE } from '../data/schedule';
@@ -57,7 +58,18 @@ interface AppStateValue {
   showSnackbar: (options: Omit<SnackbarMessage, 'id' | 'duration'> & { duration?: number }) => void;
   hideSnackbar: () => void;
   snackbar: SnackbarMessage | null;
+  /**
+   * 跨屏指令：设置页里放着的功能（导入课表 / 写系统日历）要由主页执行，
+   * 而这类动作是主页的局部状态（弹层开关）。用一个带时间戳的指令对象转交，
+   * 主页消费后清空 —— 比把两个屏的状态互相 import 干净得多。
+   */
+  uiCommand: { kind: UiCommandKind; at: number } | null;
+  requestUiCommand: (kind: UiCommandKind) => void;
+  clearUiCommand: () => void;
 }
+
+/** 设置页可以请主页代劳的动作 */
+export type UiCommandKind = 'openScheduleImport' | 'calendarAdd' | 'calendarRemove';
 
 const AppStateContext = createContext<AppStateValue | null>(null);
 
@@ -76,6 +88,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [importedSchedule, setImportedSchedule] = useState<ScheduleData | null>(null);
   const [textbookOverrides, setTextbookOverrides] = useState<Record<string, Textbook>>({});
   const [scheduleHighlight, setScheduleHighlight] = useState<ScheduleHighlight | null>(null);
+  const [uiCommand, setUiCommand] = useState<{ kind: UiCommandKind; at: number } | null>(null);
+  const requestUiCommand = useCallback<AppStateValue['requestUiCommand']>((kind) => {
+    setUiCommand({ kind, at: Date.now() });
+  }, []);
+  const clearUiCommand = useCallback(() => setUiCommand(null), []);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -111,8 +128,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       void db.removeKv(db.SCHEDULE_KEY);
       return;
     }
-    setImportedSchedule(data);
-    void db.writeKv(db.SCHEDULE_KEY, data);
+    // 导入的课表可能没带「学期开始日期」—— 模型给的一段 JSON 常常就没有这个字段。
+    // 而主页要拿它算「现在是第几周」，算不出来时周次过滤会把课全挡掉，
+    // 表现就是作者报的「导入了，主页却还是旧表」。所以缺的字段按
+    // 「上一份课表 → 内置课表」继承，导入方不用关心这些元数据。
+    setImportedSchedule((previous) => {
+      const base = previous ?? EMBEDDED_SCHEDULE;
+      const merged: ScheduleData = {
+        ...data,
+        termStart: data.termStart || base.termStart || EMBEDDED_SCHEDULE.termStart,
+        term: data.term || base.term || EMBEDDED_SCHEDULE.term,
+        owner: data.owner && data.owner !== '未署名' ? data.owner : base.owner || data.owner,
+        days: data.days?.length ? data.days : base.days?.length ? base.days : EMBEDDED_SCHEDULE.days,
+      };
+      void db.writeKv(db.SCHEDULE_KEY, merged);
+      return merged;
+    });
   }, []);
 
   /** 教材：内置教材库 + 用户在界面上识别/填写/移除的结果 */
@@ -149,6 +180,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     if (!ready) return;
     void db.writeSettings(settings);
   }, [settings, ready]);
+
+  /**
+   * 通知栏桌宠（实时语料）：**启动即按上次的开关恢复常驻通知**。
+   * 原来只在打开「台词管理」那一页时才 `nativeStartPhraseService()`，
+   * 于是"装完没进过那一页 = 通知栏什么都没有"——作者 2026-09-25 反馈
+   * 「实时语料通知怎么没有了」。开关值存在 KV 的 `phrasesEnabled`（与设置页同一个键）。
+   */
+  useEffect(() => {
+    if (!ready) return undefined;
+    let cancelled = false;
+    void db.readKv<boolean>('phrasesEnabled').then((enabled) => {
+      if (!cancelled && enabled) nativeStartPhraseService();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
 
   /* --------------------------------------------------------------- theme */
   useEffect(() => {
@@ -212,6 +260,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       showSnackbar,
       hideSnackbar,
       snackbar,
+      uiCommand,
+      requestUiCommand,
+      clearUiCommand,
     }),
     [
       ready,
@@ -228,6 +279,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       showSnackbar,
       hideSnackbar,
       snackbar,
+      uiCommand,
+      requestUiCommand,
+      clearUiCommand,
     ],
   );
 

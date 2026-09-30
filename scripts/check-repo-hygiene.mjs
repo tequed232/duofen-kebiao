@@ -7,7 +7,7 @@
  * 这里防 `git add -f` 与别人 PR 里塞进来的二进制）。
  *
  * 用法：node scripts/check-repo-hygiene.mjs
- *   命中禁止的扩展名 → exit 1（CI 会红）
+ *   命中禁止的扩展名 → exit 1（守卫会红）
  *   顺带列出被跟踪的大文件（> 2MB），只提示不失败
  */
 import { execFileSync } from 'node:child_process';

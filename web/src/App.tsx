@@ -1,9 +1,9 @@
-/** Application shell: the 412x892 phone stage, the screen stack, splash and snackbar. */
+/** Application shell: the 412x892 phone stage, the screen stack and snackbar. */
 import { useEffect, useState } from 'react';
 import { NavHost, useNav, type RouteName } from './nav/navigation';
 import { SnackbarLayer } from './components/overlays';
 import { AppNavBar } from './components/layout';
-import { SplashScreen } from './components/splash';
+import { ContourBackground } from './components/contour';
 import { useAppState } from './state/AppState';
 import { startClassReminderLoop } from './lib/classReminder';
 import ScheduleScreen from './screens/ScheduleScreen';
@@ -26,6 +26,10 @@ const SCREENS = {
   licenses: LicensesScreen,
   phraseManager: PhraseManagerScreen,
   settings: SettingsScreen,
+  /* 设置页的**分类子屏**（Clash Verge 式：首页只放入口，点进去是独立屏）。
+     与首页复用同一个组件，靠路由参数 `section` 决定渲染哪一类 —— 这样所有弹层状态、
+     OCR 探测、更新逻辑都只有一份，不会出现"两套设置页各改一半"的漂移。 */
+  settingsSection: SettingsScreen,
 };
 
 /** 底边栏是常驻单例（见 PersistentDock），所以屏幕内容统一给它留出高度 */
@@ -33,7 +37,7 @@ const SNACKBAR_BOTTOM = 96;
 
 /** 路由 → 标签：底栏的选中项由当前路由推导（唯一事实来源） */
 function tabForRoute(route: RouteName): 'schedule' | 'search' | 'settings' {
-  if (route === 'settings' || route === 'about' || route === 'licenses' || route === 'apiEdit' || route === 'phraseManager') {
+  if (route === 'settings' || route === 'settingsSection' || route === 'about' || route === 'licenses' || route === 'apiEdit' || route === 'phraseManager') {
     return 'settings';
   }
   if (route === 'scheduleFilter') return 'search';
@@ -51,9 +55,9 @@ export default function App() {
   const { ready, settings, schedule, textbooks } = useAppState();
   const bottom = SNACKBAR_BOTTOM;
 
-  // 开屏：数据就绪后自动进入；进入时主页组件从下向上依次弹出
-  const [splash, setSplash] = useState(true);
-  const [entering, setEntering] = useState(false);
+  // 开屏动画已按作者要求删除（2026-09-29）：启动直接进主页，不再有"轻点进入"那一步。
+  // 保留 entering 的依次弹出，只作用于首次挂载。
+  const [entering, setEntering] = useState(true);
 
   // 性能模式：high 全特效 / low 关特效 / auto 交给自动检测（perf.ts 按掉帧情况降级）
   useEffect(() => {
@@ -128,27 +132,34 @@ export default function App() {
     document.documentElement.dataset.dockScatter = strong ?? 'concise';
   }, [settings.dockScatter]);
 
+  /* 单色等高线背景：写到 <html data-contour>（CSS 据此让出 .screen 底色），
+     并把等高线层画在 .phone 里、屏幕之下（作者要求「单色背景模仿终末地的等高线」）。 */
+  useEffect(() => {
+    document.documentElement.dataset.contour = settings.contour ?? 'subtle';
+  }, [settings.contour]);
+
   // 过渡模式：写到 <html data-transition> 上，由 CSS 决定动画（none = 瞬时切换）
   useEffect(() => {
     document.documentElement.dataset.transition = settings.transition;
   }, [settings.transition]);
 
+  // 首屏的"依次弹出"只跑一次（原来是等开屏退场后触发）
   useEffect(() => {
-    if (splash) return undefined;
-    setEntering(true);
     const timer = window.setTimeout(() => setEntering(false), 900);
     return () => window.clearTimeout(timer);
-  }, [splash]);
+  }, []);
 
   return (
     <div className="stage">
       <div className={['phone', entering ? 'entering' : ''].join(' ').trim()}>
-        <NavHost screens={SCREENS} />
+        <NavHost
+          screens={SCREENS}
+          background={(settings.contour ?? 'subtle') !== 'off' ? <ContourBackground intensity={settings.contour ?? 'subtle'} /> : null}
+        />
       {/* 常驻底栏：整个应用只渲染一份，位于屏幕栈之外 ——
           从根本上避免"切页导致底栏卸载/捕获残留/动画位移"造成的点击失效与重复跳转 */}
       <PersistentDock />
         <SnackbarLayer bottom={bottom} />
-        {splash ? <SplashScreen ready={ready} onDone={() => setSplash(false)} /> : null}
 
         {/* 液态玻璃底边栏的折射滤镜（无外部依赖） */}
         <svg width="0" height="0" aria-hidden="true" style={{ position: 'absolute' }}>
